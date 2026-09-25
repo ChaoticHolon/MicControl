@@ -1,0 +1,77 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:MicControlNG.Controls"
+                    xmlns:vm="using:MicControlNG.ViewModels">
+    <!-- Colors follow the Windows 11 Settings palette; defined here so Windows 10 and Linux look identical. -->
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="PageBackgroundBrush" Color="#F3F3F3" />
+            <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FBFBFB" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#E5E5E5" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#5E5E5E" />
+            <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#FFF4CE" />
+            <SolidColorBrush x:Key="CautionForegroundBrush" Color="#9D5D00" />
+            <SolidColorBrush x:Key="NavHoverBrush" Color="#0A000000" />
+            <SolidColorBrush x:Key="NavSelectedBrush" Color="#0F000000" />
+            <SolidColorBrush x:Key="MeterTrackBrush" Color="#1A000000" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="PageBackgroundBrush" Color="#202020" />
+            <SolidColorBrush x:Key="CardBackgroundBrush" Color="#2B2B2B" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#1D1D1D" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#C5C5C5" />
+            <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#433519" />
+            <SolidColorBrush x:Key="CautionForegroundBrush" Color="#FCE100" />
+            <SolidColorBrush x:Key="NavHoverBrush" Color="#0DFFFFFF" />
+            <SolidColorBrush x:Key="NavSelectedBrush" Color="#15FFFFFF" />
+            <SolidColorBrush x:Key="MeterTrackBrush" Color="#26FFFFFF" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+    <SolidColorBrush x:Key="MutedBrush" Color="#C42B1C" />
+    <SolidColorBrush x:Key="OverlayBackgroundBrush" Color="#8C111214" />
+    <SolidColorBrush x:Key="SpeakingBrush" Color="#23A55A" />
+    <SolidColorBrush x:Key="LiveBrush" Color="#0F7B0F" />
+    <SolidColorBrush x:Key="DisconnectedBrush" Color="#8A8A8A" />
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <ControlTheme x:Key="{x:Type c:SettingRow}" TargetType="c:SettingRow">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Classes="card">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Classes="glyph" FontSize="20" Margin="0,0,16,0" Text="{TemplateBinding Glyph}"
+                                   IsVisible="{TemplateBinding Glyph, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{TemplateBinding Header}" TextWrapping="Wrap" />
+                            <TextBlock Classes="secondary" Text="{TemplateBinding Description}"
+                                       IsVisible="{TemplateBinding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                        <ContentPresenter Grid.Column="2" VerticalAlignment="Center"
+                                          Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <DataTemplate x:Key="HotkeyEditorTemplate" x:DataType="vm:HotkeyEditorViewModel">
+        <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <c:HotkeyBox Gesture="{Binding Key}" AllowMouse="{Binding SupportsMouse}" AutomationProperties.Name="{Binding Title}" />
+                <TextBlock Classes="secondary" Text="or" VerticalAlignment="Center" />
+                <c:HotkeyBox Gesture="{Binding AlternativeKey}" AllowMouse="{Binding SupportsMouse}" AutomationProperties.Name="Alternative hotkey" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <CheckBox Content="Exclusive hotkey" IsChecked="{Binding Suppress}" IsVisible="{Binding CanSuppress}"
+                          ToolTip.Tip="Only MicControl receives this key: other apps (games, chat) won't react to it while MicControl is running. May not work for every mouse button." />
+                <CheckBox Content="Ignore Ctrl/Alt/Shift" IsChecked="{Binding IgnoreModifiers}" IsEnabled="{Binding !HasModifiers}"
+                          ToolTip.Tip="Trigger even while modifier keys are held" />
+            </StackPanel>
+        </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="HotkeyRowTemplate" x:DataType="vm:HotkeyEditorViewModel">
+        <c:SettingRow Header="{Binding Title}" Content="{Binding}" ContentTemplate="{StaticResource HotkeyEditorTemplate}" />
+    </DataTemplate>
+</ResourceDictionary>

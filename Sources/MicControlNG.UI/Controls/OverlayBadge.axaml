@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MicControlNG.ViewModels"
+             x:Class="MicControlNG.Controls.OverlayBadge"
+             x:DataType="vm:MainViewModel">
+    <!-- Discord-style pill: translucent dark background, colored mic dot, optional label. Used by the overlay and its preview. -->
+    <LayoutTransformControl>
+        <LayoutTransformControl.LayoutTransform>
+            <ScaleTransform ScaleX="{Binding OverlayScale}" ScaleY="{Binding OverlayScale}" />
+        </LayoutTransformControl.LayoutTransform>
+        <Border Classes="overlayPill"
+                Classes.compact="{Binding !OverlayShowLabel}"
+                Classes.speaking="{Binding IsSpeaking}"
+                Classes.editing="{Binding IsOverlayEditing}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Panel>
+                    <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" IsVisible="{Binding !HasCustomIcons}">
+                        <TextBlock Classes="glyph" FontSize="15" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                    </Border>
+                    <Image Width="28" Height="28" Source="{Binding CurrentIcon}" IsVisible="{Binding HasCustomIcons}"
+                           RenderOptions.BitmapInterpolationMode="HighQuality" />
+                </Panel>
+                <Panel VerticalAlignment="Center" IsVisible="{Binding OverlayShowLabel}">
+                    <TextBlock Foreground="White" FontWeight="SemiBold" Text="{Binding StateLabel}" IsVisible="{Binding !ShowOutputIndicator}" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding ShowOutputIndicator}">
+                        <TextBlock Classes="glyph" FontSize="14" Foreground="White" Text="{Binding OutputIndicatorGlyph}" />
+                        <TextBlock Foreground="White" FontWeight="SemiBold" Text="{Binding OutputIndicatorText}" />
+                    </StackPanel>
+                </Panel>
+            </StackPanel>
+        </Border>
+    </LayoutTransformControl>
+</UserControl>

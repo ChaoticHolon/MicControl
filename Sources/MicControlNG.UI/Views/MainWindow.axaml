@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MicControlNG.ViewModels"
+        xmlns:pages="using:MicControlNG.Views.Pages"
+        x:Class="MicControlNG.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding Title}"
+        Width="1000" Height="720" MinWidth="780" MinHeight="520"
+        Background="{DynamicResource PageBackgroundBrush}"
+        WindowStartupLocation="CenterScreen">
+    <Panel>
+        <Grid ColumnDefinitions="248,*">
+            <!-- Sidebar -->
+            <DockPanel Margin="12,16,4,12">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,4,8,20">
+                    <Image Width="24" Height="24" Source="{Binding CurrentIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <TextBlock FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Title}" />
+                </StackPanel>
+                <!-- Status summary, always visible -->
+                <Border DockPanel.Dock="Bottom" Classes="card" Padding="12,10" Margin="0,8,0,0">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="22" Height="22" CornerRadius="11" Margin="0,0,10,0">
+                            <TextBlock Classes="glyph" FontSize="12" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                        </Border>
+                        <Button DockPanel.Dock="Right" Padding="10,4" Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}" />
+                        <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding StateLabel}" />
+                    </DockPanel>
+                </Border>
+                <ListBox Classes="nav" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavItem">
+                            <Grid ColumnDefinitions="Auto,Auto,*">
+                                <Border Classes="navPill" Margin="-8,0,8,0" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                                <TextBlock Grid.Column="1" Classes="glyph" Margin="0,0,14,0" Text="{Binding Glyph}" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding Title}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Content -->
+            <DockPanel Grid.Column="1">
+                <StackPanel DockPanel.Dock="Top" Margin="32,12,32,0" MaxWidth="1000">
+                    <Border Classes="card caution" IsVisible="{Binding Capabilities.LimitationNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <DockPanel>
+                            <TextBlock Classes="glyph" Text="&#xE7BA;" Margin="0,0,12,0" Foreground="{DynamicResource CautionForegroundBrush}" />
+                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Capabilities.LimitationNotice}" />
+                        </DockPanel>
+                    </Border>
+                    <Border Classes="card" IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="&#xE711;" FontFamily="{StaticResource IconFont}" Padding="8"
+                                    Command="{Binding DismissStatusCommand}" AutomationProperties.Name="Dismiss" />
+                            <TextBlock Classes="glyph" Text="&#xE946;" Margin="0,0,12,0" />
+                            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <Panel>
+                        <pages:HomePage IsVisible="{Binding IsHomePage}" />
+                        <pages:ExtraHotkeysPage IsVisible="{Binding IsExtraHotkeysPage}" />
+                        <pages:SoundsPage IsVisible="{Binding IsSoundsPage}" />
+                        <pages:OverlayPage IsVisible="{Binding IsOverlayPage}" />
+                        <pages:AboutPage IsVisible="{Binding IsAboutPage}" />
+                    </Panel>
+                </ScrollViewer>
+            </DockPanel>
+        </Grid>
+
+        <pages:SetupView IsVisible="{Binding IsSetupVisible}" />
+    </Panel>
+</Window>

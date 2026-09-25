@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:MicControlNG.Controls"
+        xmlns:vm="using:MicControlNG.ViewModels"
+        x:Class="MicControlNG.Views.OverlayWindow"
+        x:DataType="vm:MainViewModel"
+        Title="MicControl overlay"
+        WindowDecorations="None" Background="Transparent" TransparencyLevelHint="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" CanResize="False"
+        SizeToContent="WidthAndHeight"
+        Opacity="{Binding OverlayOpacity}">
+    <c:OverlayBadge x:Name="Badge" Margin="4" Cursor="SizeAll"
+                    ToolTip.Tip="Drag to move. Double-click to finish editing." />
+</Window>

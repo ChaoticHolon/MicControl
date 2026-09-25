@@ -1,25 +1,11 @@
-![](https://img.shields.io/github/release-date/iXab3r/MicSwitch.svg) ![](https://img.shields.io/github/downloads/iXab3r/MicSwitch/total.svg) ![](https://img.shields.io/github/last-commit/iXab3r/MicSwitch.svg)
-[![Discord Chat](https://img.shields.io/discord/513749321162686471.svg)](https://discord.gg/BExRm22)  
+# MicControl
 
-# Intro
-There are dozens of different audio chat apps like Discord, TeamSpeak, Ventrilo, Skype, in-game audio chats, etc. And all of them have DIFFERENT ways of handling push-to-talk and always-on microphone functionality. I bet many of you know how distracting it could be when someone forgets to turn off a microphone. I will try to explain what I mean using a feature matrix.
+**MicControl Next Generation** (MicControlNG): mute and unmute your microphone system-wide with a hotkey, with an always-on-top overlay, sounds and a tray icon. It works with every app that uses the microphone: Discord, Teams, Zoom, games and more.
 
-| App  | Microphone status overlay | Keyboard support | Mouse buttons support | Audio notification |
-| -------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| MicSwitch |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported") |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported") |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported") |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")
-| Discord  |  In-game only  |   ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")  |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")   |  ![Not supported](https://i.imgur.com/AxsV1yJ.png "Not supported") |
-| TeamSpeak  |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")  |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")   |  ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")  |   ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")  |
-| Ventrilo  | ![Not supported](https://i.imgur.com/AxsV1yJ.png "Not supported")  |   ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")  |  [Has a bug dating 2012](http://forum.ventrilo.com/showthread.php?t=61203 "Has a bug dating 2012")  |   ![Supported](https://i.imgur.com/GOuQvrh.png "Supported")  |
-| Skype  | ![Not supported](https://i.imgur.com/AxsV1yJ.png "Not supported")  |  Hard-coded Ctrl+M  |  ![Not supported](https://i.imgur.com/AxsV1yJ.png "Not supported")  |  ![Not supported](https://i.imgur.com/AxsV1yJ.png "Not supported") |
-
-MicSwitch allows you to mute/unmute your system microphone using a predefined system-wide hotkey which will affect any program that uses microphone (no more heavy breathing during Skype conferences, hooray!)
-Also it supports configurable mute/unmute sounds(similar to TeamSpeak/Ventrilo) and a configurable overlay with scaling/transparency support. All these features allow you to seamlessly switch between chat apps and use THE SAME input system with overlay and notifications support.
-
-# Features / Bugfixes priority (click to vote or post feature/bug request)
-[![Requests](https://feathub.com/iXab3r/MicSwitch?format=svg)](https://feathub.com/iXab3r/MicSwitch)
+MicControl is the successor of [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r, rebuilt on .NET 10 and Avalonia. MicSwitch settings are imported automatically.
 
 # Installation
-- You can download the latest version of installer here - [download](https://github.com/iXab3r/MicSwitch/releases/latest).
+- You can download the latest version of installer here - [download](https://github.com/ChaoticHolon/MicControlNG/releases/latest).
 - After initial installation application will periodically check Github for updates
 
 ## Features
@@ -32,7 +18,8 @@ Also it supports configurable mute/unmute sounds(similar to TeamSpeak/Ventrilo) 
 - Auto-startup (could be Minimized by default)
 - Three Audio modes: Push-to-talk, Push-to-mute and Toggle mute
 - Overlay visibility could be linked to microphone state, i.e. it will be shown only when Muted/Unmuted
-- Auto-updates via Github
+- Auto-updates via GitHub Releases
+- Light and dark theme (follows Windows by default)
 
 ## Media
 ![UI](https://i.imgur.com/Fz0nTZP.png)
@@ -49,34 +36,33 @@ Also it supports configurable mute/unmute sounds(similar to TeamSpeak/Ventrilo) 
 ### Auto-update via Github
 ![Auto-update via Github](https://i.imgur.com/O4SIuDy.gif)
 
-## How to build application
-* I am extensively using [git-submodules](https://git-scm.com/docs/git-submodule "git-submodules") so you may have to run extra commands (git submodule update) if your git-client does not fully support this tech. I would highly recommend to use [Git Extensions](https://gitextensions.github.io/ "Git Extensions") which is awesome, free and open-source and makes submodules integration seamless
-* The main "catch-up-moment" is that you need to run InitSymlinks.cmd before building an application - this is due to the fact that git symlinks are not supported on some older versions of Windows and I am using them to create links to submodules
-* I am usually using [Jetbrains Rider](https://www.jetbrains.com/rider/ "Jetbrains Rider") so there MAY be some issues if you are using Microsoft Visual Studio, although I am trying to keep things compatible
+## How to build
 
-### Build from command line
-1. git clone https://github.com/iXab3r/MicSwitch.git
-2. cd MicSwitch
-3. remove submodule DeploymentTools - MicSwitch's installer built and oublished as a part of another project and it's not included into this repository
-4. git submodule init 
-5. git submodule update --checkout
-6. InitSymlinks.cmd
-7. dotnet build Sources/MicSwitch
+Requirements: Windows 10 (version 2004 or later) and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (included with Visual Studio 2026's ".NET desktop development" workload).
 
-That's it. Portable version will be in **bin** folder. Framework-dependent version
+```
+git clone https://github.com/ChaoticHolon/MicControlNG.git
+cd MicControlNG/Sources
+dotnet build MicControlNG.slnx
+dotnet test --project MicControlNG.Tests
+dotnet run --project MicControlNG
+```
 
-## Linux/MacOS Support ?
-Probably not going to happen in the nearest future because in it's core MicSwitch is a WPF application, technology that Microsoft does not want to port at all.
-Migrating to something cross-platform like Avalon, Xamarin is an option, but not a cheap one, unfortunately I don't have so much spare time to do it now.
+In Visual Studio, open `Sources\MicControlNG.slnx`, set **MicControlNG** as the startup project and run. Start Visual Studio as administrator: the app requests elevation so hotkeys keep working in elevated games.
 
-Meanwhile you could take a look at
-### MacOS
-**MuteKey** (thanks to benpeter for finding it): https://apps.apple.com/us/app/mutekey/id1509590766?mt=12
+The UI is built with [Avalonia](https://avaloniaui.net) so it can later run on Linux (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
 
-### Linux
-???
+### Project layout
+| Project | Contents |
+| --- | --- |
+| `MicControlNG.Core` | Platform-independent logic and contracts: settings model and JSON storage, MicSwitch import, hotkey text format, mute rules, notification sound library, and the `MicControlNG.Platform` interfaces each OS implements |
+| `MicControlNG.UI` | Avalonia 12 UI (Fluent theme, light/dark): views, view models (CommunityToolkit.Mvvm), tray icon, app composition |
+| `MicControlNG.Windows` | Windows implementations: Core Audio mute/volume (NAudio), low-level keyboard/mouse hooks, WASAPI sound playback, start with Windows, overlay click-through |
+| `MicControlNG` | Windows executable (`MicControlNG.exe`): wires the UI to the Windows services; single instance; Velopack updates |
+| `MicControlNG.Tests` | xUnit v3 tests: core logic plus headless UI tests against fake platform services |
 
-## Contacts
-- Feel free to contact me via PM in Discord *Xab3r#3780* or [Reddit](https://www.reddit.com/user/Xab3r) 
-- [Discord chat](https://discord.gg/BExRm22 "Discord chat")
-- [Issues tracker](https://github.com/iXab3r/MicSwitch/issues)
+### Settings
+Settings are stored in `%APPDATA%\MicControlNG\settings.json`, logs in `%APPDATA%\MicControlNG\logs`. On first start, MicControl imports from `%APPDATA%\MicSwitch`: settings, custom icons and sounds from recent builds, or a MicSwitch 1.x `release\config.cfg`. MicSwitch autostart entries are replaced with MicControlNG ones.
+
+### Releasing
+Push a tag like `v2.0.0`. The `Release` workflow publishes a self-contained build and uses [Velopack](https://velopack.io) to create the installer and the update feed on GitHub Releases, which installed copies check for updates.
