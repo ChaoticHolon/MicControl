@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MicControlNG.ViewModels"
+        xmlns:p="using:MicControlNG.Platform"
+        x:Class="MicControlNG.Views.TrayPopupWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{x:Static vm:MainViewModel.AppName}"
+        WindowDecorations="None" Background="Transparent" TransparencyLevelHint="Transparent"
+        Topmost="True" ShowInTaskbar="False" CanResize="False" SizeToContent="WidthAndHeight">
+    <!-- Quick controls opened by left-clicking the tray icon. Closes when it loses focus. -->
+    <Border Classes="card" Width="340" Margin="12" Padding="16" CornerRadius="8" BoxShadow="0 8 24 0 #55000000">
+        <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="Auto,*">
+                <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="36" Height="36" CornerRadius="18">
+                    <TextBlock Classes="glyph" FontSize="17" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding MicrophoneStatus}" />
+                    <TextBlock Classes="secondary" Text="{Binding MicrophoneStatusDetail}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+            <Button x:Name="MuteButton" Classes="accent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,10" FontSize="15"
+                    Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}" />
+            <ProgressBar Classes="meter" Value="{Binding InputLevel}" IsVisible="{Binding IsMicrophoneConnected}" />
+            <StackPanel Spacing="4">
+                <TextBlock Classes="secondary" Text="Microphone" />
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Microphones}" SelectedValue="{Binding SelectedMicrophoneId}"
+                          DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}"
+                          AutomationProperties.Name="Microphone" />
+            </StackPanel>
+            <StackPanel Spacing="4">
+                <TextBlock Classes="secondary" Text="Mode" />
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding MuteModes}" SelectedValue="{Binding MuteMode}"
+                          DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}"
+                          AutomationProperties.Name="Mode" />
+            </StackPanel>
+            <Button x:Name="OpenWindowButton" HorizontalAlignment="Left" Background="Transparent" BorderThickness="0" Padding="0,4"
+                    Foreground="{DynamicResource SystemControlHighlightAccentBrush}" Content="Open full window" />
+        </StackPanel>
+    </Border>
+</Window>

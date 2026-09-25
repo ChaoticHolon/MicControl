@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MicControlNG.ViewModels"
+        x:Class="MicControlNG.Views.TrayHintWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{x:Static vm:MainViewModel.AppName}"
+        SizeToContent="WidthAndHeight" CanResize="False" Topmost="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PageBackgroundBrush}">
+    <StackPanel Margin="24" Spacing="12" MaxWidth="420">
+        <TextBlock FontSize="18" FontWeight="SemiBold" Text="Still running in the tray" />
+        <TextBlock TextWrapping="Wrap" Text="{Binding TrayNoticeText}" />
+        <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Hotkeys keep working. Click the tray icon for quick controls; switch to Window mode on Home if you prefer a normal app." />
+        <DockPanel Margin="0,8,0,0">
+            <Button DockPanel.Dock="Right" Classes="accent" MinWidth="90" HorizontalContentAlignment="Center" Content="OK" Click="OnOk" IsDefault="True" />
+            <CheckBox x:Name="DontShowAgain" Content="Don't show again" />
+        </DockPanel>
+    </StackPanel>
+</Window>

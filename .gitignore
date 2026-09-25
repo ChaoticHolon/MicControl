@@ -1,0 +1,16 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+[Rr]eleases/
+artifacts/
+TestResults/
+*.binlog
+
+# IDEs
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+*_wpftmp.csproj

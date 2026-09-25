@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:MicControlNG.Controls"
+             xmlns:vm="using:MicControlNG.ViewModels"
+             xmlns:s="using:MicControlNG.Settings"
+             xmlns:p="using:MicControlNG.Platform"
+             x:Class="MicControlNG.Views.Pages.AboutPage"
+             x:DataType="vm:MainViewModel">
+    <StackPanel Classes="page">
+        <TextBlock Classes="pageTitle" Text="About" />
+        <Border Classes="card" Padding="24,20">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Image Width="56" Height="56" Source="{Binding UnmutedIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="22" FontWeight="SemiBold" Text="{x:Static vm:MainViewModel.AppName}" />
+                    <TextBlock FontSize="14" Text="{x:Static vm:MainViewModel.ProductFullName}" />
+                    <TextBlock Classes="secondary" FontSize="13" Text="{Binding VersionText, StringFormat='Version {0}'}" />
+                </StackPanel>
+                <Button Grid.Column="2" VerticalAlignment="Center" Content="Project page" Command="{Binding OpenProjectPageCommand}" />
+            </Grid>
+        </Border>
+
+        <TextBlock Classes="section" Text="Updates" />
+        <Border Classes="card" IsVisible="{Binding UpdateVersion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Classes="accent" Content="Restart and update" Command="{Binding InstallUpdateCommand}" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding UpdateVersion, StringFormat='Version {0} is ready to install.'}" />
+            </DockPanel>
+        </Border>
+        <c:SettingRow Glyph="&#xE895;" Header="Check for updates" Description="{Binding UpdateStatus}">
+            <Button Content="Check now" Command="{Binding CheckUpdatesCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE823;" Header="Check automatically at startup">
+            <ToggleSwitch IsChecked="{Binding CheckForUpdates}" AutomationProperties.Name="Check for updates at startup" />
+        </c:SettingRow>
+
+        <TextBlock Classes="section" Text="System" />
+        <c:SettingRow Glyph="&#xE7F8;" Header="Operating system" Description="{Binding OsText}" />
+        <c:SettingRow Glyph="&#xE943;" Header="Runtime" Description="{Binding RuntimeText}" />
+        <c:SettingRow Glyph="&#xE771;" Header="UI framework" Description="{Binding UiFrameworkText}" />
+        <c:SettingRow Glyph="&#xE72E;" Header="Hotkey access" Description="{Binding HotkeyAccessText}" />
+
+        <TextBlock Classes="section" Text="Files and support" />
+        <c:SettingRow Glyph="&#xE8B7;" Header="Settings folder" Description="{Binding SettingsFolder}">
+            <Button Content="Open" Command="{Binding OpenSettingsFolderCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE9F9;" Header="Logs" Description="Attach these when reporting a problem">
+            <Button Content="Open" Command="{Binding OpenLogsFolderCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE7BE;" Header="Setup guide" Description="Walk through the first-run setup again">
+            <Button Content="Run setup" Command="{Binding RunSetupAgainCommand}" />
+        </c:SettingRow>
+        <TextBlock Classes="secondary" Margin="4,16,0,0" Text="Based on MicSwitch by Xab3r. Open source on GitHub." />
+    </StackPanel>
+</UserControl>

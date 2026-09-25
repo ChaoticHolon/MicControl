@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:MicControlNG.Controls"
+             xmlns:vm="using:MicControlNG.ViewModels"
+             xmlns:s="using:MicControlNG.Settings"
+             xmlns:p="using:MicControlNG.Platform"
+             x:Class="MicControlNG.Views.Pages.OverlayPage"
+             x:DataType="vm:MainViewModel">
+    <StackPanel Classes="page">
+        <TextBlock Classes="pageTitle" Text="Overlay" />
+        <TextBlock Classes="pageSubtitle" Text="A small always-on-top badge that shows whether you're muted, even over games." />
+
+        <!-- Live preview -->
+        <Border Classes="card" Height="140" Padding="0" ClipToBounds="True">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                    <GradientStop Color="#3A4A6B" Offset="0" />
+                    <GradientStop Color="#6B4A5E" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <TextBlock Margin="12,8" Foreground="#CCFFFFFF" FontSize="12" Text="Preview" />
+                <c:OverlayBadge HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="{Binding OverlayOpacity}" />
+            </Grid>
+        </Border>
+
+        <c:SettingRow Glyph="&#xE7F4;" Header="Show overlay">
+            <ComboBox MinWidth="200" ItemsSource="{Binding OverlayVisibilityModes}" SelectedValue="{Binding OverlayVisibility}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+        </c:SettingRow>
+        <StackPanel IsEnabled="{Binding OverlayEnabled}">
+            <c:SettingRow Glyph="&#xE8B0;" Header="Position" Description="Snap to a corner, or move it anywhere with Edit position (double-click the overlay when done)">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopLeft}" ToolTip.Tip="Top left" AutomationProperties.Name="Top left" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopRight}" ToolTip.Tip="Top right" AutomationProperties.Name="Top right" RenderTransform="scaleX(-1)" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.BottomLeft}" ToolTip.Tip="Bottom left" AutomationProperties.Name="Bottom left" RenderTransform="scaleY(-1)" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.BottomRight}" ToolTip.Tip="Bottom right" AutomationProperties.Name="Bottom right" RenderTransform="scale(-1,-1)" />
+                    <ToggleButton Margin="8,0,0,0" IsChecked="{Binding IsOverlayEditing}" Content="Edit position" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE740;" Header="Size">
+                <Slider Width="200" Minimum="0.6" Maximum="2.5" SmallChange="0.1" Value="{Binding OverlayScale}" AutomationProperties.Name="Overlay size" />
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE790;" Header="Opacity">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Slider Width="200" Minimum="0.2" Maximum="1" SmallChange="0.05" Value="{Binding OverlayOpacity}" VerticalAlignment="Center" AutomationProperties.Name="Overlay opacity" />
+                    <TextBlock Width="44" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding OverlayOpacity, StringFormat={}{0:0%}}" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE8E9;" Header="Show Muted / Live label">
+                <ToggleSwitch IsChecked="{Binding OverlayShowLabel}" AutomationProperties.Name="Show label" />
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE720;" Header="Speaking indicator" Description="Outline the overlay in green while you talk. Keeps the microphone open for level monitoring, so Windows shows its 'microphone in use' icon.">
+                <ToggleSwitch IsChecked="{Binding ShowSpeakingIndicator}" AutomationProperties.Name="Speaking indicator" />
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xEB9F;" Header="Custom icons" Description="Use your own images instead of the colored dot. Also used for the tray icon.">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Padding="6" Command="{Binding SelectMutedIconCommand}" ToolTip.Tip="Choose the muted icon" AutomationProperties.Name="Choose muted icon">
+                        <Image Source="{Binding MutedIcon}" Width="28" Height="28" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    </Button>
+                    <Button Padding="6" Command="{Binding SelectUnmutedIconCommand}" ToolTip.Tip="Choose the live icon" AutomationProperties.Name="Choose live icon">
+                        <Image Source="{Binding UnmutedIcon}" Width="28" Height="28" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    </Button>
+                    <Button Content="Reset" Command="{Binding ResetIconsCommand}" />
+                </StackPanel>
+            </c:SettingRow>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

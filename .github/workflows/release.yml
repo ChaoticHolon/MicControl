@@ -1,0 +1,33 @@
+name: Release
+
+# Push a tag such as v2.0.0 to publish an installer and self-update feed to GitHub Releases.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: Sources/global.json
+      - name: Version
+        id: version
+        shell: pwsh
+        run: echo "value=$('${{ github.ref_name }}'.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+      - name: Test
+        run: dotnet test --project Sources/MicControlNG.Tests -c Release
+      - name: Publish
+        run: dotnet publish Sources/MicControlNG/MicControlNG.csproj -c Release --self-contained -p:Version=${{ steps.version.outputs.value }} -o publish
+      - name: Pack and upload
+        shell: pwsh
+        run: |
+          dotnet tool install -g vpk
+          vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+          vpk pack --packId MicControlNG --packVersion ${{ steps.version.outputs.value }} --packDir publish --mainExe MicControlNG.exe --icon Sources/MicControlNG/Resources/microphoneEnabled.ico
+          vpk upload github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} --publish --releaseName "MicControlNG ${{ steps.version.outputs.value }}" --tag ${{ github.ref_name }}

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform-independent logic (settings, hotkey parsing, mute rules) so it can be unit-tested anywhere. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MicControlNG.Tests" />
+  </ItemGroup>
+</Project>

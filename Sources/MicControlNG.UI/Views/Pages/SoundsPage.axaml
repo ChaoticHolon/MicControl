@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:MicControlNG.Controls"
+             xmlns:vm="using:MicControlNG.ViewModels"
+             xmlns:s="using:MicControlNG.Settings"
+             xmlns:p="using:MicControlNG.Platform"
+             x:Class="MicControlNG.Views.Pages.SoundsPage"
+             x:DataType="vm:MainViewModel">
+    <StackPanel Classes="page">
+        <TextBlock Classes="pageTitle" Text="Sounds" />
+        <TextBlock Classes="pageSubtitle" Text="A short sound tells you when your microphone changes state." />
+        <c:SettingRow Glyph="&#xE995;" Header="Play sounds">
+            <ToggleSwitch IsChecked="{Binding SoundsEnabled}" AutomationProperties.Name="Play sounds" />
+        </c:SettingRow>
+        <StackPanel IsEnabled="{Binding SoundsEnabled}">
+            <c:SettingRow Glyph="&#xE74F;" Header="When muted">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="200" ItemsSource="{Binding SoundOptions}" SelectedValue="{Binding SoundWhenMuted}"
+                              DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE768;" ToolTip.Tip="Preview"
+                            Command="{Binding PlaySoundCommand}" CommandParameter="{Binding SoundWhenMuted}" AutomationProperties.Name="Preview muted sound" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE767;" Header="When live">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="200" ItemsSource="{Binding SoundOptions}" SelectedValue="{Binding SoundWhenUnmuted}"
+                              DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE768;" ToolTip.Tip="Preview"
+                            Command="{Binding PlaySoundCommand}" CommandParameter="{Binding SoundWhenUnmuted}" AutomationProperties.Name="Preview live sound" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE994;" Header="Volume">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Slider Width="200" Minimum="0" Maximum="100" Value="{Binding NotificationVolume}" VerticalAlignment="Center" AutomationProperties.Name="Sound volume" />
+                    <TextBlock Width="44" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding NotificationVolume, StringFormat={}{0:0}%}" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE7F5;" Header="Play through" Description="Useful if your headset and speakers are different devices">
+                <ComboBox MinWidth="280" ItemsSource="{Binding PlaybackDevices}" SelectedValue="{Binding PlaybackDeviceId}"
+                          DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE710;" Header="Your own sounds" Description="Add a WAV, MP3 or other audio file; it appears in the lists above">
+                <Button Content="Add sound…" Command="{Binding AddSoundCommand}" />
+            </c:SettingRow>
+        </StackPanel>
+    </StackPanel>
+</UserControl>
