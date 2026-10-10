@@ -2,7 +2,7 @@
 
 **MicControl Next Generation** (MicControlNG): mute and unmute your microphone system-wide with a hotkey, with an always-on-top overlay, sounds and a tray icon. It works with every app that uses the microphone: Discord, Teams, Zoom, games and more.
 
-MicControl is the successor of [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r, rebuilt on .NET 10 and Avalonia. MicSwitch settings are imported automatically.
+MicControl is the successor of [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r, rebuilt on .NET 10 and Avalonia, with explicit plans to eventually release it cross-platform as the original developer intended. MicSwitch settings are imported automatically.
 
 # Installation
 - You can download the latest version of installer here - [download](https://github.com/ChaoticHolon/MicControlNG/releases/latest).
