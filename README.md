@@ -57,4 +57,4 @@ The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux s
 | `MicControlNG.Tests` | xUnit v3 tests: core logic plus headless UI tests against fake platform services |
 
 ### Settings
-Settings are stored in `%APPDATA%\MicControlNG\settings.json`, logs in `%APPDATA%\MicControlNG\logs`. On first start, MicControl imports from `%APPDATA%\MicSwitch`: settings, custom icons and sounds from recent builds, or a MicSwitch 1.x `release\config.cfg`. MicSwitch autostart entries are replaced with MicControlNG ones.
+Settings are stored in `%APPDATA%\MicControlNG\settings.json`, logs in `%APPDATA%\MicControlNG\logs`. On first start, MicControl imports from `%APPDATA%\MicSwitch`: settings, custom icons and sounds from recent builds, or a MicSwitch 1.x `release\config.cfg`. A MicSwitch autostart entry is taken over by MicControl only when the MicSwitch program it starts has been removed; an installed MicSwitch keeps its own.
