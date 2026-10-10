@@ -78,12 +78,18 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
 
     private static AppSettings Upgrade(AppSettings settings)
     {
-        if (settings.Version < AppSettings.CurrentVersion)
+        if (settings.Version < 3)
         {
-            // Written by an earlier version: this user has already set things up.
+            // Written before first-run setup existed: this user has already set things up.
             settings.SetupCompleted = true;
-            settings.Version = AppSettings.CurrentVersion;
         }
+
+        if (settings.Version < 5)
+        {
+            settings.Notifications.ReplaceOldDefaultSounds();
+        }
+
+        settings.Version = Math.Max(settings.Version, AppSettings.CurrentVersion);
 
         // Version 3 had "Start in tray"; everything older behaved like tray mode.
         if (settings.Window.LegacyStartInTray is { } startInTray)

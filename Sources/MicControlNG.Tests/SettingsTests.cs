@@ -66,6 +66,60 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(new WindowBounds(5, 6, 110, 52), settings.Overlay.Bounds);
     }
 
+    [Theory]
+    [InlineData("Beep750", "Beep300", "Relay off", "Relay on")] // untouched old defaults: switched
+    [InlineData("beep750", "BEEP300", "Relay off", "Relay on")] // names are case-insensitive
+    [InlineData("Beep300", "Beep750", "Beep300", "Beep750")] // swapped by the user: kept
+    [InlineData("Beep750", null, "Beep750", null)] // live set to None: kept
+    [InlineData("custom", "Beep300", "custom", "Beep300")] // one changed: kept
+    public void Load_Version4_MovesOnlyUntouchedDefaultBeepsToRelay(string? muted, string? unmuted, string? expectedMuted, string? expectedUnmuted)
+    {
+        var settings = new AppSettings { Version = 4, SetupCompleted = true };
+        settings.Notifications.WhenMuted = muted;
+        settings.Notifications.WhenUnmuted = unmuted;
+        File.WriteAllText(Path.Combine(directory, SettingsStore.FileName), SettingsStore.Serialize(settings));
+
+        var loaded = new SettingsStore(directory).Load();
+
+        Assert.Equal(expectedMuted, loaded.Notifications.WhenMuted);
+        Assert.Equal(expectedUnmuted, loaded.Notifications.WhenUnmuted);
+        Assert.Equal(AppSettings.CurrentVersion, loaded.Version);
+    }
+
+    [Fact]
+    public void NoneSound_SurvivesSaveAndLoad()
+    {
+        var store = new SettingsStore(directory);
+        var settings = new AppSettings();
+        settings.Notifications.WhenUnmuted = null;
+
+        store.Save(settings);
+
+        Assert.Null(store.Load().Notifications.WhenUnmuted);
+        Assert.Equal(NotificationSettings.DefaultMutedSound, store.Load().Notifications.WhenMuted);
+    }
+
+    [Fact]
+    public void Load_Version4_KeepsUnfinishedSetup()
+    {
+        File.WriteAllText(Path.Combine(directory, SettingsStore.FileName), """{ "version": 4, "setupCompleted": false }""");
+
+        Assert.False(new SettingsStore(directory).Load().SetupCompleted);
+    }
+
+    [Fact]
+    public void Load_CurrentVersion_KeepsChosenBeeps()
+    {
+        // Picking the beeps after the upgrade is a choice, not an untouched default.
+        File.WriteAllText(Path.Combine(directory, SettingsStore.FileName),
+            $$"""{ "version": {{AppSettings.CurrentVersion}}, "notifications": { "whenMuted": "Beep750", "whenUnmuted": "Beep300" } }""");
+
+        var loaded = new SettingsStore(directory).Load();
+
+        Assert.Equal("Beep750", loaded.Notifications.WhenMuted);
+        Assert.Equal("Beep300", loaded.Notifications.WhenUnmuted);
+    }
+
     [Fact]
     public void Load_MigratesMicSwitchFolder_WithIconsAndSounds()
     {
@@ -222,5 +276,22 @@ public sealed class SettingsTests : IDisposable
         Assert.True(volumeUp.IsEnabled);
         Assert.Equal(HotkeyGesture.Parse("Ctrl+Up"), volumeUp.Hotkey.Key);
         Assert.True(File.Exists(Path.Combine(directory, SettingsStore.FileName)));
+    }
+
+    [Fact]
+    public void Load_LegacyConfigWithDefaultBeeps_GetsRelayCues()
+    {
+        const string legacy = """
+        { "Version": 1, "Items": [
+            { "AssemblyName": "MicSwitch", "TypeName": "MicSwitch.Modularity.MicSwitchConfig", "Version": 1,
+              "ConfigValue": { "Notifications": { "On": "Beep300", "Off": "Beep750" } } } ] }
+        """;
+        Directory.CreateDirectory(Path.Combine(directory, "release"));
+        File.WriteAllText(Path.Combine(directory, "release", "config.cfg"), legacy, System.Text.Encoding.Unicode);
+
+        var settings = new SettingsStore(directory).Load();
+
+        Assert.Equal(NotificationSettings.DefaultMutedSound, settings.Notifications.WhenMuted);
+        Assert.Equal(NotificationSettings.DefaultUnmutedSound, settings.Notifications.WhenUnmuted);
     }
 }

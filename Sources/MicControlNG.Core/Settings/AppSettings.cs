@@ -8,7 +8,11 @@ public sealed class AppSettings
     /// <summary>Device id meaning "every active device of this kind".</summary>
     public const string AllDevices = "all";
 
-    public const int CurrentVersion = 4;
+    /// <summary>
+    /// 3 added first-run setup; 4 replaced "Start in tray" with the app mode;
+    /// 5 moved the untouched default beeps to the relay cues.
+    /// </summary>
+    public const int CurrentVersion = 5;
 
     public int Version { get; set; } = CurrentVersion;
 
@@ -109,9 +113,34 @@ public sealed class NotificationSettings
 
     public const string DefaultUnmutedSound = "Relay on";
 
+    /// <summary>The defaults before the relay cues (and in MicSwitch 1.x).</summary>
+    public const string OldDefaultMutedSound = "Beep750";
+
+    public const string OldDefaultUnmutedSound = "Beep300";
+
+    // Always written, even when null ("None"): with the null-skipping JSON default, a missing value would load back as
+    // the default sound, so choosing None would undo itself on the next start.
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string? WhenMuted { get; set; } = DefaultMutedSound;
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string? WhenUnmuted { get; set; } = DefaultUnmutedSound;
+
+    /// <summary>
+    /// Moves someone still on the untouched old default pair to the relay cues. Any other choice, including the beeps
+    /// swapped or only one of them, was the user's own and is kept. Returns whether anything changed.
+    /// </summary>
+    internal bool ReplaceOldDefaultSounds()
+    {
+        if (!string.Equals(WhenMuted, OldDefaultMutedSound, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(WhenUnmuted, OldDefaultUnmutedSound, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        (WhenMuted, WhenUnmuted) = (DefaultMutedSound, DefaultUnmutedSound);
+        return true;
+    }
 
     public float Volume { get; set; } = 1;
 

@@ -116,6 +116,8 @@ public static class LegacyConfigMigrator
             n.WhenMuted = String(reversed["On"]);
         }
 
+        // 1.x shipped the same beeps as defaults; someone who never changed them gets the relay cues too.
+        n.ReplaceOldDefaultSounds();
         n.Volume = Float(main["NotificationVolume"]) ?? n.Volume;
 
         var w = settings.Window;
