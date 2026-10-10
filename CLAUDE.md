@@ -14,7 +14,7 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 
 ## Commands (run from `Sources/`)
 - Build: `dotnet build MicControlNG.slnx`. Warnings are errors, and the analyzers are strict (`AnalysisLevel=latest-recommended`).
-- Test: `dotnet test --project MicControlNG.Tests` (Microsoft Testing Platform via `global.json`; the old `dotnet test <proj>` form fails).
+- Test: `dotnet test --project MicControlNG.Tests` (Microsoft Testing Platform, opted into by the repo-root `global.json`, so it works from any folder; the old `dotnet test <proj>` form fails).
 - Run (Windows): `dotnet run --project MicControlNG`. The app asks for elevation (`highestAvailable`), so run from an elevated terminal or Visual Studio started as administrator.
 - Tests run on Windows and Linux. The Windows projects also build on Linux (`EnableWindowsTargeting`).
 
