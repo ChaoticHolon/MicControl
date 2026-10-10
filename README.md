@@ -1,4 +1,4 @@
-# MicControl
+# MicControlNG
 
 **MicControl Next Generation** (MicControlNG): mute and unmute your microphone system-wide with a hotkey, with an always-on-top overlay, sounds and a tray icon. It works with every app that uses the microphone: Discord, Teams, Zoom, games and more.
 
