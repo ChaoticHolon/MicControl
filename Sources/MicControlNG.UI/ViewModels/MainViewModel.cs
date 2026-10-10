@@ -47,6 +47,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IAudioEndpointGroup speakers;
     private readonly List<IDisposable> hotkeyRegistrations = [];
     private bool? lastMute;
+    private bool? lastConnected;
     private bool isRebinding;
     private bool trayNoticeShownThisSession;
 
@@ -148,6 +149,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedNavChanged(NavItem value)
     {
+        LogNavigated(value.Page);
         OnPropertyChanged(nameof(CurrentPage));
         OnPropertyChanged(nameof(IsHomePage));
         OnPropertyChanged(nameof(IsExtraHotkeysPage));
@@ -171,6 +173,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            LogSettingChanged(nameof(SelectedMicrophoneId), value);
             Settings.Microphone.DeviceId = value;
             Rebind(microphone, value);
             ApplyMicrophoneVolume();
@@ -307,6 +310,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         get => (microphone.Volume ?? 0) * 100;
         set
         {
+            LogMicrophoneVolumeSet(value);
             microphone.Volume = (float)(value / 100);
             Settings.Microphone.Volume = microphone.Volume;
             Save();
@@ -342,9 +346,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             try
             {
                 startup.SetEnabled(value);
+                LogSwitchChanged(nameof(RunAtStartup), value);
             }
             catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
             {
+                LogAutostartChangeFailed(value, ex);
                 StatusMessage = ex.Message;
             }
 
@@ -393,11 +399,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         trayNoticeShownThisSession = true;
+        LogTrayNoticeShown();
         return true;
     }
 
     public void DismissTrayNoticeForever()
     {
+        LogSwitchChanged(nameof(Settings.Window.TrayNoticeDismissed), true);
         Settings.Window.TrayNoticeDismissed = true;
         Save();
     }
@@ -431,17 +439,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         hotkeyRegistrations.ForEach(r => r.Dispose());
         hotkeyRegistrations.Clear();
         var mic = Settings.Microphone;
-        Register(mic.Hotkey, pressed => SetMute(MuteRules.OnMainHotkey(mic.MuteMode, pressed, microphone.Mute)));
+        Register(mic.Hotkey, "main", pressed => SetMute(MuteRules.OnMainHotkey(mic.MuteMode, pressed, microphone.Mute)));
         foreach (var extra in Settings.ExtraHotkeys.Where(e => e.IsEnabled))
         {
             var action = extra.Action;
-            Register(extra.Hotkey, pressed => RunAction(action, pressed));
+            Register(extra.Hotkey, action.ToString(), pressed => RunAction(action, pressed));
+            LogExtraHotkey(extra.Hotkey.Key, extra.Hotkey.AlternativeKey, action, extra.Hotkey.Suppress);
         }
 
         var extraCount = hotkeyRegistrations.Count - 1;
         LogHotkeysApplied(mic.MuteMode, mic.Hotkey.Key, mic.Hotkey.AlternativeKey, extraCount);
 
-        void Register(HotkeySettings settings, Action<bool> handler) => hotkeyRegistrations.Add(hotkeys.Register(settings, handler));
+        void Register(HotkeySettings settings, string name, Action<bool> handler) => hotkeyRegistrations.Add(hotkeys.Register(settings, pressed =>
+        {
+            LogHotkeyEvent(name, pressed ? "pressed" : "released");
+            handler(pressed);
+        }));
     }
 
     private void SetMute(bool? mute)
@@ -458,6 +471,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         isRebinding = true;
         try
         {
+            LogRebind(group == microphone ? "microphone" : "speakers", deviceId);
             if (group.DeviceId == deviceId)
             {
                 group.Rebind();
@@ -484,6 +498,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void OnMicrophoneStateChanged()
     {
         var mute = microphone.Mute;
+        if (mute != lastMute || microphone.IsConnected != lastConnected)
+        {
+            LogMicrophoneState(mute switch { true => "muted", false => "live", null => "unavailable" }, microphone.IsConnected, isRebinding);
+            lastConnected = microphone.IsConnected;
+        }
+
         if (!isRebinding && lastMute is not null && mute is not null && mute != lastMute && Settings.Notifications.Enabled)
         {
             _ = PlayNotification(mute.Value ? Settings.Notifications.WhenMuted : Settings.Notifications.WhenUnmuted);
@@ -573,6 +593,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         assign(value);
+        LogSettingChanged(propertyName, value);
         OnPropertyChanged(propertyName);
         Save();
         return true;
@@ -586,4 +607,34 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Update check failed")]
     private partial void LogUpdateCheckFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Setting {Name} = {Value}")]
+    private partial void LogSettingChanged(string? name, object? value);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Setting {Name} = {Value}")]
+    private partial void LogSwitchChanged(string name, bool value);
+
+    [LoggerMessage(Level = LogLevel.Trace, Message = "Microphone volume set to {Percent:0}%")]
+    private partial void LogMicrophoneVolumeSet(double percent);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not turn autostart {Enabled}")]
+    private partial void LogAutostartChangeFailed(bool enabled, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Microphone {State} (connected: {Connected}, while rebinding: {Rebinding})")]
+    private partial void LogMicrophoneState(string state, bool connected, bool rebinding);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Hotkey {Name} {Event}")]
+    private partial void LogHotkeyEvent(string name, string @event);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Extra hotkey {Key} / {AlternativeKey} -> {Action} (exclusive: {Suppress})")]
+    private partial void LogExtraHotkey(Hotkeys.HotkeyGesture key, Hotkeys.HotkeyGesture alternativeKey, HotkeyAction action, bool suppress);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Binding {Group} to device {DeviceId}")]
+    private partial void LogRebind(string group, string deviceId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Page {Page}")]
+    private partial void LogNavigated(Page page);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Showing the 'still running in the tray' notice")]
+    private partial void LogTrayNoticeShown();
 }

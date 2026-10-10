@@ -3,6 +3,7 @@ using System.Security.Principal;
 using System.Xml;
 using System.Xml.Linq;
 using MicControlNG.Platform;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
 namespace MicControlNG.Windows;
@@ -11,7 +12,7 @@ namespace MicControlNG.Windows;
 /// Registers MicControlNG to start at sign-in. Elevated processes are blocked from the Run key at logon,
 /// so when running elevated a scheduled task with highest privileges is used instead.
 /// </summary>
-public sealed class StartupService : IStartupRegistration
+public sealed partial class StartupService(ILogger<StartupService> logger) : IStartupRegistration
 {
     public const string AutostartArgument = "--autostart";
     private const string Name = "MicControlNG";
@@ -32,12 +33,14 @@ public sealed class StartupService : IStartupRegistration
             if (IsElevated)
             {
                 var user = $"{Environment.UserDomainName}\\{Environment.UserName}";
-                Schtasks($"/Create /F /TN \"{Name}\" /TR \"{Command.Replace("\"", "\\\"", StringComparison.Ordinal)}\" /SC ONLOGON /RL HIGHEST /RU \"{user}\" /IT");
+                var exitCode = Schtasks($"/Create /F /TN \"{Name}\" /TR \"{Command.Replace("\"", "\\\"", StringComparison.Ordinal)}\" /SC ONLOGON /RL HIGHEST /RU \"{user}\" /IT");
+                LogAutostartTaskCreated(Command, exitCode);
             }
             else
             {
                 using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath);
                 key.SetValue(Name, Command);
+                LogAutostartRunKeySet(Command);
             }
 
             return;
@@ -52,6 +55,8 @@ public sealed class StartupService : IStartupRegistration
         {
             throw new InvalidOperationException("Run MicControl as administrator to remove the elevated startup task.");
         }
+
+        LogAutostartRemoved();
     }
 
     /// <summary>
@@ -60,8 +65,11 @@ public sealed class StartupService : IStartupRegistration
     /// </summary>
     public void MigrateLegacyEntries()
     {
-        var staleRunKey = AutostartCommand.IsStale(GetRunKey(LegacyName), File.Exists);
-        var staleTask = AutostartCommand.IsStale(GetScheduledTaskCommand(LegacyName), File.Exists);
+        var runKey = GetRunKey(LegacyName);
+        var taskCommand = GetScheduledTaskCommand(LegacyName);
+        var staleRunKey = AutostartCommand.IsStale(runKey, File.Exists);
+        var staleTask = AutostartCommand.IsStale(taskCommand, File.Exists);
+        LogLegacyEntries(runKey ?? "none", staleRunKey, taskCommand ?? "none", staleTask);
         if (!staleRunKey && !staleTask)
         {
             return;
@@ -76,7 +84,8 @@ public sealed class StartupService : IStartupRegistration
         if (staleTask)
         {
             // Needs elevation; if it fails the old task just points at a missing executable.
-            Schtasks($"/Delete /F /TN \"{LegacyName}\"");
+            var exitCode = Schtasks($"/Delete /F /TN \"{LegacyName}\"");
+            LogLegacyTaskDeleted(exitCode);
         }
 
         if (!IsEnabled)
@@ -131,4 +140,19 @@ public sealed class StartupService : IStartupRegistration
         errors.Wait();
         return (process.ExitCode, output);
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: scheduled task created for {Command} (schtasks exit {ExitCode})")]
+    private partial void LogAutostartTaskCreated(string command, int exitCode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: Run key set to {Command}")]
+    private partial void LogAutostartRunKeySet(string command);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart removed")]
+    private partial void LogAutostartRemoved();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "MicSwitch autostart entries: Run key {RunKey} (program gone: {RunKeyStale}); task {Task} (program gone: {TaskStale})")]
+    private partial void LogLegacyEntries(string runKey, bool runKeyStale, string task, bool taskStale);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Removed the MicSwitch scheduled task (schtasks exit {ExitCode})")]
+    private partial void LogLegacyTaskDeleted(int exitCode);
 }

@@ -30,6 +30,19 @@ public sealed class AppSettings
     public WindowSettings Window { get; set; } = new();
 
     public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>How much goes into the log files. Debug for now, while the rewrite is being tested.</summary>
+    public LogDetail LogLevel { get; set; } = LogDetail.Debug;
+}
+
+/// <summary>Log file detail. Same names and values as Microsoft.Extensions.Logging's LogLevel (Core doesn't reference it).</summary>
+public enum LogDetail
+{
+    Trace = 0,
+    Debug = 1,
+    Information = 2,
+    Warning = 3,
+    Error = 4,
 }
 
 public sealed class HotkeySettings

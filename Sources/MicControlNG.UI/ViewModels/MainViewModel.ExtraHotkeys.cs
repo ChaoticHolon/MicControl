@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MicControlNG.Platform;
 using MicControlNG.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MicControlNG.ViewModels;
 
@@ -77,6 +78,7 @@ public sealed partial class MainViewModel
         var main = MuteRules.MainActionFor(MuteMode);
         var action = new[] { HotkeyAction.ToggleMute, HotkeyAction.Mute, HotkeyAction.PushToTalk }.First(a => a != main);
         var extra = new ExtraHotkey { Action = action };
+        LogExtraHotkeyAdded(action);
         Settings.ExtraHotkeys.Add(extra);
         ExtraHotkeys.Add(CreateExtraHotkey(extra));
         OnExtraHotkeysChanged();
@@ -84,6 +86,7 @@ public sealed partial class MainViewModel
 
     internal void RemoveExtraHotkey(ExtraHotkeyViewModel item)
     {
+        LogExtraHotkeyRemoved(item.Model.Hotkey.Key, item.Model.Action);
         Settings.ExtraHotkeys.Remove(item.Model);
         ExtraHotkeys.Remove(item);
         OnExtraHotkeysChanged();
@@ -101,6 +104,7 @@ public sealed partial class MainViewModel
 
     private void RunAction(HotkeyAction action, bool pressed)
     {
+        LogRunAction(action, pressed);
         if (MuteRules.OnAction(action, pressed, microphone.Mute) is { } mute)
         {
             microphone.Mute = mute;
@@ -147,6 +151,11 @@ public sealed partial class MainViewModel
     {
         var (volume, mute) = (speakers.Volume, speakers.Mute);
         var changed = volume != lastSpeakerVolume || mute != lastSpeakerMute;
+        if (changed)
+        {
+            LogSpeakerState(mute, volume * 100);
+        }
+
         if (changed && !isRebinding && lastSpeakerVolume is not null && HasSpeakerActions)
         {
             ShowOutputIndicator = true;
@@ -159,6 +168,18 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(OutputIndicatorGlyph));
         OnPropertyChanged(nameof(OutputIndicatorText));
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Extra hotkey added ({Action})")]
+    private partial void LogExtraHotkeyAdded(HotkeyAction action);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Extra hotkey removed ({Key} -> {Action})")]
+    private partial void LogExtraHotkeyRemoved(Hotkeys.HotkeyGesture key, HotkeyAction action);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Action {Action} ({Pressed})")]
+    private partial void LogRunAction(HotkeyAction action, bool pressed);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Speakers: muted {Muted}, volume {Volume:0}%")]
+    private partial void LogSpeakerState(bool? muted, float? volume);
 }
 
 /// <summary>One row on the Extra hotkeys page.</summary>

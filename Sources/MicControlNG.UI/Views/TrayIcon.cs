@@ -3,11 +3,12 @@ using Avalonia;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.Input;
 using MicControlNG.ViewModels;
+using Microsoft.Extensions.Logging;
 
 namespace MicControlNG.Views;
 
 /// <summary>Notification-area icon, always shown. Left-click opens the quick popup; right-click shows the full menu.</summary>
-public sealed class TrayIcon : IDisposable
+public sealed partial class TrayIcon : IDisposable
 {
     private static readonly HashSet<string> MenuProperties =
     [
@@ -20,14 +21,24 @@ public sealed class TrayIcon : IDisposable
     private readonly MainViewModel viewModel;
     private readonly Action showWindow;
     private readonly Action exit;
+    private readonly ILogger logger;
 
     /// <param name="togglePopup">Left-click: never changes state, only opens or closes the quick popup.</param>
-    public TrayIcon(Application application, MainViewModel viewModel, Action togglePopup, Action showWindow, Action exit)
+    public TrayIcon(Application application, MainViewModel viewModel, Action togglePopup, Action showWindow, Action exit, ILogger<TrayIcon> logger)
     {
         this.viewModel = viewModel;
         this.showWindow = showWindow;
         this.exit = exit;
-        icon = new Avalonia.Controls.TrayIcon { Command = new RelayCommand(togglePopup), IsVisible = true };
+        this.logger = logger;
+        icon = new Avalonia.Controls.TrayIcon
+        {
+            Command = new RelayCommand(() =>
+            {
+                LogClicked(logger);
+                togglePopup();
+            }),
+            IsVisible = true,
+        };
         UpdateIcon();
         RebuildMenu();
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -85,23 +96,35 @@ public sealed class TrayIcon : IDisposable
         ];
     }
 
-    private static NativeMenuItem Item(string header, Action action) => new(header) { Command = new RelayCommand(action) };
+    private NativeMenuItem Item(string header, Action action) => new(header) { Command = Logged(header, action) };
 
-    private static NativeMenuItem Item(string header, Action<object?> action) => new(header) { Command = new RelayCommand(() => action(null)) };
+    private NativeMenuItem Item(string header, Action<object?> action) => new(header) { Command = Logged(header, () => action(null)) };
 
-    private static NativeMenuItem Radio(string header, bool isChecked, Action action) => new(header)
+    private NativeMenuItem Radio(string header, bool isChecked, Action action) => new(header)
     {
         ToggleType = MenuItemToggleType.Radio,
         IsChecked = isChecked,
-        Command = new RelayCommand(action),
+        Command = Logged(header, action),
     };
 
-    private static NativeMenuItem Check(string header, bool isChecked, Action action) => new(header)
+    private NativeMenuItem Check(string header, bool isChecked, Action action) => new(header)
     {
         ToggleType = MenuItemToggleType.CheckBox,
         IsChecked = isChecked,
-        Command = new RelayCommand(action),
+        Command = Logged(header, action),
     };
+
+    private RelayCommand Logged(string header, Action action) => new(() =>
+    {
+        LogMenuItem(logger, header);
+        action();
+    });
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Tray icon clicked")]
+    private static partial void LogClicked(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tray menu: {Item}")]
+    private static partial void LogMenuItem(ILogger logger, string item);
 
     private static NativeMenuItem Submenu(string header, IEnumerable<NativeMenuItemBase> items)
     {

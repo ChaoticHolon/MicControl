@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MicControlNG.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MicControlNG.ViewModels;
 
@@ -140,6 +141,7 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void PlaceOverlay(OverlayCorner corner)
     {
+        LogOverlayCornerChosen(corner, Settings.Overlay.Corner);
         Settings.Overlay.Corner = corner;
         Settings.Overlay.Bounds = null;
         OnPropertyChanged(nameof(OverlayCorner));
@@ -159,13 +161,18 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void ResetIcons()
     {
+        LogSettingChanged("OverlayIcons", "default");
         Settings.Overlay.MutedIconPath = null;
         Settings.Overlay.UnmutedIconPath = null;
         RefreshIcons();
         Save();
     }
 
-    partial void OnIsOverlayEditingChanged(bool value) => OnOverlayVisibilityInputsChanged();
+    partial void OnIsOverlayEditingChanged(bool value)
+    {
+        LogOverlayEditing(value);
+        OnOverlayVisibilityInputsChanged();
+    }
 
     partial void OnInputLevelChanged(double value) => OnPropertyChanged(nameof(IsSpeaking));
 
@@ -204,6 +211,7 @@ public sealed partial class MainViewModel
             return;
         }
 
+        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, IsPopupVisible, ShowSpeakingIndicator && IsOverlayVisible);
         if (wanted)
         {
             levelSession = levelMonitor.Start(SelectedMicrophoneId, peak => Volatile.Write(ref latestPeak, peak));
@@ -265,7 +273,20 @@ public sealed partial class MainViewModel
         var target = Path.Combine(directory, name + Path.GetExtension(file));
         File.Copy(file, target, overwrite: true);
         assign(target);
+        LogOverlayIconChanged(name, target);
         RefreshIcons();
         Save();
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Overlay corner preset {Corner} chosen (was {Previous})")]
+    private partial void LogOverlayCornerChosen(OverlayCorner corner, OverlayCorner previous);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Overlay {Which} icon set to {Path}")]
+    private partial void LogOverlayIconChanged(string which, string path);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Overlay edit position {Editing}")]
+    private partial void LogOverlayEditing(bool editing);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, tray popup: {Popup}, speaking indicator: {Speaking})")]
+    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool popup, bool speaking);
 }

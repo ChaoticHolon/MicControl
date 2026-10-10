@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 
 namespace MicControlNG.ViewModels;
 
@@ -56,6 +57,7 @@ public sealed partial class MainViewModel
         try
         {
             var name = await Task.Run(() => sounds.Add(file));
+            LogSoundAdded(name, file);
             RefreshSounds();
             if (Settings.Notifications.WhenMuted is null)
             {
@@ -66,11 +68,25 @@ public sealed partial class MainViewModel
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
+            LogSoundAddFailed(file, ex);
             StatusMessage = $"Could not add sound: {ex.Message}";
         }
     }
 
-    private Task PlayNotification(string? name) => sounds.PlayAsync(name, Settings.Notifications.Volume, Settings.Notifications.OutputDeviceId);
+    private Task PlayNotification(string? name)
+    {
+        LogPlayingSound(name ?? "(none)", Settings.Notifications.Volume * 100, Settings.Notifications.OutputDeviceId ?? "default");
+        return sounds.PlayAsync(name, Settings.Notifications.Volume, Settings.Notifications.OutputDeviceId);
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Sound \"{Name}\" added from {File}")]
+    private partial void LogSoundAdded(string name, string file);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not add sound {File}")]
+    private partial void LogSoundAddFailed(string file, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Playing sound {Name} at {Volume:0}% on {Device}")]
+    private partial void LogPlayingSound(string name, float volume, string device);
 
     private void RefreshSounds()
     {
