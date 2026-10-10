@@ -21,8 +21,10 @@ internal sealed class TestHarness : IDisposable
     {
         builtInSounds = Path.Combine(directory, "builtin");
         Directory.CreateDirectory(builtInSounds);
-        File.WriteAllBytes(Path.Combine(builtInSounds, "Beep300.wav"), [0]);
-        File.WriteAllBytes(Path.Combine(builtInSounds, "Beep750.wav"), [0]);
+        foreach (var name in new[] { "Beep300", "Beep750", NotificationSettings.DefaultMutedSound, NotificationSettings.DefaultUnmutedSound })
+        {
+            File.WriteAllBytes(Path.Combine(builtInSounds, name + ".wav"), [0]);
+        }
 
         var store = new SettingsStore(directory);
         var initial = new AppSettings { SetupCompleted = true };

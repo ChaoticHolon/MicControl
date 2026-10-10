@@ -17,29 +17,48 @@ public sealed partial class MainViewModel
     }
 
     // Dropdown values use "" for "None"/"Default device": a null SelectedValue would show an empty selection.
+    // So null is never a choice; it's a ComboBox clearing its selection while it builds, and is ignored.
     public string SoundWhenMuted
     {
         get => Settings.Notifications.WhenMuted ?? string.Empty;
-        set => SetAndSave(Settings.Notifications.WhenMuted, NullIfEmpty(value), v => Settings.Notifications.WhenMuted = v);
+        set
+        {
+            if (value is not null)
+            {
+                SetAndSave(Settings.Notifications.WhenMuted, NullIfEmpty(value), v => Settings.Notifications.WhenMuted = v);
+            }
+        }
     }
 
     public string SoundWhenUnmuted
     {
         get => Settings.Notifications.WhenUnmuted ?? string.Empty;
-        set => SetAndSave(Settings.Notifications.WhenUnmuted, NullIfEmpty(value), v => Settings.Notifications.WhenUnmuted = v);
+        set
+        {
+            if (value is not null)
+            {
+                SetAndSave(Settings.Notifications.WhenUnmuted, NullIfEmpty(value), v => Settings.Notifications.WhenUnmuted = v);
+            }
+        }
     }
 
     /// <summary>Notification volume in percent.</summary>
     public double NotificationVolume
     {
         get => Settings.Notifications.Volume * 100;
-        set => SetAndSave(Settings.Notifications.Volume, (float)(value / 100), v => Settings.Notifications.Volume = v);
+        set => SetAndSave(Settings.Notifications.Volume, (float)(value / 100), v => Settings.Notifications.Volume = v, isSlider: true);
     }
 
     public string PlaybackDeviceId
     {
         get => Settings.Notifications.OutputDeviceId ?? string.Empty;
-        set => SetAndSave(Settings.Notifications.OutputDeviceId, NullIfEmpty(value), v => Settings.Notifications.OutputDeviceId = v);
+        set
+        {
+            if (value is not null)
+            {
+                SetAndSave(Settings.Notifications.OutputDeviceId, NullIfEmpty(value), v => Settings.Notifications.OutputDeviceId = v);
+            }
+        }
     }
 
     [RelayCommand]

@@ -35,10 +35,11 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 - Overlay is a translucent Discord-style badge, positioned by corner presets or "Edit position" (drag); click-through otherwise.
 - The level meter and speaking indicator open the mic (OS "in use" indicator), so the meter only runs while Home/Setup is visible and the speaking indicator is opt-in.
 - Notification sounds must be CC0/public-domain (e.g. Kenney, Freesound CC0), not Pixabay.
+- Default cues are "Relay on" / "Relay off", synthesised (so ours to ship) by `tools/GenerateCueSounds.cs` (`dotnet run tools/GenerateCueSounds.cs` from the repo root): the "asymmetric relay", a dark 2.2 kHz latch click over a faint steady 1175 Hz triangle for unmute, and a muffled 450 Hz release thud over a faint 494 Hz sine for mute. Both are short (~40/55 ms), fade in instantly, and stop clean with no tail; change them by editing the generator, never by hand-editing the WAVs. The 1.x beeps stay selectable, and existing settings keep the user's choice.
 
 ## Conventions
 - Package versions live only in `Sources/Directory.Packages.props`; shared build settings are in `Directory.Build.props`, style in `.editorconfig`.
-- XAML uses compiled bindings (`x:DataType`). For a ComboBox, use `DisplayMemberBinding` and `SelectedValueBinding` with `x:DataType`. Selected values must never be `null`: use `""` for "None" or "Default".
+- XAML uses compiled bindings (`x:DataType`). For a ComboBox, use `DisplayMemberBinding` and `SelectedValueBinding` with `x:DataType`. Selected values must never be `null`: use `""` for "None" or "Default". Setters bound to `SelectedValue` must ignore `null` (a ComboBox pushes it while it builds), or opening a page rewrites settings.
 - Theme colors are our own light/dark `ThemeDictionaries` in `Themes/Theme.axaml`, so Windows 10 and 11 look identical. Icons use the `IconFont` resource (Segoe Fluent Icons, falling back to Segoe MDL2 Assets). Linux will need a bundled icon font.
 - Settings: `%APPDATA%\MicControlNG\settings.json` (camelCase, hotkeys stored as text like `"Ctrl+F1"`); logs in `%APPDATA%\MicControlNG\logs\MicControlNG-yyyyMMdd.log` (last 7 kept). Keep the MicSwitch import working (legacy folder and 1.x `LegacyConfigMigrator`), and keep hotkey strings compatible with 1.x.
 - Every new platform capability gets an interface in `MicControlNG.Core/Platform`, a Windows implementation, a fake in the tests, and a flag in `PlatformCapabilities` if some platforms can't support it.

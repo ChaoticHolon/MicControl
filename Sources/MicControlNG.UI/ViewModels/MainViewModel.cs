@@ -585,7 +585,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
 
-    private bool SetAndSave<T>(T current, T value, Action<T> assign, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+    /// <param name="isSlider">A slider sends a value per pixel dragged, so its changes are logged at Trace.</param>
+    private bool SetAndSave<T>(T current, T value, Action<T> assign, bool isSlider = false, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(current, value))
         {
@@ -593,7 +594,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         assign(value);
-        LogSettingChanged(propertyName, value);
+        if (isSlider)
+        {
+            LogSliderChanged(propertyName, value);
+        }
+        else
+        {
+            LogSettingChanged(propertyName, value);
+        }
         OnPropertyChanged(propertyName);
         Save();
         return true;
@@ -613,6 +621,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Setting {Name} = {Value}")]
     private partial void LogSwitchChanged(string name, bool value);
+
+    [LoggerMessage(Level = LogLevel.Trace, Message = "Setting {Name} = {Value} (slider)")]
+    private partial void LogSliderChanged(string? name, object? value);
 
     [LoggerMessage(Level = LogLevel.Trace, Message = "Microphone volume set to {Percent:0}%")]
     private partial void LogMicrophoneVolumeSet(double percent);
