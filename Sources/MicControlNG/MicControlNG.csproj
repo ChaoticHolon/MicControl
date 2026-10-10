@@ -10,9 +10,23 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
+  <!--
+    Release builds are one self-contained file that is both the setup (MicControlNG-Setup-<version>.exe) and, once it
+    has copied itself into place, the installed app. Native libraries unpack to %TEMP%\.net on first start (missing
+    files are restored automatically); everything else runs from the file. See installer\build.ps1.
+  -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The built-in sounds travel inside the executable; installing writes them next to it (WindowsInstaller). -->
+    <EmbeddedResource Include="..\MicControlNG.UI\Assets\Notifications\*.wav" LogicalName="Sounds/%(Filename)%(Extension)" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" />
-    <PackageReference Include="Velopack" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MicControlNG.UI\MicControlNG.UI.csproj" />

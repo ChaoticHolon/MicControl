@@ -17,17 +17,23 @@ internal sealed class TestHarness : IDisposable
     private readonly string builtInSounds;
 
     /// <param name="configure">Adjusts the initial settings; setup is marked complete unless changed here.</param>
-    public TestHarness(Action<AppSettings>? configure = null)
+    /// <param name="firstRun">Start with no settings file at all, like a new user (<paramref name="configure"/> is ignored).</param>
+    public TestHarness(Action<AppSettings>? configure = null, bool firstRun = false)
     {
         builtInSounds = Path.Combine(directory, "builtin");
         Directory.CreateDirectory(builtInSounds);
-        File.WriteAllBytes(Path.Combine(builtInSounds, "Beep300.wav"), [0]);
-        File.WriteAllBytes(Path.Combine(builtInSounds, "Beep750.wav"), [0]);
+        foreach (var name in new[] { "Beep300", "Beep750", NotificationSettings.DefaultMutedSound, NotificationSettings.DefaultUnmutedSound })
+        {
+            File.WriteAllBytes(Path.Combine(builtInSounds, name + ".wav"), [0]);
+        }
 
         var store = new SettingsStore(directory);
-        var initial = new AppSettings { SetupCompleted = true };
-        configure?.Invoke(initial);
-        store.Save(initial);
+        if (!firstRun)
+        {
+            var initial = new AppSettings { SetupCompleted = true };
+            configure?.Invoke(initial);
+            store.Save(initial);
+        }
 
         Settings = new SettingsService(store);
         ViewModel = new MainViewModel(
@@ -36,7 +42,7 @@ internal sealed class TestHarness : IDisposable
             Hotkeys,
             new NotificationSounds(Sounds, builtInSounds, Path.Combine(directory, "user-sounds")),
             Startup,
-            new FakeUpdates(),
+            Updates,
             Dialogs,
             LevelMonitor,
             new PlatformCapabilities { CanSuppressHotkeys = true, SupportsMouseHotkeys = true },
@@ -50,6 +56,8 @@ internal sealed class TestHarness : IDisposable
     public FakeSoundPlayer Sounds { get; } = new();
 
     public FakeStartup Startup { get; } = new();
+
+    public FakeUpdates Updates { get; } = new();
 
     public FakeDialogs Dialogs { get; } = new();
 

@@ -3,6 +3,7 @@ using System.Security.Principal;
 using System.Xml;
 using System.Xml.Linq;
 using MicControlNG.Platform;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
 namespace MicControlNG.Windows;
@@ -11,7 +12,7 @@ namespace MicControlNG.Windows;
 /// Registers MicControlNG to start at sign-in. Elevated processes are blocked from the Run key at logon,
 /// so when running elevated a scheduled task with highest privileges is used instead.
 /// </summary>
-public sealed class StartupService : IStartupRegistration
+public sealed partial class StartupService(ILogger<StartupService> logger) : IStartupRegistration
 {
     public const string AutostartArgument = "--autostart";
     private const string Name = "MicControlNG";
@@ -23,7 +24,13 @@ public sealed class StartupService : IStartupRegistration
 
     private static string Command => $"\"{Environment.ProcessPath}\" {AutostartArgument}";
 
-    public bool IsEnabled => HasRunKey(Name) || HasScheduledTask(Name);
+    /// <summary>
+    /// Each user's own task, in a "MicControlNG" folder, so users of a shared all-users install don't replace each
+    /// other's. Uninstall removes them all through <see cref="RemoveAllFor"/>.
+    /// </summary>
+    private static string TaskName => $@"{Name}\{Environment.UserName} ({Environment.UserDomainName})";
+
+    public bool IsEnabled => HasRunKey(Name) || HasScheduledTask(TaskName) || IsOwnSharedTask();
 
     public void SetEnabled(bool enabled)
     {
@@ -31,13 +38,17 @@ public sealed class StartupService : IStartupRegistration
         {
             if (IsElevated)
             {
+                // The old shared task file would block creating the "MicControlNG" task folder.
+                RemoveOwnSharedTask();
                 var user = $"{Environment.UserDomainName}\\{Environment.UserName}";
-                Schtasks($"/Create /F /TN \"{Name}\" /TR \"{Command.Replace("\"", "\\\"", StringComparison.Ordinal)}\" /SC ONLOGON /RL HIGHEST /RU \"{user}\" /IT");
+                var exitCode = Schtasks($"/Create /F /TN \"{TaskName}\" /TR \"{Command.Replace("\"", "\\\"", StringComparison.Ordinal)}\" /SC ONLOGON /RL HIGHEST /RU \"{user}\" /IT");
+                LogAutostartTaskCreated(TaskName, Command, exitCode);
             }
             else
             {
                 using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath);
                 key.SetValue(Name, Command);
+                LogAutostartRunKeySet(Command);
             }
 
             return;
@@ -48,9 +59,88 @@ public sealed class StartupService : IStartupRegistration
             key?.DeleteValue(Name, throwOnMissingValue: false);
         }
 
-        if (HasScheduledTask(Name) && Schtasks($"/Delete /F /TN \"{Name}\"") != 0)
+        if (HasScheduledTask(TaskName) && Schtasks($"/Delete /F /TN \"{TaskName}\"") != 0)
         {
             throw new InvalidOperationException("Run MicControl as administrator to remove the elevated startup task.");
+        }
+
+        RemoveOwnSharedTask();
+        LogAutostartRemoved();
+    }
+
+    /// <summary>
+    /// For uninstall: removes every "Start with Windows" entry that starts <paramref name="executablePath"/>: each
+    /// user's task in the \MicControlNG\ folder (an all-users uninstall runs as admin, so it can remove them all), the
+    /// pre-release shared task, and the current user's Run key value. Other users' Run key values live in their own
+    /// registry hives; left behind, they just point at a missing program.
+    /// </summary>
+    public static void RemoveAllFor(string executablePath)
+    {
+        using (var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true))
+        {
+            if (Starts(key?.GetValue(Name) as string, executablePath))
+            {
+                key!.DeleteValue(Name, throwOnMissingValue: false);
+            }
+        }
+
+        if (Type.GetTypeFromProgID("Schedule.Service") is not { } type)
+        {
+            return;
+        }
+
+        dynamic scheduler = Activator.CreateInstance(type)!;
+        scheduler.Connect();
+        dynamic root = scheduler.GetFolder(@"\");
+        try
+        {
+            dynamic folder = scheduler.GetFolder(@"\" + Name);
+            dynamic tasks = folder.GetTasks(1);
+            for (int i = tasks.Count; i >= 1; i--)
+            {
+                dynamic task = tasks.Item(i);
+                if (Starts((string)task.Definition.Actions.Item(1).Path, executablePath))
+                {
+                    folder.DeleteTask((string)task.Name, 0);
+                }
+            }
+
+            root.DeleteFolder(Name, 0);
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException)
+        {
+            // No folder, or it still holds tasks of another copy.
+        }
+
+        try
+        {
+            dynamic shared = root.GetTask(Name);
+            if (Starts((string)shared.Definition.Actions.Item(1).Path, executablePath))
+            {
+                root.DeleteTask(Name, 0);
+            }
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException)
+        {
+        }
+
+        static bool Starts(string? command, string exe) =>
+            string.Equals(AutostartCommand.GetExecutable(command), exe, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Pre-release builds used one shared task named "MicControlNG". It counts as this user's (and is replaced or
+    /// removed) only if it starts this copy of the app.
+    /// </summary>
+    private static bool IsOwnSharedTask() =>
+        string.Equals(AutostartCommand.GetExecutable(GetScheduledTaskCommand(Name)), Environment.ProcessPath, StringComparison.OrdinalIgnoreCase);
+
+    private void RemoveOwnSharedTask()
+    {
+        if (IsOwnSharedTask())
+        {
+            var exitCode = Schtasks($"/Delete /F /TN \"{Name}\"");
+            LogSharedTaskRemoved(exitCode);
         }
     }
 
@@ -60,8 +150,11 @@ public sealed class StartupService : IStartupRegistration
     /// </summary>
     public void MigrateLegacyEntries()
     {
-        var staleRunKey = AutostartCommand.IsStale(GetRunKey(LegacyName), File.Exists);
-        var staleTask = AutostartCommand.IsStale(GetScheduledTaskCommand(LegacyName), File.Exists);
+        var runKey = GetRunKey(LegacyName);
+        var taskCommand = GetScheduledTaskCommand(LegacyName);
+        var staleRunKey = AutostartCommand.IsStale(runKey, File.Exists);
+        var staleTask = AutostartCommand.IsStale(taskCommand, File.Exists);
+        LogLegacyEntries(runKey ?? "none", staleRunKey, taskCommand ?? "none", staleTask);
         if (!staleRunKey && !staleTask)
         {
             return;
@@ -76,7 +169,8 @@ public sealed class StartupService : IStartupRegistration
         if (staleTask)
         {
             // Needs elevation; if it fails the old task just points at a missing executable.
-            Schtasks($"/Delete /F /TN \"{LegacyName}\"");
+            var exitCode = Schtasks($"/Delete /F /TN \"{LegacyName}\"");
+            LogLegacyTaskDeleted(exitCode);
         }
 
         if (!IsEnabled)
@@ -131,4 +225,22 @@ public sealed class StartupService : IStartupRegistration
         errors.Wait();
         return (process.ExitCode, output);
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: scheduled task {Task} created for {Command} (schtasks exit {ExitCode})")]
+    private partial void LogAutostartTaskCreated(string task, string command, int exitCode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Removed the old shared MicControlNG task (schtasks exit {ExitCode})")]
+    private partial void LogSharedTaskRemoved(int exitCode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: Run key set to {Command}")]
+    private partial void LogAutostartRunKeySet(string command);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart removed")]
+    private partial void LogAutostartRemoved();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "MicSwitch autostart entries: Run key {RunKey} (program gone: {RunKeyStale}); task {Task} (program gone: {TaskStale})")]
+    private partial void LogLegacyEntries(string runKey, bool runKeyStale, string task, bool taskStale);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Removed the MicSwitch scheduled task (schtasks exit {ExitCode})")]
+    private partial void LogLegacyTaskDeleted(int exitCode);
 }

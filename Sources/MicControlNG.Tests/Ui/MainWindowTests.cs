@@ -4,7 +4,10 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using MicControlNG.Controls;
+using Avalonia.Threading;
 using MicControlNG.Hotkeys;
+using MicControlNG.Settings;
+using MicControlNG.ViewModels;
 using MicControlNG.Views;
 
 namespace MicControlNG.Tests.Ui;
@@ -25,8 +28,34 @@ public sealed class MainWindowTests
 
         Assert.True(harness.Devices.Microphone.Mute);
         Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Microphone muted");
-        Assert.Equal(["Beep750"], harness.Sounds.Played);
+        Assert.Equal([NotificationSettings.DefaultMutedSound], harness.Sounds.Played);
         Assert.Equal("Muted", harness.ViewModel.StateLabel);
+    }
+
+    [AvaloniaFact]
+    public void OpeningTheWindow_DoesNotChangeSettings()
+    {
+        using var harness = new TestHarness(s => s.Notifications.OutputDeviceId = "speaker-1");
+        var before = SettingsStore.Serialize(harness.Settings.Current);
+        var changes = new List<string?>();
+        harness.ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(MainViewModel.SoundWhenMuted) or nameof(MainViewModel.SoundWhenUnmuted) or nameof(MainViewModel.PlaybackDeviceId))
+            {
+                changes.Add(e.PropertyName);
+            }
+        };
+
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+        foreach (var page in Enum.GetValues<ViewModels.Page>())
+        {
+            harness.ViewModel.Navigate(page);
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        Assert.Empty(changes);
+        Assert.Equal(before, SettingsStore.Serialize(harness.Settings.Current));
     }
 
     [AvaloniaFact]
@@ -37,7 +66,7 @@ public sealed class MainWindowTests
         window.Show();
 
         Assert.Contains(harness.ViewModel.Microphones, d => d.Name == "USB Microphone");
-        Assert.Equal(["None", "Beep300", "Beep750"], harness.ViewModel.SoundOptions.Select(o => o.Name));
+        Assert.Equal(["None", "Beep300", "Beep750", "Relay off", "Relay on"], harness.ViewModel.SoundOptions.Select(o => o.Name));
     }
 
     [AvaloniaFact]

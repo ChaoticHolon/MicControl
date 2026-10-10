@@ -24,6 +24,9 @@ public sealed class SettingsService
     /// <summary>True on the first run after upgrading from MicSwitch (settings were imported).</summary>
     public bool MigratedFromLegacy => store.MigratedFromLegacy;
 
+    /// <summary>True when this user had no settings to load or import: first-run defaults apply.</summary>
+    public bool IsFirstRun => store.IsFirstRun;
+
     public void ScheduleSave()
     {
         saveTimer.Stop();

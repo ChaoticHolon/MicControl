@@ -47,6 +47,11 @@
         <c:SettingRow Glyph="&#xE9F9;" Header="Logs" Description="Attach these when reporting a problem">
             <Button Content="Open" Command="{Binding OpenLogsFolderCommand}" />
         </c:SettingRow>
+        <c:SettingRow Glyph="&#xE9D9;" Header="Log detail" Description="How much MicControl writes to its logs. More detail helps track down problems.">
+            <ComboBox MinWidth="200" ItemsSource="{Binding LogLevels}" SelectedValue="{Binding LogDetail}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}"
+                      AutomationProperties.Name="Log detail" />
+        </c:SettingRow>
         <c:SettingRow Glyph="&#xE7BE;" Header="Setup guide" Description="Walk through the first-run setup again">
             <Button Content="Run setup" Command="{Binding RunSetupAgainCommand}" />
         </c:SettingRow>
