@@ -3,7 +3,7 @@
 System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sounds and a tray icon. Successor of MicSwitch by Xab3r.
 - **Display name** (UI, tray, notices): "MicControl" (`MainViewModel.AppName`); full name "MicControl Next Generation" (`ProductFullName`).
 - **Technical name** (repo, solution, projects, namespaces, exe, settings folder, mutex, autostart entries): `MicControlNG`.
-- Keep "MicSwitch" only for compatibility: importing `%APPDATA%\MicSwitch` (`SettingsStore` legacy folder, `LegacyConfigMigrator` 1.x type names), removing old autostart entries, and the credit "Based on MicSwitch by Xab3r".
+- Keep "MicSwitch" only for compatibility: importing `%APPDATA%\MicSwitch` (`SettingsStore` legacy folder, `LegacyConfigMigrator` 1.x type names), taking over old autostart entries (only those whose MicSwitch exe is gone; an installed MicSwitch keeps its own), and the credit "Based on MicSwitch by Xab3r".
 .NET 10, Avalonia 12.1 UI, C# latest. Solution: `Sources/MicControlNG.slnx`.
 
 ## Platform scope
@@ -14,7 +14,7 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 
 ## Commands (run from `Sources/`)
 - Build: `dotnet build MicControlNG.slnx`. Warnings are errors, and the analyzers are strict (`AnalysisLevel=latest-recommended`).
-- Test: `dotnet test --project MicControlNG.Tests` (Microsoft Testing Platform via `global.json`; the old `dotnet test <proj>` form fails).
+- Test: `dotnet test --project MicControlNG.Tests` (Microsoft Testing Platform, opted into by the repo-root `global.json`, so it works from any folder; the old `dotnet test <proj>` form fails).
 - Run (Windows): `dotnet run --project MicControlNG`. The app asks for elevation (`highestAvailable`), so run from an elevated terminal or Visual Studio started as administrator.
 - Tests run on Windows and Linux. The Windows projects also build on Linux (`EnableWindowsTargeting`).
 
