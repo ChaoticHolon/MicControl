@@ -17,6 +17,7 @@ public sealed class SettingsTests : IDisposable
         settings.Microphone.Hotkey.Key = HotkeyGesture.Parse("Ctrl+F2");
         settings.Microphone.MuteMode = MuteMode.PushToTalk;
         settings.Overlay.Bounds = new WindowBounds(10, 20, 120, 120);
+        settings.Overlay.Monitor = new WindowBounds(-1920, 0, 1920, 1080);
 
         store.Save(settings);
         var loaded = store.Load();
@@ -24,6 +25,7 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(HotkeyGesture.Parse("Ctrl+F2"), loaded.Microphone.Hotkey.Key);
         Assert.Equal(MuteMode.PushToTalk, loaded.Microphone.MuteMode);
         Assert.Equal(new WindowBounds(10, 20, 120, 120), loaded.Overlay.Bounds);
+        Assert.Equal(new WindowBounds(-1920, 0, 1920, 1080), loaded.Overlay.Monitor);
         Assert.Contains("\"Ctrl+F2\"", File.ReadAllText(store.FilePath), StringComparison.Ordinal);
     }
 
@@ -48,6 +50,20 @@ public sealed class SettingsTests : IDisposable
         Assert.True(settings.SetupCompleted);
         Assert.Equal(AppSettings.CurrentVersion, settings.Version);
         Assert.Equal(MuteMode.ToggleMute, settings.Microphone.MuteMode);
+    }
+
+    [Fact]
+    public void Load_FileWithoutOverlayMonitor_Loads()
+    {
+        File.WriteAllText(
+            Path.Combine(directory, SettingsStore.FileName),
+            """{ "version": 3, "overlay": { "corner": "BottomLeft", "bounds": { "left": 5, "top": 6, "width": 110, "height": 52 } } }""");
+
+        var settings = new SettingsStore(directory).Load();
+
+        Assert.Null(settings.Overlay.Monitor);
+        Assert.Equal(OverlayCorner.BottomLeft, settings.Overlay.Corner);
+        Assert.Equal(new WindowBounds(5, 6, 110, 52), settings.Overlay.Bounds);
     }
 
     [Fact]

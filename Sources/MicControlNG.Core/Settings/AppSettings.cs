@@ -136,6 +136,12 @@ public sealed class OverlaySettings
 
     public OverlayCorner Corner { get; set; } = OverlayCorner.TopRight;
 
+    /// <summary>
+    /// Bounds (screen pixels) of the monitor the overlay was last placed on, so corner presets stay on it across
+    /// restarts. <c>null</c> or a disconnected monitor uses the primary one; the value is kept for when it returns.
+    /// </summary>
+    public WindowBounds? Monitor { get; set; }
+
     public string? MutedIconPath { get; set; }
 
     public string? UnmutedIconPath { get; set; }

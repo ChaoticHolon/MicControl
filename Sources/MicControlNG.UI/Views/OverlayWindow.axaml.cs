@@ -27,7 +27,7 @@ public partial class OverlayWindow : Window
         ToolTip.SetServiceEnabled(Badge, false);
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        viewModel.OverlayPlacementRequested += (_, _) => Place();
+        viewModel.OverlayPlacementRequested += (_, _) => Place(fromCurrentScreen: true);
         Badge.PointerPressed += OnBadgePointerPressed;
         PositionChanged += (_, _) => SaveBounds();
         Opened += (_, _) =>
@@ -70,6 +70,12 @@ public partial class OverlayWindow : Window
                 break;
             case nameof(MainViewModel.IsOverlayEditing):
                 ApplyEditState();
+                if (!viewModel.IsOverlayEditing)
+                {
+                    // A dragged position remembers its monitor too.
+                    RememberCurrentScreen();
+                }
+
                 break;
         }
     }
@@ -97,9 +103,14 @@ public partial class OverlayWindow : Window
         interop.ConfigureOverlay(TryGetPlatformHandle()?.Handle ?? 0, clickThrough: !viewModel.IsOverlayEditing);
     }
 
-    private void Place()
+    /// <param name="fromCurrentScreen">
+    /// True for a corner preset click: use the monitor the overlay is on now (if it's visible) and remember it.
+    /// Otherwise (startup, size changes) use the remembered monitor, falling back to the primary one.
+    /// </param>
+    private void Place(bool fromCurrentScreen = false)
     {
-        if (settings.Current.Overlay.Bounds is { } b)
+        var overlay = settings.Current.Overlay;
+        if (overlay.Bounds is { } b)
         {
             Position = new PixelPoint((int)b.Left, (int)b.Top);
             if (WindowPlacement.IsOnScreen(this, Bounds.Size))
@@ -107,17 +118,42 @@ public partial class OverlayWindow : Window
                 return;
             }
 
-            settings.Current.Overlay.Bounds = null;
+            overlay.Bounds = null;
         }
 
-        var area = WindowPlacement.PrimaryWorkingArea(this);
-        var size = PixelSize.FromSize(Bounds.Size, RenderScaling);
-        var margin = (int)(16 * RenderScaling);
-        var corner = settings.Current.Overlay.Corner;
-        var x = corner is OverlayCorner.TopLeft or OverlayCorner.BottomLeft ? area.X + margin : area.Right - size.Width - margin;
-        var y = corner is OverlayCorner.TopLeft or OverlayCorner.TopRight ? area.Y + margin : area.Bottom - size.Height - margin;
-        Position = new PixelPoint(x, y);
+        var current = fromCurrentScreen && IsVisible ? CurrentRect() : (PixelRect?)null;
+        if (OverlayPlacement.ChooseScreen(GetScreens(), overlay.Monitor, current) is not { } screen)
+        {
+            return;
+        }
+
+        if (current is not null)
+        {
+            // Keep the saved monitor if it's merely disconnected; only an actual placement replaces it.
+            overlay.Monitor = OverlayPlacement.ToBounds(screen.Bounds);
+        }
+
+        // Size in the target monitor's scaling, which can differ from the one the overlay is on now.
+        var size = PixelSize.FromSize(Bounds.Size, screen.Scaling);
+        var margin = (int)(16 * screen.Scaling);
+        Position = OverlayPlacement.CornerPosition(overlay.Corner, screen.WorkingArea, size, margin);
     }
+
+    private void RememberCurrentScreen()
+    {
+        if (!IsVisible || OverlayPlacement.ChooseScreen(GetScreens(), null, CurrentRect()) is not { } screen)
+        {
+            return;
+        }
+
+        settings.Current.Overlay.Monitor = OverlayPlacement.ToBounds(screen.Bounds);
+        settings.ScheduleSave();
+    }
+
+    private PixelRect CurrentRect() => new(Position, PixelSize.FromSize(Bounds.Size, RenderScaling));
+
+    private List<OverlayScreen> GetScreens() =>
+        [.. Screens.All.Select(s => new OverlayScreen(s.Bounds, s.WorkingArea, s.Scaling, s.IsPrimary))];
 
     private void SaveBounds()
     {
