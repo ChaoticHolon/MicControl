@@ -30,6 +30,8 @@ public partial class OverlayWindow : Window
         viewModel.OverlayPlacementRequested += (_, _) => Place(fromCurrentScreen: true);
         Badge.PointerPressed += OnBadgePointerPressed;
         PositionChanged += (_, _) => SaveBounds();
+        // A monitor was connected or disconnected: fall back to the primary one, and go back when it returns.
+        Screens.Changed += (_, _) => Place();
         Opened += (_, _) =>
         {
             Place();
