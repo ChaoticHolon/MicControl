@@ -8,7 +8,7 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 .NET 10, Avalonia 12.1 UI, C# latest. Solution: `Sources/MicControlNG.slnx`.
 
 ## Platform scope
-- **Windows 10 (2004+) is the only supported platform right now.** Windows 11 has only been tested in a VM.
+- **Windows 10 (2004+) and Windows 11 are the only supported platforms right now.** Windows 11 has only been tested in a VM.
 - **Linux is next: KDE Plasma 6/Wayland** (no X11 support), first target **CachyOS** and the AUR (Arch-based). Plan: GlobalShortcuts portal for hotkeys, PipeWire for audio, layer-shell overlay, XDG autostart. Prototype hotkeys (portal shortcuts need user approval; true hold-to-talk is the open question) and the layer-shell overlay first: they decide what the Linux version can do.
 - **Packaging is native per OS, never Flatpak/Snap/AppImage** (developer's design choice):
   - Windows: the app installs itself (see "Installer and updates") plus the in-app updater. Next: sign release files with an owner-held key and verify that signature in the updater, not just GitHub's SHA-256.
