@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MicControlNG.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MicControlNG.ViewModels;
 
@@ -34,6 +35,22 @@ public sealed partial class MainViewModel
         set => SetAndSave(Settings.CheckForUpdates, value, v => Settings.CheckForUpdates = v);
     }
 
+    public IReadOnlyList<Choice> LogLevels { get; } =
+    [
+        new(LogDetail.Trace, "Everything (trace)"),
+        new(LogDetail.Debug, "Detailed (debug)"),
+        new(LogDetail.Information, "Normal"),
+        new(LogDetail.Warning, "Warnings and errors"),
+        new(LogDetail.Error, "Errors only"),
+    ];
+
+    /// <summary>How much goes into the log files; the app applies changes immediately.</summary>
+    public LogDetail LogDetail
+    {
+        get => Settings.LogLevel;
+        set => SetAndSave(Settings.LogLevel, value, v => Settings.LogLevel = v);
+    }
+
     [ObservableProperty]
     public partial string? UpdateVersion { get; private set; }
 
@@ -54,23 +71,37 @@ public sealed partial class MainViewModel
         {
             UpdateStatus = "Checking…";
             UpdateVersion = await updates.CheckAsync();
+            LogUpdateCheck(UpdateVersion ?? "none");
             UpdateStatus = UpdateVersion is null ? "You're up to date." : $"Version {UpdateVersion} is available.";
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
         {
+            LogUpdateCheckFailed(ex);
             UpdateStatus = $"Update check failed: {ex.Message}";
         }
     }
+
+    /// <summary>Raised once the update installer is running: the app must exit so it can replace the files.</summary>
+    public event EventHandler? ExitRequested;
 
     [RelayCommand]
     private async Task InstallUpdate()
     {
         try
         {
-            await updates.DownloadAndRestartAsync();
+            LogInstallingUpdate(UpdateVersion);
+            UpdateStatus = $"Downloading version {UpdateVersion}…";
+            if (await updates.InstallAsync())
+            {
+                UpdateStatus = $"Installing version {UpdateVersion}. {AppName} will start again when it's done.";
+                ExitRequested?.Invoke(this, EventArgs.Empty);
+            }
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
+            // Win32Exception includes declining the admin prompt for an all-users update.
+            LogUpdateFailed(ex);
+            UpdateStatus = $"Version {UpdateVersion} is available.";
             StatusMessage = $"Update failed: {ex.Message}";
         }
     }
@@ -99,6 +130,7 @@ public sealed partial class MainViewModel
         try
         {
             UpdateVersion = await updates.CheckAsync();
+            LogUpdateCheck(UpdateVersion ?? "none");
             if (UpdateVersion is not null)
             {
                 UpdateStatus = $"Version {UpdateVersion} is available.";
@@ -213,6 +245,7 @@ public sealed partial class MainViewModel
 
     partial void OnSetupStepChanged(int value)
     {
+        LogSetupStep(value);
         OnPropertyChanged(nameof(IsSetupStep1));
         OnPropertyChanged(nameof(IsSetupStep2));
         OnPropertyChanged(nameof(IsSetupStep3));
@@ -221,4 +254,16 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(SetupProgressText));
         OnPropertyChanged(nameof(SetupNextText));
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Update check: newer version {Version}")]
+    private partial void LogUpdateCheck(string version);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Installing update {Version} and restarting")]
+    private partial void LogInstallingUpdate(string? version);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Update failed")]
+    private partial void LogUpdateFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Setup step {Step}")]
+    private partial void LogSetupStep(int step);
 }

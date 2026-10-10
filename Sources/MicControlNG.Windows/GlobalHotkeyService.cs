@@ -39,7 +39,15 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
     public bool IsPaused
     {
         get => Volatile.Read(ref isPaused);
-        set => Volatile.Write(ref isPaused, value);
+        set
+        {
+            if (value != IsPaused)
+            {
+                LogPaused(value);
+            }
+
+            Volatile.Write(ref isPaused, value);
+        }
     }
 
     public IDisposable Register(HotkeySettings settings, Action<bool> handler)
@@ -51,11 +59,18 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
             .Select(g => new Trigger(g, ToVirtualKey(g)))
             .Where(t => t.Gesture.IsMouse || t.VirtualKey != 0)
             .ToArray();
+        var requested = (settings.Key.IsEmpty ? 0 : 1) + (settings.AlternativeKey.IsEmpty ? 0 : 1);
+        if (gestures.Length < requested)
+        {
+            LogGesturesSkipped(settings.Key, settings.AlternativeKey, requested - gestures.Length);
+        }
+
         if (gestures.Length == 0)
         {
             return EmptyRegistration.Instance;
         }
 
+        LogRegistered(settings.Key, settings.AlternativeKey, settings.Suppress, settings.IgnoreModifiers);
         var binding = new Binding(gestures, settings.Suppress, settings.IgnoreModifiers, handler);
         ImmutableInterlocked.Update(ref bindings, b => b.Add(binding));
         return new Registration(() => ImmutableInterlocked.Update(ref bindings, b => b.Remove(binding)));
@@ -81,6 +96,10 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
         {
             LogHookFailed(Marshal.GetLastPInvokeError());
         }
+        else
+        {
+            LogHooksInstalled();
+        }
 
         while (GetMessage(out _, 0, 0, 0) > 0)
         {
@@ -88,6 +107,7 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
 
         UnhookWindowsHookEx(keyboardHook);
         UnhookWindowsHookEx(mouseHook);
+        LogHooksRemoved();
     }
 
     private nint KeyboardHook(int nCode, nint wParam, nint lParam)
@@ -209,6 +229,21 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Hotkey handler failed")]
     private partial void LogHandlerFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Low-level keyboard and mouse hooks installed")]
+    private partial void LogHooksInstalled();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Low-level hooks removed")]
+    private partial void LogHooksRemoved();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Hotkeys paused: {Paused} (a hotkey box is capturing)")]
+    private partial void LogPaused(bool paused);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Hotkey registered: {Key} / {AlternativeKey} (exclusive: {Suppress}, ignore modifiers: {IgnoreModifiers})")]
+    private partial void LogRegistered(HotkeyGesture key, HotkeyGesture alternativeKey, bool suppress, bool ignoreModifiers);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Hotkey {Key} / {AlternativeKey}: {Count} key(s) can't be used (unknown key, or a bare left/right click)")]
+    private partial void LogGesturesSkipped(HotkeyGesture key, HotkeyGesture alternativeKey, int count);
 
     private sealed record Trigger(HotkeyGesture Gesture, int VirtualKey);
 

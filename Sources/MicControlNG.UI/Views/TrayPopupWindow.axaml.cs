@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using MicControlNG.ViewModels;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MicControlNG.Views;
 
@@ -13,11 +15,13 @@ public partial class TrayPopupWindow : Window
 {
     private readonly MainViewModel viewModel;
     private readonly Action openFullWindow;
+    private readonly ILogger logger;
 
-    public TrayPopupWindow(MainViewModel viewModel, Action openFullWindow)
+    public TrayPopupWindow(MainViewModel viewModel, Action openFullWindow, ILogger<TrayPopupWindow>? logger = null)
     {
         this.viewModel = viewModel;
         this.openFullWindow = openFullWindow;
+        this.logger = logger ?? NullLogger<TrayPopupWindow>.Instance;
         DataContext = viewModel;
         InitializeComponent();
         OpenWindowButton.Click += (_, _) => OpenFullWindow();
@@ -44,6 +48,7 @@ public partial class TrayPopupWindow : Window
         base.OnPropertyChanged(change);
         if (change.Property == IsVisibleProperty && viewModel is not null)
         {
+            LogVisible(logger, IsVisible);
             viewModel.IsPopupVisible = IsVisible;
         }
         else if (change.Property == ClientSizeProperty && IsVisible)
@@ -63,6 +68,7 @@ public partial class TrayPopupWindow : Window
 
     private void OpenFullWindow()
     {
+        LogOpenFullWindow(logger);
         Hide();
         openFullWindow();
     }
@@ -77,4 +83,10 @@ public partial class TrayPopupWindow : Window
 
         Position = PopupPlacement.Compute(screen.Bounds, screen.WorkingArea, PixelSize.FromSize(Bounds.Size, RenderScaling), 0);
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Tray popup visible: {Visible}")]
+    private static partial void LogVisible(ILogger logger, bool visible);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tray popup: Open full window")]
+    private static partial void LogOpenFullWindow(ILogger logger);
 }

@@ -114,13 +114,69 @@ internal sealed class FakeStartup : IStartupRegistration
     }
 }
 
+internal sealed class FakeInstaller : IInstaller
+{
+    public bool IsElevated { get; set; }
+
+    public bool AcceptElevation { get; set; } = true;
+
+    public InstalledCopy? Current { get; set; }
+
+    public Dictionary<Installation.InstallScope, InstalledCopy> Installed { get; } = [];
+
+    public Exception? Failure { get; set; }
+
+    public List<Installation.SetupCommand> ElevatedRestarts { get; } = [];
+
+    public List<Installation.InstallScope> Installs { get; } = [];
+
+    public List<Installation.InstallScope> Launches { get; } = [];
+
+    public int Uninstalls { get; private set; }
+
+    public InstalledCopy? Find(Installation.InstallScope scope) => Installed.GetValueOrDefault(scope);
+
+    public string DirectoryFor(Installation.InstallScope scope) =>
+        scope == Installation.InstallScope.AllUsers ? @"C:\Program Files\MicControlNG" : @"C:\Users\me\AppData\Local\Programs\MicControlNG";
+
+    public bool RestartElevated(Installation.SetupCommand command)
+    {
+        ElevatedRestarts.Add(command);
+        return AcceptElevation;
+    }
+
+    public Task InstallAsync(Installation.InstallScope scope, IProgress<double> progress, CancellationToken cancellationToken)
+    {
+        Installs.Add(scope);
+        return Failure is null ? Task.CompletedTask : Task.FromException(Failure);
+    }
+
+    public Task UninstallAsync(IProgress<double> progress, CancellationToken cancellationToken)
+    {
+        Uninstalls++;
+        return Failure is null ? Task.CompletedTask : Task.FromException(Failure);
+    }
+
+    public void Launch(Installation.InstallScope scope) => Launches.Add(scope);
+}
+
 internal sealed class FakeUpdates : IUpdateService
 {
-    public bool IsInstalled => false;
+    public bool IsInstalled { get; set; }
 
-    public Task<string?> CheckAsync() => Task.FromResult<string?>(null);
+    public string? Available { get; set; }
 
-    public Task DownloadAndRestartAsync() => Task.CompletedTask;
+    public bool InstallerStarts { get; set; } = true;
+
+    public int Installs { get; private set; }
+
+    public Task<string?> CheckAsync() => Task.FromResult(IsInstalled ? Available : null);
+
+    public Task<bool> InstallAsync()
+    {
+        Installs++;
+        return Task.FromResult(InstallerStarts);
+    }
 }
 
 internal sealed class FakeDialogs : IDialogService

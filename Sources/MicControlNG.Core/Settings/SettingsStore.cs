@@ -31,9 +31,13 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
     /// Reads settings, falling back to migration and then to defaults.
     /// A corrupt file is preserved as <c>settings.json.corrupt</c> rather than overwritten silently.
     /// </summary>
+    /// <summary>True when the last <see cref="Load"/> found no settings at all (none saved, nothing to import): a new user.</summary>
+    public bool IsFirstRun { get; private set; }
+
     public AppSettings Load()
     {
         MigratedFromLegacy = false;
+        IsFirstRun = false;
         if (File.Exists(FilePath))
         {
             try
@@ -52,6 +56,7 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
             ?? LegacyConfigMigrator.TryMigrate(LegacyDirectory ?? Directory, Path.Combine(Directory, "Icons"));
         if (migrated is null)
         {
+            IsFirstRun = true;
             return new AppSettings();
         }
 
@@ -78,12 +83,18 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
 
     private static AppSettings Upgrade(AppSettings settings)
     {
-        if (settings.Version < AppSettings.CurrentVersion)
+        if (settings.Version < 3)
         {
-            // Written by an earlier version: this user has already set things up.
+            // Written before first-run setup existed: this user has already set things up.
             settings.SetupCompleted = true;
-            settings.Version = AppSettings.CurrentVersion;
         }
+
+        if (settings.Version < 5)
+        {
+            settings.Notifications.ReplaceOldDefaultSounds();
+        }
+
+        settings.Version = Math.Max(settings.Version, AppSettings.CurrentVersion);
 
         // Version 3 had "Start in tray"; everything older behaved like tray mode.
         if (settings.Window.LegacyStartInTray is { } startInTray)

@@ -95,6 +95,46 @@ public interface IStartupRegistration
     void MigrateLegacyEntries();
 }
 
+/// <summary>An installed copy: its scope, folder and version (from Settings → Apps).</summary>
+public sealed record InstalledCopy(Installation.InstallScope Scope, string Directory, string? Version);
+
+/// <summary>
+/// Installs and uninstalls this program (the setup file is the app itself; see <see cref="Installation.SetupCommand"/>).
+/// Windows-only for now: Linux and macOS use their package managers.
+/// </summary>
+public interface IInstaller
+{
+    /// <summary>Whether this process may write to Program Files and HKLM.</summary>
+    bool IsElevated { get; }
+
+    /// <summary>The installed copy this process is running from, if any.</summary>
+    InstalledCopy? Current { get; }
+
+    /// <summary>The copy installed in a scope, if any.</summary>
+    InstalledCopy? Find(Installation.InstallScope scope);
+
+    /// <summary>The folder a scope installs to.</summary>
+    string DirectoryFor(Installation.InstallScope scope);
+
+    /// <summary>Starts this program again as administrator with the given command; false if the user declined.</summary>
+    bool RestartElevated(Installation.SetupCommand command);
+
+    /// <summary>
+    /// Closes any running copy in the target folder, then copies this program there, registers it in Settings → Apps
+    /// and adds a Start menu shortcut. Progress runs from 0 to 1.
+    /// </summary>
+    Task InstallAsync(Installation.InstallScope scope, IProgress<double> progress, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Removes <see cref="Current"/>: closes it everywhere, removes "Start with Windows", the shortcut and the Settings →
+    /// Apps entry, then deletes the program folder once this process has exited. Each user's settings are kept.
+    /// </summary>
+    Task UninstallAsync(IProgress<double> progress, CancellationToken cancellationToken);
+
+    /// <summary>Starts the installed copy of a scope.</summary>
+    void Launch(Installation.InstallScope scope);
+}
+
 public interface IUpdateService
 {
     /// <summary>False for portable or development builds, which can't update themselves.</summary>
@@ -103,7 +143,12 @@ public interface IUpdateService
     /// <returns>The newer version, or <c>null</c> when up to date.</returns>
     Task<string?> CheckAsync();
 
-    Task DownloadAndRestartAsync();
+    /// <summary>
+    /// Downloads the update found by <see cref="CheckAsync"/>, verifies it and starts the installer.
+    /// Returns true when the installer is running: the app must then exit so its files can be replaced
+    /// (the installer starts it again afterwards).
+    /// </summary>
+    Task<bool> InstallAsync();
 }
 
 /// <summary>Platform-specific window behavior the UI toolkit doesn't provide.</summary>

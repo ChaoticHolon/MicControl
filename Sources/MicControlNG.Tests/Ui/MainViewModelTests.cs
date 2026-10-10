@@ -7,6 +7,64 @@ namespace MicControlNG.Tests.Ui;
 
 public sealed class MainViewModelTests
 {
+    [AvaloniaTheory]
+    [InlineData(true, true, true)] // a new user of an installed copy: on by default
+    [InlineData(true, false, false)] // development or portable build: never registers itself
+    [InlineData(false, true, false)] // existing user: their choice is kept
+    public void FirstRun_StartsWithWindows_OnlyForNewUsersOfAnInstalledCopy(bool firstRun, bool installed, bool expected)
+    {
+        using var harness = new TestHarness(firstRun: firstRun);
+        harness.Updates.IsInstalled = installed;
+
+        harness.ViewModel.ApplyFirstRunDefaults();
+
+        Assert.Equal(expected, harness.Startup.IsEnabled);
+        Assert.Equal(expected, harness.ViewModel.RunAtStartup);
+    }
+
+    [AvaloniaFact]
+    public void FirstRun_DefaultsToTrayMode_AndShowsSetup()
+    {
+        using var harness = new TestHarness(firstRun: true);
+
+        Assert.Equal(AppMode.Tray, harness.ViewModel.AppMode);
+        Assert.True(harness.ViewModel.IsSetupVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task Update_InstallerStarts_AsksTheAppToExit()
+    {
+        using var harness = new TestHarness();
+        harness.Updates.IsInstalled = true;
+        harness.Updates.Available = "2.1.0";
+        var vm = harness.ViewModel;
+        var exits = 0;
+        vm.ExitRequested += (_, _) => exits++;
+
+        await vm.CheckUpdatesCommand.ExecuteAsync(null);
+        Assert.Equal("2.1.0", vm.UpdateVersion);
+
+        await vm.InstallUpdateCommand.ExecuteAsync(null);
+        Assert.Equal(1, harness.Updates.Installs);
+        Assert.Equal(1, exits);
+    }
+
+    [AvaloniaFact]
+    public async Task Update_InstallerDoesNotStart_KeepsRunning()
+    {
+        using var harness = new TestHarness();
+        harness.Updates.IsInstalled = true;
+        harness.Updates.Available = "2.1.0";
+        harness.Updates.InstallerStarts = false;
+        var exits = 0;
+        harness.ViewModel.ExitRequested += (_, _) => exits++;
+
+        await harness.ViewModel.CheckUpdatesCommand.ExecuteAsync(null);
+        await harness.ViewModel.InstallUpdateCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, exits);
+    }
+
     [AvaloniaFact]
     public void PushToTalk_IsDefault_MutesAtStart_AndHotkeyUnmutesWhileHeld()
     {

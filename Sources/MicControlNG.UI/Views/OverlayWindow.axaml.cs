@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -6,6 +7,8 @@ using MicControlNG.Platform;
 using MicControlNG.Services;
 using MicControlNG.Settings;
 using MicControlNG.ViewModels;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MicControlNG.Views;
 
@@ -15,24 +18,33 @@ public partial class OverlayWindow : Window
     private readonly MainViewModel viewModel;
     private readonly SettingsService settings;
     private readonly IWindowInterop interop;
+    private readonly ILogger logger;
     private readonly bool isConstructed;
 
-    public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop)
+    public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop, ILogger<OverlayWindow>? logger = null)
     {
         this.viewModel = viewModel;
         this.settings = settings;
         this.interop = interop;
+        this.logger = logger ?? NullLogger<OverlayWindow>.Instance;
         DataContext = viewModel;
         InitializeComponent();
         ToolTip.SetServiceEnabled(Badge, false);
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        viewModel.OverlayPlacementRequested += (_, _) => Place();
+        viewModel.OverlayPlacementRequested += (_, _) => Place("corner preset", fromCurrentScreen: true);
         Badge.PointerPressed += OnBadgePointerPressed;
         PositionChanged += (_, _) => SaveBounds();
+        // A monitor was connected or disconnected: fall back to the primary one, and go back when it returns.
+        Screens.Changed += (_, _) =>
+        {
+            LogMonitors(changed: true);
+            Place("monitors changed");
+        };
         Opened += (_, _) =>
         {
-            Place();
+            LogMonitors(changed: false);
+            Place("opened");
             ApplyEditState();
         };
         isConstructed = true;
@@ -40,6 +52,7 @@ public partial class OverlayWindow : Window
 
     public void SyncVisibility()
     {
+        LogVisibility(logger, viewModel.IsOverlayVisible, viewModel.OverlayVisibility, viewModel.IsMuted);
         if (viewModel.IsOverlayVisible)
         {
             Show();
@@ -57,7 +70,7 @@ public partial class OverlayWindow : Window
         if (isConstructed && change.Property == ClientSizeProperty && settings.Current.Overlay.Bounds is null)
         {
             // Keep corner-anchored overlays in their corner when the size or label changes.
-            Place();
+            Place("size changed");
         }
     }
 
@@ -70,6 +83,12 @@ public partial class OverlayWindow : Window
                 break;
             case nameof(MainViewModel.IsOverlayEditing):
                 ApplyEditState();
+                if (!viewModel.IsOverlayEditing)
+                {
+                    // A dragged position remembers its monitor too.
+                    RememberCurrentScreen();
+                }
+
                 break;
         }
     }
@@ -97,27 +116,85 @@ public partial class OverlayWindow : Window
         interop.ConfigureOverlay(TryGetPlatformHandle()?.Handle ?? 0, clickThrough: !viewModel.IsOverlayEditing);
     }
 
-    private void Place()
+    /// <param name="fromCurrentScreen">
+    /// True for a corner preset click: use the monitor the overlay is on now (if it's visible) and remember it.
+    /// Otherwise (startup, size changes) use the remembered monitor, falling back to the primary one.
+    /// </param>
+    private void Place(string reason, bool fromCurrentScreen = false)
     {
-        if (settings.Current.Overlay.Bounds is { } b)
+        var overlay = settings.Current.Overlay;
+        if (overlay.Bounds is { } b)
         {
             Position = new PixelPoint((int)b.Left, (int)b.Top);
-            if (WindowPlacement.IsOnScreen(this, Bounds.Size))
+            if (WindowPlacement.IsOnScreen(this, ClientSize))
             {
+                LogPlacedAtDraggedPosition(logger, reason, Position);
                 return;
             }
 
-            settings.Current.Overlay.Bounds = null;
+            LogDraggedPositionOffScreen(logger, Position);
+            overlay.Bounds = null;
         }
 
-        var area = WindowPlacement.PrimaryWorkingArea(this);
-        var size = PixelSize.FromSize(Bounds.Size, RenderScaling);
-        var margin = (int)(16 * RenderScaling);
-        var corner = settings.Current.Overlay.Corner;
-        var x = corner is OverlayCorner.TopLeft or OverlayCorner.BottomLeft ? area.X + margin : area.Right - size.Width - margin;
-        var y = corner is OverlayCorner.TopLeft or OverlayCorner.TopRight ? area.Y + margin : area.Bottom - size.Height - margin;
-        Position = new PixelPoint(x, y);
+        var current = fromCurrentScreen && IsVisible ? CurrentRect() : (PixelRect?)null;
+        if (OverlayPlacement.ChooseScreen(GetScreens(), overlay.Monitor, current) is not { } screen)
+        {
+            LogNoScreens(logger, reason);
+            return;
+        }
+
+        if (current is not null)
+        {
+            // Keep the saved monitor if it's merely disconnected; only an actual placement replaces it.
+            overlay.Monitor = OverlayPlacement.ToBounds(screen.Bounds);
+        }
+
+        // ClientSize, not Bounds: while the window sizes itself to its content (e.g. on open), Bounds still holds
+        // the previous layout size. Scaled for the target monitor, which can differ from the one the overlay is on.
+        var size = PixelSize.FromSize(ClientSize, screen.Scaling);
+        var margin = (int)(16 * screen.Scaling);
+        Position = OverlayPlacement.CornerPosition(overlay.Corner, screen.WorkingArea, size, margin);
+        var choice = current is not null ? "overlay's current"
+            : OverlayPlacement.ToBounds(screen.Bounds) == overlay.Monitor ? "remembered"
+            : overlay.Monitor is null ? "primary" : "primary; remembered one not connected";
+        LogPlacedInCorner(logger, reason, overlay.Corner, Position, size, screen.Bounds, choice);
     }
+
+    private void RememberCurrentScreen()
+    {
+        if (!IsVisible || OverlayPlacement.ChooseScreen(GetScreens(), null, CurrentRect()) is not { } screen)
+        {
+            return;
+        }
+
+        settings.Current.Overlay.Monitor = OverlayPlacement.ToBounds(screen.Bounds);
+        LogMonitorRemembered(logger, screen.Bounds);
+        settings.ScheduleSave();
+    }
+
+    private void LogMonitors(bool changed)
+    {
+        if (!logger.IsEnabled(LogLevel.Information))
+        {
+            return;
+        }
+
+        var screens = string.Join("; ", Screens.All.Select(s =>
+            string.Create(CultureInfo.InvariantCulture, $"{s.Bounds} work {s.WorkingArea} scale {s.Scaling:0.##}{(s.IsPrimary ? " primary" : "")}")));
+        if (changed)
+        {
+            LogScreensChanged(logger, screens);
+        }
+        else
+        {
+            LogScreens(logger, screens);
+        }
+    }
+
+    private PixelRect CurrentRect() => new(Position, PixelSize.FromSize(ClientSize, RenderScaling));
+
+    private List<OverlayScreen> GetScreens() =>
+        [.. Screens.All.Select(s => new OverlayScreen(s.Bounds, s.WorkingArea, s.Scaling, s.IsPrimary))];
 
     private void SaveBounds()
     {
@@ -128,6 +205,34 @@ public partial class OverlayWindow : Window
         }
 
         settings.Current.Overlay.Bounds = new WindowBounds(Position.X, Position.Y, Width, Height);
+        LogDragged(logger, Position);
         settings.ScheduleSave();
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Monitors: {Screens}")]
+    private static partial void LogScreens(ILogger logger, string screens);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Monitors changed: {Screens}")]
+    private static partial void LogScreensChanged(ILogger logger, string screens);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Overlay {Visible} (visibility {Mode}, muted {Muted})")]
+    private static partial void LogVisibility(ILogger logger, bool visible, OverlayVisibilityMode mode, bool? muted);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Overlay placed ({Reason}) at its dragged position {Position}")]
+    private static partial void LogPlacedAtDraggedPosition(ILogger logger, string reason, PixelPoint position);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Overlay's dragged position {Position} is off every monitor; using its corner instead")]
+    private static partial void LogDraggedPositionOffScreen(ILogger logger, PixelPoint position);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Overlay not placed ({Reason}): no monitors reported")]
+    private static partial void LogNoScreens(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Overlay placed ({Reason}) in corner {Corner} at {Position}, size {Size}, on monitor {Monitor} ({Choice} monitor)")]
+    private static partial void LogPlacedInCorner(ILogger logger, string reason, OverlayCorner corner, PixelPoint position, PixelSize size, PixelRect monitor, string choice);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Overlay monitor remembered: {Monitor}")]
+    private static partial void LogMonitorRemembered(ILogger logger, PixelRect monitor);
+
+    [LoggerMessage(Level = LogLevel.Trace, Message = "Overlay dragged to {Position}")]
+    private static partial void LogDragged(ILogger logger, PixelPoint position);
 }

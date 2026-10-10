@@ -1,48 +1,75 @@
 using Avalonia;
+using MicControlNG.Installation;
 using MicControlNG.Platform;
 using MicControlNG.Windows;
 using Microsoft.Extensions.DependencyInjection;
-using Velopack;
 
 namespace MicControlNG;
 
 internal static class Program
 {
-    private const string InstanceId = "MicControlNG-{567EBFFF-E391-4B38-AC85-469978EB37C4}";
-
     // STA is required: Core Audio COM objects are created on the UI thread.
     [STAThread]
-    private static void Main(string[] args)
+    private static int Main(string[] args)
     {
-        // Must run first: handles install/uninstall/update hooks and may exit the process.
-        VelopackApp.Build().Run();
+        // The setup download is this same program: under its setup name, or with --install/--uninstall, it shows the
+        // installer instead of the app (see SetupCommand).
+        var setup = SetupCommand.Parse(args, Environment.ProcessPath);
+        return setup.Mode == SetupMode.None ? RunApp(args) : RunSetup(args, setup);
+    }
 
-        using var mutex = new Mutex(initiallyOwned: true, $@"Local\{InstanceId}", out var isFirstInstance);
-        using var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, $@"Local\{InstanceId}-show");
+    private static int RunApp(string[] args)
+    {
+        using var mutex = new Mutex(initiallyOwned: true, WindowsPlatform.MutexName, out var isFirstInstance);
+        using var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, WindowsPlatform.ShowSignalName);
         if (!isFirstInstance)
         {
             // Ask the running instance to show its window.
             showSignal.Set();
-            return;
+            return 0;
         }
 
+        using var exitSignal = new EventWaitHandle(false, EventResetMode.AutoReset, WindowsPlatform.ExitSignalName);
         RegisteredWaitHandle? showRegistration = null;
+        RegisteredWaitHandle? exitRegistration = null;
         var options = new AppOptions
         {
             IsAutostart = args.Contains(StartupService.AutostartArgument, StringComparer.OrdinalIgnoreCase),
             RegisterPlatform = RegisterWindowsServices,
-            RegisterShowRequest = show => showRegistration = ThreadPool.RegisterWaitForSingleObject(
-                showSignal, (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(show), null, Timeout.Infinite, executeOnlyOnce: false),
+            RegisterShowRequest = show => showRegistration = OnSignal(showSignal, show),
+            RegisterExitRequest = exit => exitRegistration = OnSignal(exitSignal, exit),
         };
 
-        AppBuilder.Configure(() => new App(options))
+        var exitCode = AppBuilder.Configure(() => new App(options))
             .UsePlatformDetect()
             .LogToTrace()
             .StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
 
         showRegistration?.Unregister(null);
+        exitRegistration?.Unregister(null);
         GC.KeepAlive(mutex);
+        return exitCode;
     }
+
+    private static int RunSetup(string[] args, SetupCommand setup)
+    {
+        using var mutex = new Mutex(initiallyOwned: true, WindowsPlatform.SetupMutexName, out var isFirstSetup);
+        if (!isFirstSetup)
+        {
+            return 1;
+        }
+
+        var options = new AppOptions { RegisterPlatform = RegisterWindowsServices, Setup = setup };
+        var exitCode = AppBuilder.Configure(() => new App(options))
+            .UsePlatformDetect()
+            .LogToTrace()
+            .StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
+        GC.KeepAlive(mutex);
+        return exitCode;
+    }
+
+    private static RegisteredWaitHandle OnSignal(WaitHandle signal, Action action) => ThreadPool.RegisterWaitForSingleObject(
+        signal, (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(action), null, Timeout.Infinite, executeOnlyOnce: false);
 
     // Used by the Avalonia XAML previewer.
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UsePlatformDetect();
@@ -55,5 +82,6 @@ internal static class Program
         .AddSingleton<ISoundPlayer, WasapiSoundPlayer>()
         .AddSingleton<IStartupRegistration, StartupService>()
         .AddSingleton<IWindowInterop, WindowInterop>()
+        .AddSingleton<IInstaller, WindowsInstaller>()
         .AddSingleton<IUpdateService, UpdateService>();
 }

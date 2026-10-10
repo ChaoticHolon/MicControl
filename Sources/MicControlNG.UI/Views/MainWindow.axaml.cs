@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using MicControlNG.Services;
 using MicControlNG.Settings;
 using MicControlNG.ViewModels;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MicControlNG.Views;
 
@@ -11,11 +13,13 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel viewModel;
     private readonly SettingsService settings;
+    private readonly ILogger logger;
 
-    public MainWindow(MainViewModel viewModel, SettingsService settings)
+    public MainWindow(MainViewModel viewModel, SettingsService settings, ILogger<MainWindow>? logger = null)
     {
         this.viewModel = viewModel;
         this.settings = settings;
+        this.logger = logger ?? NullLogger<MainWindow>.Instance;
         DataContext = viewModel;
         InitializeComponent();
         UpdateIcon();
@@ -30,6 +34,7 @@ public partial class MainWindow : Window
             {
                 if (!WindowPlacement.IsOnScreen(this, Bounds.Size))
                 {
+                    LogOffScreen(this.logger, Position);
                     Position = WindowPlacement.CenterOfPrimary(this, Bounds.Size);
                 }
             };
@@ -56,12 +61,14 @@ public partial class MainWindow : Window
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == IsVisibleProperty)
+        if (change.Property == IsVisibleProperty && logger is not null)
         {
+            LogVisible(logger, IsVisible);
             viewModel.IsWindowVisible = IsVisible && WindowState != WindowState.Minimized;
         }
-        else if (change.Property == WindowStateProperty)
+        else if (change.Property == WindowStateProperty && logger is not null)
         {
+            LogWindowState(logger, WindowState);
             if (WindowState == WindowState.Minimized && viewModel.IsTrayMode)
             {
                 // Tray mode: minimize hides to the tray instead of the taskbar.
@@ -81,6 +88,7 @@ public partial class MainWindow : Window
             settings.ScheduleSave();
         }
 
+        LogClosing(logger, IsExiting, viewModel.AppMode);
         if (!IsExiting)
         {
             if (viewModel.IsTrayMode)
@@ -118,4 +126,16 @@ public partial class MainWindow : Window
     }
 
     private void UpdateIcon() => Icon = new WindowIcon(viewModel.CurrentIcon);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Main window visible: {Visible}")]
+    private static partial void LogVisible(ILogger logger, bool visible);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Main window state: {State}")]
+    private static partial void LogWindowState(ILogger logger, WindowState state);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Main window closing (exiting: {Exiting}, app mode: {AppMode})")]
+    private static partial void LogClosing(ILogger logger, bool exiting, AppMode appMode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Main window's saved position {Position} is off every monitor; centring it on the primary one")]
+    private static partial void LogOffScreen(ILogger logger, PixelPoint position);
 }
