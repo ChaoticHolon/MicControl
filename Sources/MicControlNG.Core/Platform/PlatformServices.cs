@@ -88,7 +88,10 @@ public interface IStartupRegistration
 
     void SetEnabled(bool enabled);
 
-    /// <summary>Removes autostart entries created by MicSwitch and re-registers under the new name if one existed.</summary>
+    /// <summary>
+    /// Replaces MicSwitch autostart entries whose program is gone with MicControlNG ones.
+    /// Entries for a MicSwitch that is still installed are left alone.
+    /// </summary>
     void MigrateLegacyEntries();
 }
 
