@@ -1,4 +1,6 @@
 using Avalonia;
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
 using MicControlNG.Settings;
 using MicControlNG.Views;
 
@@ -80,6 +82,26 @@ public sealed class OverlayPlacementTests
     public void ChooseScreen_NoScreens_ReturnsNull()
     {
         Assert.Null(OverlayPlacement.ChooseScreen([], null, null));
+    }
+
+    [AvaloniaTheory]
+    [InlineData(OverlayCorner.TopLeft)]
+    [InlineData(OverlayCorner.TopRight)]
+    [InlineData(OverlayCorner.BottomLeft)]
+    [InlineData(OverlayCorner.BottomRight)]
+    public void Overlay_OpensInItsCorner(OverlayCorner corner)
+    {
+        using var harness = new TestHarness(s => s.Overlay.Corner = corner);
+        var overlay = new OverlayWindow(harness.ViewModel, harness.Settings, new FakeWindowInterop());
+
+        overlay.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var screen = Assert.Single(overlay.Screens.All);
+        var size = PixelSize.FromSize(overlay.ClientSize, screen.Scaling);
+        var expected = OverlayPlacement.CornerPosition(corner, screen.WorkingArea, size, (int)(16 * screen.Scaling));
+        Assert.Equal(expected, overlay.Position);
+        overlay.Close();
     }
 
     private static OverlayScreen Screen(int x, int y, bool isPrimary = false) =>

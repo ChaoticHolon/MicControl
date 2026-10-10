@@ -113,7 +113,7 @@ public partial class OverlayWindow : Window
         if (overlay.Bounds is { } b)
         {
             Position = new PixelPoint((int)b.Left, (int)b.Top);
-            if (WindowPlacement.IsOnScreen(this, Bounds.Size))
+            if (WindowPlacement.IsOnScreen(this, ClientSize))
             {
                 return;
             }
@@ -133,8 +133,9 @@ public partial class OverlayWindow : Window
             overlay.Monitor = OverlayPlacement.ToBounds(screen.Bounds);
         }
 
-        // Size in the target monitor's scaling, which can differ from the one the overlay is on now.
-        var size = PixelSize.FromSize(Bounds.Size, screen.Scaling);
+        // ClientSize, not Bounds: while the window sizes itself to its content (e.g. on open), Bounds still holds
+        // the previous layout size. Scaled for the target monitor, which can differ from the one the overlay is on.
+        var size = PixelSize.FromSize(ClientSize, screen.Scaling);
         var margin = (int)(16 * screen.Scaling);
         Position = OverlayPlacement.CornerPosition(overlay.Corner, screen.WorkingArea, size, margin);
     }
@@ -150,7 +151,7 @@ public partial class OverlayWindow : Window
         settings.ScheduleSave();
     }
 
-    private PixelRect CurrentRect() => new(Position, PixelSize.FromSize(Bounds.Size, RenderScaling));
+    private PixelRect CurrentRect() => new(Position, PixelSize.FromSize(ClientSize, RenderScaling));
 
     private List<OverlayScreen> GetScreens() =>
         [.. Screens.All.Select(s => new OverlayScreen(s.Bounds, s.WorkingArea, s.Scaling, s.IsPrimary))];
