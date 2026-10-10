@@ -79,9 +79,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ExtraHotkeys.Add(CreateExtraHotkey(extra));
         }
 
-        SelectedNav = NavItems[0];
         microphone = deviceService.CreateGroup(AudioFlow.Capture);
         speakers = deviceService.CreateGroup(AudioFlow.Render);
+        // After the groups exist: the setter updates level monitoring, which reads the microphone state.
+        SelectedNav = NavItems[0];
         microphone.StateChanged += (_, _) => OnMicrophoneStateChanged();
         speakers.StateChanged += (_, _) => OnSpeakerStateChanged();
         deviceService.DevicesChanged += (_, _) => RefreshDeviceLists();

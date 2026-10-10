@@ -133,6 +133,18 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void SpeakingIndicator_WithVisibleOverlay_StartsWithoutCrashing()
+    {
+        using var harness = new TestHarness(s =>
+        {
+            s.Overlay.Visibility = OverlayVisibilityMode.Always;
+            s.Overlay.ShowSpeakingIndicator = true;
+        });
+
+        Assert.Equal(1, harness.LevelMonitor.ActiveSessions);
+    }
+
+    [AvaloniaFact]
     public void Setup_WalksThroughSteps_AndCompletes()
     {
         using var harness = new TestHarness(s => s.SetupCompleted = false);
