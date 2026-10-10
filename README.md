@@ -4,10 +4,6 @@
 
 MicControl is the successor of [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r, rebuilt on .NET 10 and Avalonia, with explicit plans to eventually release it cross-platform as the original developer intended. MicSwitch settings are imported automatically.
 
-# Installation
-- You can download the latest version of installer here - [download](https://github.com/ChaoticHolon/MicControlNG/releases/latest).
-- After initial installation application will periodically check Github for updates
-
 ## Features
 - Multiple microphones support (useful for streamers) - ALL microphones in your system could be muted/unmuted by a single key press
 - System-wide hotkeys (supports mouse XButtons)
@@ -20,21 +16,6 @@ MicControl is the successor of [MicSwitch](https://github.com/iXab3r/MicSwitch) 
 - Overlay visibility could be linked to microphone state, i.e. it will be shown only when Muted/Unmuted
 - Auto-updates via GitHub Releases
 - Light and dark theme (follows Windows by default)
-
-## Media
-![UI](https://i.imgur.com/Fz0nTZP.png)
-
-### Overlay with configurable size/opacity
-![Overlay with configurable size/opacity](https://i.imgur.com/1Jf1RrH.gif)
-
-### Configurable Audio notification when microphone is muted/unmuted
-![Configurable Audio notification when microphone is muted/unmuted](https://i.imgur.com/TmvJizg.png) 
-
-### Customizable overlay/tray icons
-![Customizable overlay/tray icons](https://i.imgur.com/Bq0yHnK.png)
-
-### Auto-update via Github
-![Auto-update via Github](https://i.imgur.com/O4SIuDy.gif)
 
 ## How to build
 
@@ -50,7 +31,7 @@ dotnet run --project MicControlNG
 
 In Visual Studio, open `Sources\MicControlNG.slnx`, set **MicControlNG** as the startup project and run. Start Visual Studio as administrator: the app requests elevation so hotkeys keep working in elevated games.
 
-The UI is built with [Avalonia](https://avaloniaui.net) so it can later run on Linux (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
+The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux soon (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
 
 ### Project layout
 | Project | Contents |
@@ -63,6 +44,3 @@ The UI is built with [Avalonia](https://avaloniaui.net) so it can later run on L
 
 ### Settings
 Settings are stored in `%APPDATA%\MicControlNG\settings.json`, logs in `%APPDATA%\MicControlNG\logs`. On first start, MicControl imports from `%APPDATA%\MicSwitch`: settings, custom icons and sounds from recent builds, or a MicSwitch 1.x `release\config.cfg`. MicSwitch autostart entries are replaced with MicControlNG ones.
-
-### Releasing
-Push a tag like `v2.0.0`. The `Release` workflow publishes a self-contained build and uses [Velopack](https://velopack.io) to create the installer and the update feed on GitHub Releases, which installed copies check for updates.
