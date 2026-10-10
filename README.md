@@ -14,8 +14,12 @@ MicControl is the successor to [MicSwitch](https://github.com/iXab3r/MicSwitch) 
 - Auto-startup (could be Minimized by default)
 - Three Audio modes: Push-to-talk, Push-to-mute and Toggle mute
 - Overlay visibility could be linked to microphone state, i.e. it will be shown only when Muted/Unmuted
-- Auto-updates via GitHub Releases
+- Install for all users or just for yourself (no admin needed)
+- Updates from GitHub Releases, verified and installed from inside the app
 - Light and dark theme (follows Windows by default)
+
+## Install
+Download `MicControlNG-Setup-<version>.exe` from [Releases](https://github.com/ChaoticHolon/MicControlNG/releases) and choose **Install for all users** (Program Files, needs admin) or **Install just for me** (your own Programs folder, no admin). Settings stay in your own `%APPDATA%\MicControlNG` either way. For unattended installs: `MicControlNG-Setup-<version>.exe --install --silent --scope=all` (or `--scope=user`); uninstall with `MicControlNG.exe --uninstall --silent`.
 
 ## How to build
 
@@ -31,6 +35,8 @@ dotnet run --project MicControlNG
 
 In Visual Studio, open `Sources\MicControlNG.slnx`, set **MicControlNG** as the startup project and run. Start Visual Studio as administrator: the app requests elevation so hotkeys keep working in elevated games.
 
+To build the setup, run `installer\build.ps1` from the repository root. It writes `artifacts\MicControlNG-Setup-<version>.exe`, which is the app itself published as one file: started under that name it shows the installer.
+
 The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux soon (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
 
 ### Project layout
@@ -39,7 +45,7 @@ The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux s
 | `MicControlNG.Core` | Platform-independent logic and contracts: settings model and JSON storage, MicSwitch import, hotkey text format, mute rules, notification sound library, and the `MicControlNG.Platform` interfaces each OS implements |
 | `MicControlNG.UI` | Avalonia 12 UI (Fluent theme, light/dark): views, view models (CommunityToolkit.Mvvm), tray icon, app composition |
 | `MicControlNG.Windows` | Windows implementations: Core Audio mute/volume (NAudio), low-level keyboard/mouse hooks, WASAPI sound playback, start with Windows, overlay click-through |
-| `MicControlNG` | Windows executable (`MicControlNG.exe`): wires the UI to the Windows services; single instance; Velopack updates |
+| `MicControlNG` | Windows executable (`MicControlNG.exe`): wires the UI to the Windows services; single instance; updates through the installer |
 | `MicControlNG.Tests` | xUnit v3 tests: core logic plus headless UI tests against fake platform services |
 
 ### Settings

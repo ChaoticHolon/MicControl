@@ -379,6 +379,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsTrayMode => AppMode == AppMode.Tray;
 
+    /// <summary>
+    /// A new user's first run of an installed copy starts with Windows by default (they can turn it off in setup).
+    /// Development and portable builds never register themselves, and existing users keep their choice.
+    /// </summary>
+    public void ApplyFirstRunDefaults()
+    {
+        if (!settingsService.IsFirstRun || !updates.IsInstalled || startup.IsEnabled)
+        {
+            return;
+        }
+
+        LogFirstRunAutostart();
+        RunAtStartup = true;
+    }
+
     public string AppModeDescription => AppModes.First(m => Equals(m.Value, AppMode)).Description ?? string.Empty;
 
     [ObservableProperty]
@@ -648,4 +663,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Showing the 'still running in the tray' notice")]
     private partial void LogTrayNoticeShown();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "First run of an installed copy: turning on Start with Windows")]
+    private partial void LogFirstRunAutostart();
 }

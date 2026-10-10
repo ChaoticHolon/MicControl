@@ -182,6 +182,23 @@ public sealed class SettingsTests : IDisposable
 
         Assert.False(store.Load().SetupCompleted);
         Assert.False(store.MigratedFromLegacy);
+        Assert.True(store.IsFirstRun);
+    }
+
+    [Fact]
+    public void IsFirstRun_OnlyWithoutSettingsOrAnythingToImport()
+    {
+        var store = new SettingsStore(directory);
+        store.Save(new AppSettings());
+        store.Load();
+        Assert.False(store.IsFirstRun);
+
+        var legacy = Path.Combine(directory, "MicSwitch");
+        new SettingsStore(legacy).Save(new AppSettings { Version = 4 });
+        var importing = new SettingsStore(Path.Combine(directory, "MicControlNG"), legacy);
+        importing.Load();
+        Assert.True(importing.MigratedFromLegacy);
+        Assert.False(importing.IsFirstRun);
     }
 
     [Theory]

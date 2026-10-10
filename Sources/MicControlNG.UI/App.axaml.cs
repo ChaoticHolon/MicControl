@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using MicControlNG.Controls;
+using MicControlNG.Installation;
 using MicControlNG.Platform;
 using MicControlNG.Services;
 using MicControlNG.Settings;
@@ -25,6 +26,12 @@ public sealed class AppOptions
 
     /// <summary>Receives a callback to invoke when another instance asks this one to show itself.</summary>
     public Action<Action>? RegisterShowRequest { get; init; }
+
+    /// <summary>Receives a callback to invoke when the installer asks this copy to exit (to replace or remove it).</summary>
+    public Action<Action>? RegisterExitRequest { get; init; }
+
+    /// <summary>Run as the installer or uninstaller instead of the app (see <see cref="SetupCommand"/>).</summary>
+    public SetupCommand Setup { get; init; } = new(SetupMode.None);
 }
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "Disposed on lifetime exit; Application has no Dispose.")]
@@ -89,6 +96,18 @@ public partial class App : Application
         // Everything reaches the providers; the file logger filters by the user's "Log detail" setting.
         builder.Logging.SetMinimumLevel(LogLevel.Trace).AddDebug().AddProvider(fileLogs);
         builder.Services.AddSingleton(logLevels);
+
+        if (options.Setup.Mode != SetupMode.None)
+        {
+            // Setup never loads or imports settings: only the installer and logging are composed.
+            options.RegisterPlatform(builder.Services);
+            builder.Services.AddSingleton(options.Setup).AddSingleton<InstallerViewModel>();
+            host = builder.Build();
+            desktop.Exit += (_, _) => host.Dispose();
+            await RunSetupAsync(desktop, host.Services, options.Setup);
+            return;
+        }
+
         RegisterCommonServices(builder.Services, SettingsStore.DefaultDirectory);
         options.RegisterPlatform(builder.Services);
         host = builder.Build();
@@ -124,6 +143,7 @@ public partial class App : Application
         HotkeyBox.CapturingChanged += (_, capturing) => hotkeys.IsPaused = capturing;
 
         var viewModel = services.GetRequiredService<MainViewModel>();
+        viewModel.ApplyFirstRunDefaults();
         viewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.LogDetail))
@@ -134,6 +154,7 @@ public partial class App : Application
 
         var mainWindow = services.GetRequiredService<MainWindow>();
         mainWindow.ExitApplication = () => Exit(desktop, mainWindow, logger, "window closed in Window mode");
+        viewModel.ExitRequested += (_, _) => Exit(desktop, mainWindow, logger, "installing an update");
 
         // The desktop lifetime shows its MainWindow when startup finishes, which would undo starting hidden in
         // Tray mode. So the window only becomes the MainWindow (used as the owner of file dialogs) once it is shown.
@@ -153,6 +174,7 @@ public partial class App : Application
             LogShowRequested(logger);
             ShowMainWindow();
         });
+        options.RegisterExitRequest?.Invoke(() => Exit(desktop, mainWindow, logger, "asked to close by setup"));
         desktop.Exit += (_, _) =>
         {
             LogExited(logger);
@@ -172,6 +194,25 @@ public partial class App : Application
         }
 
         await viewModel.CheckForUpdatesOnStartupAsync();
+    }
+
+    /// <summary>Setup or uninstall: the installer window, or with --silent no window and an exit code.</summary>
+    private static async Task RunSetupAsync(IClassicDesktopStyleApplicationLifetime desktop, IServiceProvider services, SetupCommand setup)
+    {
+        var viewModel = services.GetRequiredService<InstallerViewModel>();
+        if (setup.Silent)
+        {
+            var succeeded = await viewModel.RunSilentAsync();
+            // Queued: the work can finish before the dispatcher loop has started, and shutting down then crashes it.
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => desktop.Shutdown(succeeded ? 0 : 1));
+            return;
+        }
+
+        var window = new InstallerWindow(viewModel);
+        desktop.MainWindow = window;
+        window.Closed += (_, _) => desktop.Shutdown();
+        window.Show();
+        await viewModel.StartAsync();
     }
 
     private static void Exit(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, ILogger logger, string reason)

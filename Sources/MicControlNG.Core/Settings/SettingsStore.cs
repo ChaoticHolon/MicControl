@@ -31,9 +31,13 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
     /// Reads settings, falling back to migration and then to defaults.
     /// A corrupt file is preserved as <c>settings.json.corrupt</c> rather than overwritten silently.
     /// </summary>
+    /// <summary>True when the last <see cref="Load"/> found no settings at all (none saved, nothing to import): a new user.</summary>
+    public bool IsFirstRun { get; private set; }
+
     public AppSettings Load()
     {
         MigratedFromLegacy = false;
+        IsFirstRun = false;
         if (File.Exists(FilePath))
         {
             try
@@ -52,6 +56,7 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
             ?? LegacyConfigMigrator.TryMigrate(LegacyDirectory ?? Directory, Path.Combine(Directory, "Icons"));
         if (migrated is null)
         {
+            IsFirstRun = true;
             return new AppSettings();
         }
 

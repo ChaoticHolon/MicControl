@@ -81,17 +81,27 @@ public sealed partial class MainViewModel
         }
     }
 
+    /// <summary>Raised once the update installer is running: the app must exit so it can replace the files.</summary>
+    public event EventHandler? ExitRequested;
+
     [RelayCommand]
     private async Task InstallUpdate()
     {
         try
         {
             LogInstallingUpdate(UpdateVersion);
-            await updates.DownloadAndRestartAsync();
+            UpdateStatus = $"Downloading version {UpdateVersion}…";
+            if (await updates.InstallAsync())
+            {
+                UpdateStatus = $"Installing version {UpdateVersion}. {AppName} will start again when it's done.";
+                ExitRequested?.Invoke(this, EventArgs.Empty);
+            }
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
+            // Win32Exception includes declining the admin prompt for an all-users update.
             LogUpdateFailed(ex);
+            UpdateStatus = $"Version {UpdateVersion} is available.";
             StatusMessage = $"Update failed: {ex.Message}";
         }
     }
