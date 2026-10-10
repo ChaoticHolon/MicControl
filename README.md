@@ -4,22 +4,30 @@
 
 MicControl is the successor to [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r, rebuilt on .NET 10 and Avalonia, with explicit plans to eventually release it cross-platform as the original developer intended. MicSwitch settings are imported automatically.
 
+## Screenshots
+| Light | Dark |
+| --- | --- |
+| ![Home, light](docs/screenshots/home-light.png) | ![Home, dark](docs/screenshots/home-dark.png) |
+| ![Extra hotkeys, light](docs/screenshots/extra-hotkeys-light.png) | ![Overlay settings, dark](docs/screenshots/overlay-dark.png) |
+
+| Quick controls from the tray | The overlay | Setup |
+| --- | --- | --- |
+| ![Tray popup](docs/screenshots/tray-popup-dark.png) | ![Overlay, live](docs/screenshots/overlay-live.png) ![Overlay, muted](docs/screenshots/overlay-muted.png) | ![Setup](docs/screenshots/installer-light.png) |
+
 ## Features
-- Multiple microphones support (useful for streamers) - ALL microphones in your system could be muted/unmuted by a single key press
-- System-wide hotkeys (supports mouse XButtons)
-- Always-on-top configurable (scale, transparency) Overlay - could be disable if not needed
-- Mute/unmute audio notification (with custom audio files support)
-- Customizable tray and overlay icons
-- Multiple hotkeys support
-- Auto-startup (could be Minimized by default)
-- Three Audio modes: Push-to-talk, Push-to-mute and Toggle mute
-- Overlay visibility could be linked to microphone state, i.e. it will be shown only when Muted/Unmuted
-- Install for all users or just for yourself (no admin needed)
-- Updates from GitHub Releases, verified and installed from inside the app
-- Light and dark theme (follows Windows by default)
+- **Three modes:** push-to-talk (the default), toggle, and push-to-mute
+- **Hotkeys that work everywhere,** including in elevated games: keyboard keys, combinations and mouse side buttons, with an optional alternative key and an "exclusive" option that hides the key from other apps
+- **Extra hotkeys** for mute, unmute, toggle, push-to-talk, speaker mute and volume, and showing or hiding the overlay
+- **One microphone or all of them** at once, handy for streamers with several inputs
+- **Overlay:** a small always-on-top badge that shows Live or Muted, even over games. Snap it to any corner of any monitor or drag it anywhere; show it always, only when muted or only when live; adjust size and opacity; optional speaking indicator; your own icons
+- **Sounds** when the microphone switches on and off: subtle built-in cues, or your own audio files
+- **Lives in the tray:** starts with Windows, stays out of the way, and a click on the tray icon opens quick controls
+- **Light and dark,** following Windows and its accent colour
+- **Installs for everyone or just you** (no admin needed for just you), and **updates itself** from GitHub Releases, verified before it runs
+- **MicSwitch settings are imported** automatically on first start
 
 ## Install
-Download `MicControlNG-Setup-<version>.exe` from [Releases](https://github.com/ChaoticHolon/MicControlNG/releases) and choose **Install for all users** (Program Files, needs admin) or **Install just for me** (your own Programs folder, no admin). Settings stay in your own `%APPDATA%\MicControlNG` either way. For unattended installs: `MicControlNG-Setup-<version>.exe --install --silent --scope=all` (or `--scope=user`); uninstall with `MicControlNG.exe --uninstall --silent`.
+Download `MicControlNG-Setup-<version>.exe` from [Releases](https://github.com/ChaoticHolon/MicControlNG/releases) and choose **Everyone on this PC** (Program Files, needs admin) or **Just me** (your own Programs folder, no admin). Settings stay in your own `%APPDATA%\MicControlNG` either way. Windows SmartScreen may warn because the setup isn't code-signed: choose **More info → Run anyway**. For unattended installs: `MicControlNG-Setup-<version>.exe --install --silent --scope=all` (or `--scope=user`); uninstall with `MicControlNG.exe --uninstall --silent`.
 
 ## How to build
 

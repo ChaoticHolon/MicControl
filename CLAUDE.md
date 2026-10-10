@@ -30,6 +30,7 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 - Test: `dotnet test --project MicControlNG.Tests` (Microsoft Testing Platform, opted into by the repo-root `global.json`, so it works from any folder; the old `dotnet test <proj>` form fails).
 - Run (Windows): `dotnet run --project MicControlNG`. The app asks for elevation (`highestAvailable`), so run from an elevated terminal or Visual Studio started as administrator.
 - Tests run on Windows and Linux. The Windows projects also build on Linux (`EnableWindowsTargeting`).
+- Screenshots for the README and releases: set `MICCONTROL_SCREENSHOTS=1` and run the tests; `ScreenshotTests` renders the real windows (headless Skia, sample data, light and dark, greyscale text) into `docs/screenshots`. Re-run after visible UI changes and commit the images.
 - Setup (from the repo root): `installer\build.ps1 [-Version 2.1.0]` publishes the app as one self-contained file and writes `artifacts\MicControlNG-Setup-<version>.exe`. CI builds it on every push; pushing a `v*` tag publishes it as a GitHub release.
 
 ## Installer and updates
