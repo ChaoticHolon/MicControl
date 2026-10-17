@@ -161,12 +161,14 @@ public interface IWindowInterop
     /// Reports close and session-end messages a window receives (close requests, session ending, destruction).
     /// The handler runs on the window's thread; returning <c>true</c> handles the message so the window's own code
     /// never sees it: a close request is refused, and a session-end query is answered "yes, the session may end".
-    /// Dispose the result to stop watching.
+    /// The window may belong to another thread of this process; the handler then runs on that thread.
+    /// Dispose the result to stop watching. Returns <c>null</c> if the window can't be watched (already watched,
+    /// gone, or the OS refused).
     /// </summary>
-    IDisposable WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler);
+    IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler);
 
     /// <summary>
-    /// Hidden helper windows on the calling (UI) thread that the app needs but didn't create itself: Avalonia's
+    /// Hidden helper windows of this process, on any thread, that the app needs but didn't create itself: Avalonia's
     /// dispatcher and tray icon window (if it's closed, the UI stops processing work while the process stays alive),
     /// the hidden owner of windows kept off the taskbar (closing it destroys the overlay and tray popup), and the
     /// input method windows.
@@ -175,7 +177,8 @@ public interface IWindowInterop
 }
 
 /// <summary>A hidden helper window, with a name for the log (e.g. "UI message window").</summary>
-public sealed record ToolkitHelperWindow(nint Handle, string Name);
+/// <param name="OnUiThread">False for a window on another thread: its messages are handled on that thread.</param>
+public sealed record ToolkitHelperWindow(nint Handle, string Name, int ThreadId, bool OnUiThread);
 
 public enum WindowLifecycleKind
 {

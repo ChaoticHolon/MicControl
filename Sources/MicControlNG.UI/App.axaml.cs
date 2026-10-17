@@ -179,7 +179,7 @@ public partial class App : Application
         var guard = new WindowGuard(services.GetRequiredService<IWindowInterop>(), shutdown, logger, () =>
         {
             Exit(desktop, mainWindow, logger, "the session is ending");
-            fileLogs.Dispose();
+            fileLogs.Flush(TimeSpan.FromSeconds(2));
         });
         guard.Watch(mainWindow, "main window");
 

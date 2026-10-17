@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using MicControlNG.Platform;
 using static MicControlNG.Windows.NativeMethods;
 
@@ -9,56 +10,175 @@ namespace MicControlNG.Windows;
 /// process, or posted), their flags, and which process was in the foreground. Used to find out what closes a
 /// hidden tray app, and to keep toolkit helper windows alive.
 /// </summary>
+/// <remarks>
+/// A window on the calling thread is subclassed with comctl32 (<c>SetWindowSubclass</c>), which only works on the
+/// window's own thread. A window on another thread of this process (e.g. a toolkit helper on a render thread) gets
+/// its window procedure replaced instead, so the handler runs on that window's thread.
+/// </remarks>
 internal sealed class WindowLifecycleWatcher : IDisposable
 {
-    // One shared delegate keeps the native callback alive for every subclassed window.
-    private static readonly SubclassProc Proc = OnMessage;
+    // Shared delegates keep the native callbacks alive for every watched window.
+    private static readonly SubclassProc SubclassCallback = OnSubclassMessage;
+    private static readonly WndProc WndProcCallback = OnWndProcMessage;
+    private static readonly nint WndProcPointer = Marshal.GetFunctionPointerForDelegate(WndProcCallback);
+    private static readonly Lock Gate = new();
     private static readonly Dictionary<nint, WindowLifecycleWatcher> Watchers = [];
+    // Original procedures of windows whose procedure we replaced. Kept after restoring: the window's thread may
+    // already be passing a message to ours.
+    private static readonly Dictionary<nint, nint> ReplacedProcs = [];
     private static nuint nextId;
 
     private readonly nint handle;
     private readonly nuint id;
     private readonly string window;
     private readonly Func<WindowLifecycleMessage, bool> handler;
+    private readonly bool replacedProc;
 
-    public WindowLifecycleWatcher(nint handle, string window, Func<WindowLifecycleMessage, bool> handler)
+    private WindowLifecycleWatcher(nint handle, string window, Func<WindowLifecycleMessage, bool> handler, nuint id, bool replacedProc)
     {
         this.handle = handle;
         this.window = window;
         this.handler = handler;
-        id = ++nextId;
-        if (handle != 0 && SetWindowSubclass(handle, Proc, id, 0))
+        this.id = id;
+        this.replacedProc = replacedProc;
+    }
+
+    /// <returns><c>null</c> if the window can't be watched (gone, or the OS refused).</returns>
+    public static WindowLifecycleWatcher? TryStart(nint handle, string window, Func<WindowLifecycleMessage, bool> handler)
+    {
+        if (handle == 0)
         {
-            Watchers[handle] = this;
+            return null;
         }
+
+        var thread = GetWindowThreadProcessId(handle, out var pid);
+        if (thread == 0 || pid != Environment.ProcessId)
+        {
+            return null;
+        }
+
+        var onThisThread = thread == GetCurrentThreadId();
+        WindowLifecycleWatcher watcher;
+        lock (Gate)
+        {
+            if (Watchers.ContainsKey(handle))
+            {
+                return null;
+            }
+
+            watcher = new WindowLifecycleWatcher(handle, window, handler, ++nextId, replacedProc: !onThisThread);
+            // Registered first, so no message is missed once the hook is in place.
+            Watchers[handle] = watcher;
+        }
+
+        if (onThisThread ? SetWindowSubclass(handle, SubclassCallback, watcher.id, 0) : ReplaceWndProc(handle))
+        {
+            return watcher;
+        }
+
+        lock (Gate)
+        {
+            Watchers.Remove(handle);
+        }
+
+        return null;
     }
 
     public void Dispose()
     {
-        if (Watchers.Remove(handle))
+        lock (Gate)
         {
-            RemoveWindowSubclass(handle, Proc, id);
+            if (!Watchers.TryGetValue(handle, out var current) || current != this)
+            {
+                return;
+            }
+
+            Watchers.Remove(handle);
+            if (!replacedProc)
+            {
+                RemoveWindowSubclass(handle, SubclassCallback, id);
+            }
+            else if (ReplacedProcs.TryGetValue(handle, out var original) && GetWindowLongPtr(handle, GWLP_WNDPROC) == WndProcPointer)
+            {
+                // Only while ours is still the outermost procedure; otherwise ours stays and keeps forwarding. The
+                // original stays recorded for a message the window's thread may already be passing to ours.
+                SetWindowLongPtr(handle, GWLP_WNDPROC, original);
+            }
         }
     }
 
-    private static nint OnMessage(nint hWnd, uint msg, nint wParam, nint lParam, nuint uIdSubclass, nuint dwRefData)
+    private static bool ReplaceWndProc(nint handle)
     {
-        if (Watchers.TryGetValue(hWnd, out var watcher) && Describe(msg, wParam, lParam) is { } info)
+        lock (Gate)
         {
-            var message = new WindowLifecycleMessage(info.Kind, watcher.window, info.Name, info.Details, Origin(), ForegroundProcess());
-            if (watcher.handler(message))
+            // Store the original before swapping: the window's thread can call ours as soon as it's in place.
+            var original = GetWindowLongPtr(handle, GWLP_WNDPROC);
+            if (original == 0 || original == WndProcPointer)
             {
-                // Handled: a refused close returns 0; a handled session-end query answers TRUE (the session may end).
-                return msg == WM_QUERYENDSESSION ? 1 : 0;
+                return false;
             }
 
-            if (msg == WM_DESTROY)
+            ReplacedProcs[handle] = original;
+            var previous = SetWindowLongPtr(handle, GWLP_WNDPROC, WndProcPointer);
+            if (previous == 0)
             {
-                watcher.Dispose();
+                ReplacedProcs.Remove(handle);
+                return false;
             }
+
+            ReplacedProcs[handle] = previous;
+            return true;
+        }
+    }
+
+    private static nint OnSubclassMessage(nint hWnd, uint msg, nint wParam, nint lParam, nuint uIdSubclass, nuint dwRefData) =>
+        TryHandle(hWnd, msg, wParam, lParam, out var result) ? result : DefSubclassProc(hWnd, msg, wParam, lParam);
+
+    private static nint OnWndProcMessage(nint hWnd, uint msg, nint wParam, nint lParam)
+    {
+        nint original;
+        lock (Gate)
+        {
+            ReplacedProcs.TryGetValue(hWnd, out original);
         }
 
-        return DefSubclassProc(hWnd, msg, wParam, lParam);
+        if (TryHandle(hWnd, msg, wParam, lParam, out var result))
+        {
+            return result;
+        }
+
+        return original != 0 ? CallWindowProc(original, hWnd, msg, wParam, lParam) : 0;
+    }
+
+    /// <returns><c>true</c> if the handler handled the message and <paramref name="result"/> is the answer.</returns>
+    private static bool TryHandle(nint hWnd, uint msg, nint wParam, nint lParam, out nint result)
+    {
+        result = 0;
+        WindowLifecycleWatcher? watcher;
+        lock (Gate)
+        {
+            Watchers.TryGetValue(hWnd, out watcher);
+        }
+
+        if (watcher is null || Describe(msg, wParam, lParam) is not { } info)
+        {
+            return false;
+        }
+
+        var message = new WindowLifecycleMessage(info.Kind, watcher.window, info.Name, info.Details, Origin(), ForegroundProcess());
+        if (watcher.handler(message))
+        {
+            // Handled: a refused close returns 0; a handled session-end query answers TRUE (the session may end).
+            result = msg == WM_QUERYENDSESSION ? 1 : 0;
+            return true;
+        }
+
+        if (msg == WM_DESTROY)
+        {
+            watcher.Dispose();
+        }
+
+        return false;
     }
 
     private static (WindowLifecycleKind Kind, string Name, string Details)? Describe(uint msg, nint wParam, nint lParam) => msg switch

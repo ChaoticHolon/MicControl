@@ -109,14 +109,14 @@ public sealed class ShutdownTests
     public void HelperWindows_RefuseCloses_AndNewOnesAreFoundOnRescan()
     {
         var interop = new FakeWindowInterop();
-        interop.HelperWindows.Add(new ToolkitHelperWindow(1, "UI message window"));
+        interop.HelperWindows.Add(new ToolkitHelperWindow(1, "UI message window", 1, OnUiThread: true));
         using var guard = new WindowGuard(interop, new AppShutdown(), NullLogger.Instance, () => { });
 
         guard.ProtectHelperWindows();
-        interop.HelperWindows.Add(new ToolkitHelperWindow(2, "hidden owner window"));
+        interop.HelperWindows.Add(new ToolkitHelperWindow(2, "hidden Avalonia window", 1, OnUiThread: true));
         guard.ProtectHelperWindows();
 
-        Assert.Equal(["UI message window", "hidden owner window"], interop.Watched.Select(w => w.Window));
+        Assert.Equal(["UI message window", "hidden Avalonia window"], interop.Watched.Select(w => w.Window));
         Assert.All(interop.Watched, w => Assert.True(w.Handler(Message(WindowLifecycleKind.CloseRequest, w.Window))));
     }
 
@@ -124,7 +124,7 @@ public sealed class ShutdownTests
     public void SessionEnd_ExitsOnlyWhenConfirmed_NotWhenAsked()
     {
         var interop = new FakeWindowInterop();
-        interop.HelperWindows.Add(new ToolkitHelperWindow(1, "UI message window"));
+        interop.HelperWindows.Add(new ToolkitHelperWindow(1, "UI message window", 1, OnUiThread: true));
         var shutdown = new AppShutdown();
         var exits = 0;
         using var guard = new WindowGuard(interop, shutdown, NullLogger.Instance, () =>
@@ -144,6 +144,40 @@ public sealed class ShutdownTests
         Assert.True(handler(Message(WindowLifecycleKind.SessionEnd)));
         handler(Message(WindowLifecycleKind.SessionEnd));
         Assert.Equal(1, exits);
+    }
+
+    [Fact]
+    public void HelperOnAnotherThread_RefusesCloses_ButLeavesTheSessionEndToTheUiThread()
+    {
+        var interop = new FakeWindowInterop();
+        interop.HelperWindows.Add(new ToolkitHelperWindow(1, "UI message window", 1, OnUiThread: true));
+        interop.HelperWindows.Add(new ToolkitHelperWindow(2, "hidden Avalonia window on thread 7", 7, OnUiThread: false));
+        var exits = 0;
+        using var guard = new WindowGuard(interop, new AppShutdown(), NullLogger.Instance, () => exits++);
+        guard.ProtectHelperWindows();
+        var background = interop.Watched.Single(w => w.Window.EndsWith("thread 7", StringComparison.Ordinal)).Handler;
+
+        Assert.True(background(Message(WindowLifecycleKind.CloseRequest, "hidden Avalonia window on thread 7")));
+        // Its own window procedure answers the query and sees the session end; the exit runs on the UI thread.
+        Assert.False(background(Message(WindowLifecycleKind.SessionEndQuery)));
+        Assert.False(background(Message(WindowLifecycleKind.SessionEnd)));
+        Assert.Equal(0, exits);
+    }
+
+    [Fact]
+    public void HelperThatCantBeWatched_IsRetriedOnTheNextScan()
+    {
+        var interop = new FakeWindowInterop();
+        interop.HelperWindows.Add(new ToolkitHelperWindow(1, "UI message window", 1, OnUiThread: true));
+        interop.Unwatchable.Add(1);
+        using var guard = new WindowGuard(interop, new AppShutdown(), NullLogger.Instance, () => { });
+
+        guard.ProtectHelperWindows();
+        Assert.Empty(interop.Watched);
+
+        interop.Unwatchable.Clear();
+        guard.ProtectHelperWindows();
+        Assert.Single(interop.Watched);
     }
 
     private static WindowLifecycleMessage Message(WindowLifecycleKind kind, string window = "UI message window") =>

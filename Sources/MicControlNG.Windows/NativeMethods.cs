@@ -116,6 +116,17 @@ internal static partial class NativeMethods
 
     public delegate bool EnumWindowsProc(nint hWnd, nint lParam);
 
+    public delegate nint WndProc(nint hWnd, uint uMsg, nint wParam, nint lParam);
+
+    public const int GWLP_WNDPROC = -4;
+
+    [LibraryImport("user32.dll", EntryPoint = "CallWindowProcW")]
+    public static partial nint CallWindowProc(nint lpPrevWndFunc, nint hWnd, uint uMsg, nint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
     [LibraryImport("comctl32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetWindowSubclass(nint hWnd, SubclassProc pfnSubclass, nuint uIdSubclass, nuint dwRefData);

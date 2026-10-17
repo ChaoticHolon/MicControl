@@ -14,17 +14,22 @@ namespace MicControlNG.Services;
 /// themselves, so the toolkit doesn't start exiting on the question and stay closed if another app vetoes it.</item>
 /// </list>
 /// </summary>
+/// <remarks>
+/// Helpers on other threads (e.g. Avalonia's renderer) report their messages on those threads, so the state here is
+/// locked, and only the UI thread's windows start the exit.
+/// </remarks>
 public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shutdown, ILogger logger, Action exitForSessionEnd) : IDisposable
 {
+    private readonly Lock gate = new();
     private readonly Dictionary<nint, IDisposable> watched = [];
     private bool sessionEndAsked;
 
     /// <summary>Watches one of our windows, and looks for new helper windows each time it opens.</summary>
     public void Watch(Window window, string name)
     {
-        if (window.TryGetPlatformHandle()?.Handle is { } handle and not 0 && !watched.ContainsKey(handle))
+        if (window.TryGetPlatformHandle()?.Handle is { } handle and not 0)
         {
-            watched[handle] = interop.WatchLifecycle(handle, name, message => OnMessage(handle, message, isHelper: false));
+            Start(handle, name, message => OnMessage(handle, message, isHelper: false, onUiThread: true));
         }
 
         // Showing a window can create helpers, e.g. the hidden owner the first time a window kept off the taskbar opens.
@@ -37,31 +42,64 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
         var added = 0;
         foreach (var helper in interop.FindToolkitHelperWindows())
         {
-            if (!watched.ContainsKey(helper.Handle))
+            var handle = helper.Handle;
+            if (Start(handle, helper.Name, message => OnMessage(handle, message, isHelper: true, helper.OnUiThread)))
             {
-                var handle = helper.Handle;
-                watched[handle] = interop.WatchLifecycle(handle, helper.Name, message => OnMessage(handle, message, isHelper: true));
+                LogProtecting(logger, helper.Name, handle, helper.ThreadId);
                 added++;
             }
         }
 
         if (added > 0)
         {
-            LogWatching(logger, added, watched.Count);
+            int count;
+            lock (gate)
+            {
+                count = watched.Count;
+            }
+
+            LogWatching(logger, added, count);
         }
     }
 
     public void Dispose()
     {
-        foreach (var watch in watched.Values.ToList())
+        List<IDisposable> watches;
+        lock (gate)
         {
-            watch.Dispose();
+            watches = [.. watched.Values];
+            watched.Clear();
         }
 
-        watched.Clear();
+        watches.ForEach(w => w.Dispose());
     }
 
-    private bool OnMessage(nint handle, WindowLifecycleMessage message, bool isHelper)
+    /// <returns><c>true</c> if the window wasn't watched yet and now is.</returns>
+    private bool Start(nint handle, string name, Func<WindowLifecycleMessage, bool> handler)
+    {
+        lock (gate)
+        {
+            if (watched.ContainsKey(handle))
+            {
+                return false;
+            }
+        }
+
+        if (interop.WatchLifecycle(handle, name, handler) is not { } watch)
+        {
+            LogWatchFailed(logger, name, handle);
+            return false;
+        }
+
+        lock (gate)
+        {
+            watched[handle] = watch;
+        }
+
+        return true;
+    }
+
+    private bool OnMessage(nint handle, WindowLifecycleMessage message, bool isHelper, bool onUiThread)
     {
         var foreground = message.ForegroundProcess ?? "unknown";
         LogWindowMessage(logger, message.Window, message.Message, message.Details, message.Origin, foreground);
@@ -72,9 +110,19 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
                 return true;
 
             case WindowLifecycleKind.SessionEndQuery:
-                sessionEndAsked = true;
-                // Answer "yes" for the helpers, which pass the query to the toolkit; our own windows answer it themselves.
-                return isHelper;
+                lock (gate)
+                {
+                    sessionEndAsked = true;
+                }
+
+                // The UI thread's helpers answer "yes" themselves: Avalonia's message window would start exiting on
+                // the question. Our own windows and other threads' helpers answer it as usual.
+                return isHelper && onUiThread;
+
+            case WindowLifecycleKind.SessionEnd when !onUiThread:
+                // The exit closes windows on the UI thread; the UI thread's own windows get this message too.
+                LogSessionEndLeftToUiThread(logger, message.Window);
+                return false;
 
             case WindowLifecycleKind.SessionEnd:
                 if (!shutdown.IsExiting)
@@ -86,16 +134,26 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
                 return true;
 
             case WindowLifecycleKind.SessionEndCancelled:
-                if (sessionEndAsked)
+                bool wasAsked;
+                lock (gate)
                 {
+                    wasAsked = sessionEndAsked;
                     sessionEndAsked = false;
+                }
+
+                if (wasAsked)
+                {
                     LogSessionEndCancelled(logger);
                 }
 
                 return false;
 
             case WindowLifecycleKind.Destroyed:
-                watched.Remove(handle);
+                lock (gate)
+                {
+                    watched.Remove(handle);
+                }
+
                 if (isHelper && !shutdown.IsExiting)
                 {
                     LogHelperDestroyed(logger, message.Window);
@@ -122,6 +180,15 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
 
     [LoggerMessage(Level = LogLevel.Information, Message = "The session end was cancelled; keeps running")]
     private static partial void LogSessionEndCancelled(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Protecting the {Window} (handle 0x{Handle:X}, thread {Thread}) from close requests")]
+    private static partial void LogProtecting(ILogger logger, string window, nint handle, int thread);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not watch the {Window} (handle 0x{Handle:X}) for close and session-end messages")]
+    private static partial void LogWatchFailed(ILogger logger, string window, nint handle);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "{Window} saw the session end; the UI thread's windows exit the app")]
+    private static partial void LogSessionEndLeftToUiThread(ILogger logger, string window);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Protecting {Added} more hidden helper windows; watching {Count} windows for close and session-end messages")]
     private static partial void LogWatching(ILogger logger, int added, int count);

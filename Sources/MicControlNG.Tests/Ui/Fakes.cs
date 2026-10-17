@@ -221,8 +221,16 @@ internal sealed class FakeWindowInterop : IWindowInterop
 
     public List<(string Window, Func<WindowLifecycleMessage, bool> Handler)> Watched { get; } = [];
 
-    public IDisposable WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler)
+    /// <summary>Windows the OS "refuses" to let us watch.</summary>
+    public HashSet<nint> Unwatchable { get; } = [];
+
+    public IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler)
     {
+        if (Unwatchable.Contains(handle))
+        {
+            return null;
+        }
+
         Watched.Add((window, handler));
         return new Watch(() => Watched.RemoveAll(w => w.Handler == handler));
     }

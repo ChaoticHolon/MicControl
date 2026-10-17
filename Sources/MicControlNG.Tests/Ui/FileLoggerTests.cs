@@ -34,6 +34,32 @@ public sealed class FileLoggerTests : IDisposable
     }
 
     [Fact]
+    public void Flush_WritesEverythingQueued_AndKeepsLogging()
+    {
+        var provider = new FileLoggerProvider(directory, new LogLevelSwitch());
+        var logger = provider.CreateLogger("MicControlNG.Tests.Sample");
+        for (var i = 0; i < 100; i++)
+        {
+            Write(logger, LogLevel.Information, $"line {i}");
+        }
+
+        Assert.True(provider.Flush(TimeSpan.FromSeconds(5)));
+        Assert.Contains("line 99", ReadShared(provider.FilePath), StringComparison.Ordinal);
+
+        // A session end flushes, then the app still logs its last lines.
+        Write(logger, LogLevel.Information, "after the flush");
+        provider.Dispose();
+        Assert.Contains("after the flush", File.ReadAllText(provider.FilePath), StringComparison.Ordinal);
+    }
+
+    private static string ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    [Fact]
     public void DefaultLevel_IsDebug()
     {
         Assert.Equal(LogLevel.Debug, new LogLevelSwitch().Minimum);

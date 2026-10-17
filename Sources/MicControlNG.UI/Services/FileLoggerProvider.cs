@@ -34,6 +34,8 @@ public sealed class FileLoggerProvider : ILoggerProvider
     private readonly string directory;
     private readonly Thread writer;
     private volatile string filePath;
+    private long queued;
+    private long written;
 
     public FileLoggerProvider(string directory, LogLevelSwitch levels, Func<DateTime>? clock = null)
     {
@@ -52,6 +54,17 @@ public sealed class FileLoggerProvider : ILoggerProvider
     public string FilePath => filePath;
 
     public ILogger CreateLogger(string categoryName) => new FileLogger(this, categoryName);
+
+    /// <summary>
+    /// Waits until everything queued so far is in the file, and keeps logging. Used when the OS may end the process
+    /// at any moment (a session end); <paramref name="timeout"/> bounds the wait.
+    /// </summary>
+    /// <returns><c>false</c> if the writer didn't catch up in time.</returns>
+    public bool Flush(TimeSpan timeout)
+    {
+        var target = Interlocked.Read(ref queued);
+        return SpinWait.SpinUntil(() => Interlocked.Read(ref written) >= target, timeout);
+    }
 
     /// <summary>Writes everything queued so far and stops; used on exit and before a crash takes the process down.</summary>
     public void Dispose()
@@ -100,6 +113,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
                 }
 
                 stream.WriteLine(line);
+                Interlocked.Increment(ref written);
             }
         }
         finally
@@ -127,7 +141,10 @@ public sealed class FileLoggerProvider : ILoggerProvider
             var line = string.Create(CultureInfo.InvariantCulture, $"{time:HH:mm:ss.fff} [{logLevel}] {shortCategory}: {formatter(state, exception)}");
             try
             {
-                provider.queue.TryAdd((time, exception is null ? line : $"{line}{Environment.NewLine}{exception}"));
+                if (provider.queue.TryAdd((time, exception is null ? line : $"{line}{Environment.NewLine}{exception}")))
+                {
+                    Interlocked.Increment(ref provider.queued);
+                }
             }
             catch (InvalidOperationException)
             {
