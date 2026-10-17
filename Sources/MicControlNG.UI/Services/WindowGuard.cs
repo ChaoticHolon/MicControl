@@ -45,7 +45,7 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
             var handle = helper.Handle;
             if (Start(handle, helper.Name, message => OnMessage(handle, message, isHelper: true, helper.OnUiThread)))
             {
-                LogProtecting(logger, helper.Name, handle, helper.ThreadId);
+                LogProtecting(logger, helper.Name, unchecked((uint)handle), helper.ThreadId);
                 added++;
             }
         }
@@ -72,6 +72,10 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
         }
 
         watches.ForEach(w => w.Dispose());
+        if (watches.Count > 0)
+        {
+            LogStopped(logger, watches.Count);
+        }
     }
 
     /// <returns><c>true</c> if the window wasn't watched yet and now is.</returns>
@@ -87,7 +91,7 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
 
         if (interop.WatchLifecycle(handle, name, handler) is not { } watch)
         {
-            LogWatchFailed(logger, name, handle);
+            LogWatchFailed(logger, name, unchecked((uint)handle));
             return false;
         }
 
@@ -181,11 +185,15 @@ public sealed partial class WindowGuard(IWindowInterop interop, AppShutdown shut
     [LoggerMessage(Level = LogLevel.Information, Message = "The session end was cancelled; keeps running")]
     private static partial void LogSessionEndCancelled(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Protecting the {Window} (handle 0x{Handle:X}, thread {Thread}) from close requests")]
-    private static partial void LogProtecting(ILogger logger, string window, nint handle, int thread);
+    // Handles are logged as their low 32 bits, the only ones window handles use (64-bit Windows sign-extends them).
+    [LoggerMessage(Level = LogLevel.Information, Message = "Protecting the {Window} (handle 0x{Handle:X8}, thread {Thread}) from close requests")]
+    private static partial void LogProtecting(ILogger logger, string window, uint handle, int thread);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not watch the {Window} (handle 0x{Handle:X}) for close and session-end messages")]
-    private static partial void LogWatchFailed(ILogger logger, string window, nint handle);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not watch the {Window} (handle 0x{Handle:X8}) for close and session-end messages")]
+    private static partial void LogWatchFailed(ILogger logger, string window, uint handle);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Stopped watching {Count} windows (exiting); close and session-end messages from now on aren't logged")]
+    private static partial void LogStopped(ILogger logger, int count);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Window} saw the session end; the UI thread's windows exit the app")]
     private static partial void LogSessionEndLeftToUiThread(ILogger logger, string window);
