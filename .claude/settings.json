@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "mcp__Claude_Code_Remote__create_trigger",
-      "mcp__Claude_Code_Remote__fire_trigger"
+      "mcp__Claude_Code_Remote__fire_trigger",
+      "Bash(git fetch *)",
+      "Bash(git merge-base --is-ancestor *)",
+      "Bash(git push origin --delete feature/*)",
+      "Bash(git push origin --delete fix/*)",
+      "Bash(git branch -d feature/*)",
+      "Bash(git branch -d fix/*)",
+      "PowerShell(git fetch *)",
+      "PowerShell(git merge-base --is-ancestor *)",
+      "PowerShell(git push origin --delete feature/*)",
+      "PowerShell(git push origin --delete fix/*)",
+      "PowerShell(git branch -d feature/*)",
+      "PowerShell(git branch -d fix/*)"
     ]
   }
 }
