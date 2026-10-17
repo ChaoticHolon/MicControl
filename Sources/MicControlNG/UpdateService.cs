@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Security.Cryptography;
 using MicControlNG.Platform;
 using MicControlNG.Updates;
 using Microsoft.Extensions.Logging;
@@ -39,6 +40,31 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
             return false;
         }
 
+        // Prefer the release's SHA512SUMS; fall back to the SHA-256 digest GitHub reports for the setup.
+        string? sums = null;
+        if (release.Sha512SumsUrl is { } sumsUrl)
+        {
+            try
+            {
+                sums = await http.GetStringAsync(sumsUrl).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                LogSumsUnavailable(sumsUrl, ex);
+            }
+        }
+
+        if (ReleaseFeed.ChooseChecksum(release, sums) is not { } checksum)
+        {
+            LogNoChecksum(release.FileName, sums is not null);
+            throw new InvalidOperationException("The update has no checksum to verify it against, so it wasn't downloaded.");
+        }
+
+        if (sums is not null && checksum.Algorithm != HashAlgorithmName.SHA512)
+        {
+            LogNotInSums(release.FileName);
+        }
+
         var folder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "MicControlNG-update")).FullName;
         var file = Path.Combine(folder, release.FileName);
         LogDownloading(release.SetupUrl, file);
@@ -55,15 +81,16 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
         var check = File.OpenRead(file);
         await using (check.ConfigureAwait(false))
         {
-            if (!await ReleaseFeed.MatchesSha256Async(check, release.Sha256).ConfigureAwait(false))
+            if (!await ReleaseFeed.MatchesAsync(check, checksum).ConfigureAwait(false))
             {
-                LogChecksumMismatch(file);
+                LogChecksumMismatch(file, checksum.Algorithm.Name);
                 check.Close();
                 File.Delete(file);
                 throw new InvalidOperationException("The downloaded update didn't match its published checksum, so it wasn't run.");
             }
         }
 
+        LogVerified(file, checksum.Algorithm.Name);
         var arguments = ReleaseFeed.SilentInstallArguments(current.Scope);
         LogStartingInstaller(file, arguments);
         // Shell execute so an all-users update can ask for admin rights if this process doesn't have them.
@@ -87,8 +114,20 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
     [LoggerMessage(Level = LogLevel.Information, Message = "Downloading {Url} to {File}")]
     private partial void LogDownloading(Uri url, string file);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Downloaded update {File} failed its SHA-256 check; deleted it")]
-    private partial void LogChecksumMismatch(string file);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Couldn't read {Url}; falling back to GitHub's SHA-256 digest for the update, if it has one")]
+    private partial void LogSumsUnavailable(Uri url, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "SHA512SUMS doesn't list {File}; verifying it with GitHub's SHA-256 digest instead")]
+    private partial void LogNotInSums(string file);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Update {File} has nothing to verify it against (SHA512SUMS read: {SumsRead}, no SHA-256 digest); not installing it")]
+    private partial void LogNoChecksum(string file, bool sumsRead);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Downloaded update {File} failed its {Algorithm} check; deleted it")]
+    private partial void LogChecksumMismatch(string file, string? algorithm);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Downloaded update {File} matches its {Algorithm} checksum")]
+    private partial void LogVerified(string file, string? algorithm);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Starting setup {File} {Arguments}")]
     private partial void LogStartingInstaller(string file, string arguments);

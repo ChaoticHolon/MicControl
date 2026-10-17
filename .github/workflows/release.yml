@@ -1,9 +1,9 @@
 name: Release
 
 # Push a Semantic Versioning tag, vMAJOR.MINOR.PATCH such as v2.1.0, on a commit in master to publish a GitHub
-# release: MicControlNG-Setup-<version>.exe plus SHA256SUMS. Pushes to master without a tag release nothing.
+# release: MicControlNG-Setup-<version>.exe plus SHA512SUMS. Pushes to master without a tag release nothing.
 # The setup is the app itself (one self-contained file). In-app updates read the latest release and verify the
-# setup against the SHA-256 digest GitHub reports for it.
+# setup against SHA512SUMS, or the SHA-256 digest GitHub reports for it if SHA512SUMS is missing.
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
@@ -60,14 +60,14 @@ jobs:
       - name: Checksums
         shell: pwsh
         run: |
-          # sha256sum format, so `sha256sum -c SHA256SUMS` checks the download.
+          # sha512sum format, so `sha512sum -c SHA512SUMS` checks the download; the in-app updater reads it too.
           $setup = Get-Item "artifacts/MicControlNG-Setup-${{ steps.version.outputs.value }}.exe"
-          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
-          [IO.File]::WriteAllText("$PWD/artifacts/SHA256SUMS", "$hash  $($setup.Name)`n")
+          $hash = (Get-FileHash $setup -Algorithm SHA512).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("$PWD/artifacts/SHA512SUMS", "$hash  $($setup.Name)`n")
       - name: Publish release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.version.outputs.value }}'
-          gh release create '${{ github.ref_name }}' "artifacts/MicControlNG-Setup-$v.exe" artifacts/SHA256SUMS --title "MicControlNG $v" --generate-notes
+          gh release create '${{ github.ref_name }}' "artifacts/MicControlNG-Setup-$v.exe" artifacts/SHA512SUMS --title "MicControlNG $v" --generate-notes

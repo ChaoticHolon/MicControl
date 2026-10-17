@@ -45,7 +45,7 @@ In Visual Studio, open `Sources\MicControlNG.slnx`, set **MicControlNG** as the 
 
 To build the setup, run `installer\build.ps1` from the repository root. It writes `artifacts\MicControlNG-Setup-<version>.exe`, which is the app itself published as one file: started under that name it shows the installer.
 
-Releases are automated: pushing a `vMAJOR.MINOR.PATCH` tag (e.g. `v2.1.0`) on a commit in `master` builds the setup in GitHub Actions and publishes it to [Releases](https://github.com/ChaoticHolon/MicControlNG/releases) with a `SHA256SUMS` file. The tag must match `<Version>` in `Sources\Directory.Build.props`.
+Releases are automated: pushing a `vMAJOR.MINOR.PATCH` tag (e.g. `v2.1.0`) on a commit in `master` builds the setup in GitHub Actions and publishes it to [Releases](https://github.com/ChaoticHolon/MicControlNG/releases) with a `SHA512SUMS` file (`sha512sum -c SHA512SUMS` checks a download). The tag must match `<Version>` in `Sources\Directory.Build.props`.
 
 The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux soon (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
 
