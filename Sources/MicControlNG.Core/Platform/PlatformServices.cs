@@ -156,7 +156,44 @@ public interface IWindowInterop
 {
     /// <summary>Makes an overlay window ignore mouse input (click-through) and stay out of Alt+Tab.</summary>
     void ConfigureOverlay(nint handle, bool clickThrough);
+
+    /// <summary>
+    /// Reports close and session-end messages a window receives (close requests, session ending, destruction).
+    /// The handler runs on the window's thread; returning <c>true</c> swallows the message so the window survives.
+    /// Dispose the result to stop watching.
+    /// </summary>
+    IDisposable WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler);
+
+    /// <summary>
+    /// Hidden helper windows the UI toolkit created on the calling (UI) thread, such as Avalonia's dispatcher and
+    /// tray icon window. If one is closed, the UI stops processing work while the process stays alive.
+    /// </summary>
+    IReadOnlyList<nint> FindToolkitHelperWindows();
 }
+
+public enum WindowLifecycleKind
+{
+    /// <summary>A request to close the window (e.g. WM_CLOSE, or Close from the system menu).</summary>
+    CloseRequest,
+
+    /// <summary>The OS asks whether the session may end (shutdown, restart, sign-out, or an app restart request).</summary>
+    SessionEndQuery,
+
+    /// <summary>The session is (or is no longer) ending.</summary>
+    SessionEnd,
+
+    /// <summary>The window is being destroyed.</summary>
+    Destroyed,
+}
+
+/// <summary>A lifecycle message a window received, with the context needed to tell who sent it.</summary>
+/// <param name="Window">Which of our windows received it.</param>
+/// <param name="Message">The raw message name, e.g. "WM_CLOSE".</param>
+/// <param name="Details">Message-specific flags, e.g. "restart or shutdown", "close app (Restart Manager)".</param>
+/// <param name="Origin">"sent from another thread or process", "posted or sent by this thread", …</param>
+/// <param name="ForegroundProcess">The process owning the foreground window at that moment, if known.</param>
+public sealed record WindowLifecycleMessage(
+    WindowLifecycleKind Kind, string Window, string Message, string Details, string Origin, string? ForegroundProcess);
 
 /// <summary>What the current platform can do, so the UI can hide unsupported options.</summary>
 public sealed record PlatformCapabilities

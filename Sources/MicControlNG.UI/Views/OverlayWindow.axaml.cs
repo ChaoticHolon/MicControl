@@ -21,8 +21,9 @@ public partial class OverlayWindow : Window
     private readonly ILogger logger;
     private readonly bool isConstructed;
 
-    public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop, ILogger<OverlayWindow>? logger = null)
+    public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop, ILogger<OverlayWindow>? logger = null, AppShutdown? shutdown = null)
     {
+        var appShutdown = shutdown ?? new AppShutdown();
         this.viewModel = viewModel;
         this.settings = settings;
         this.interop = interop;
@@ -30,6 +31,16 @@ public partial class OverlayWindow : Window
         DataContext = viewModel;
         InitializeComponent();
         ToolTip.SetServiceEnabled(Badge, false);
+        // A closed window can't be shown again, so only an app exit may close it; anything else (e.g. another
+        // program closing all our windows) is refused and logged.
+        Closing += (_, e) =>
+        {
+            if (!appShutdown.IsExiting)
+            {
+                e.Cancel = true;
+                LogCloseRefused(this.logger);
+            }
+        };
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         viewModel.OverlayPlacementRequested += (_, _) => Place("corner preset", fromCurrentScreen: true);
@@ -235,4 +246,7 @@ public partial class OverlayWindow : Window
 
     [LoggerMessage(Level = LogLevel.Trace, Message = "Overlay dragged to {Position}")]
     private static partial void LogDragged(ILogger logger, PixelPoint position);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a request to close the overlay window while the app is running")]
+    private static partial void LogCloseRefused(ILogger logger);
 }

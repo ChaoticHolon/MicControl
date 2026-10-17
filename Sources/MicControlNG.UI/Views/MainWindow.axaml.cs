@@ -14,11 +14,14 @@ public partial class MainWindow : Window
     private readonly MainViewModel viewModel;
     private readonly SettingsService settings;
     private readonly ILogger logger;
+    private readonly AppShutdown shutdown;
+    private bool isExiting;
 
-    public MainWindow(MainViewModel viewModel, SettingsService settings, ILogger<MainWindow>? logger = null)
+    public MainWindow(MainViewModel viewModel, SettingsService settings, ILogger<MainWindow>? logger = null, AppShutdown? shutdown = null)
     {
         this.viewModel = viewModel;
         this.settings = settings;
+        this.shutdown = shutdown ?? new AppShutdown();
         this.logger = logger ?? NullLogger<MainWindow>.Instance;
         DataContext = viewModel;
         InitializeComponent();
@@ -41,11 +44,15 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Set while the app is shutting down so closing isn't turned into hiding.</summary>
-    public bool IsExiting { get; set; }
+    /// <summary>Set while the app is shutting down (or the session is ending) so closing isn't turned into hiding.</summary>
+    public bool IsExiting
+    {
+        get => isExiting || shutdown.IsExiting;
+        set => isExiting = value;
+    }
 
-    /// <summary>Exits the whole app (Window mode closes exit it). Set by the app; tests set a probe.</summary>
-    public Action? ExitApplication { get; set; }
+    /// <summary>Exits the whole app with a reason for the log (Window-mode closes exit it). Set by the app; tests set a probe.</summary>
+    public Action<string>? ExitApplication { get; set; }
 
     public void ShowAndActivate()
     {
@@ -88,7 +95,7 @@ public partial class MainWindow : Window
             settings.ScheduleSave();
         }
 
-        LogClosing(logger, IsExiting, viewModel.AppMode);
+        LogClosing(logger, IsExiting, viewModel.AppMode, IsVisible);
         if (!IsExiting)
         {
             if (viewModel.IsTrayMode)
@@ -101,7 +108,7 @@ public partial class MainWindow : Window
             {
                 // Window mode: closing exits the app (which closes this window for real).
                 e.Cancel = true;
-                exit();
+                exit("window closed in Window mode");
             }
         }
 
@@ -133,8 +140,8 @@ public partial class MainWindow : Window
     [LoggerMessage(Level = LogLevel.Debug, Message = "Main window state: {State}")]
     private static partial void LogWindowState(ILogger logger, WindowState state);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Main window closing (exiting: {Exiting}, app mode: {AppMode})")]
-    private static partial void LogClosing(ILogger logger, bool exiting, AppMode appMode);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Main window closing (exiting: {Exiting}, app mode: {AppMode}, visible: {Visible})")]
+    private static partial void LogClosing(ILogger logger, bool exiting, AppMode appMode, bool visible);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Main window's saved position {Position} is off every monitor; centring it on the primary one")]
     private static partial void LogOffScreen(ILogger logger, PixelPoint position);

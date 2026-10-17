@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using MicControlNG.Controls;
+using MicControlNG.Diagnostics;
 using MicControlNG.Installation;
 using MicControlNG.Platform;
 using MicControlNG.Services;
@@ -32,6 +33,9 @@ public sealed class AppOptions
 
     /// <summary>Run as the installer or uninstaller instead of the app (see <see cref="SetupCommand"/>).</summary>
     public SetupCommand Setup { get; init; } = new(SetupMode.None);
+
+    /// <summary>Starts a new copy of the app after this one ends (used when the UI thread stops responding).</summary>
+    public Action? Relaunch { get; init; }
 }
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "Disposed on lifetime exit; Application has no Dispose.")]
@@ -42,6 +46,12 @@ public partial class App : Application
     private readonly AppOptions? options;
     private IHost? host;
     private TrayIcon? trayIcon;
+    private ILogger? appLogger;
+    private FileLoggerProvider? fileLogger;
+    private AppShutdown? appShutdown;
+    private Action? cleanup;
+    private Timer? watchdogTimer;
+    private readonly List<IDisposable> lifecycleWatchers = [];
 
     /// <summary>Used by the XAML previewer and headless tests; nothing is composed.</summary>
     public App()
@@ -68,6 +78,7 @@ public partial class App : Application
     {
         services
             .AddSingleton(new SettingsService(new SettingsStore(settingsDirectory, SettingsStore.DefaultLegacyDirectory)))
+            .AddSingleton<AppShutdown>()
             .AddSingleton<IUiDispatcher, AvaloniaDispatcher>()
             .AddSingleton<IDialogService, DialogService>()
             .AddSingleton(sp => new NotificationSounds(
@@ -116,6 +127,8 @@ public partial class App : Application
         var settings = services.GetRequiredService<SettingsService>();
         var capabilities = services.GetRequiredService<PlatformCapabilities>();
         var logger = services.GetRequiredService<ILogger<App>>();
+        var shutdown = services.GetRequiredService<AppShutdown>();
+        (appLogger, fileLogger, appShutdown) = (logger, fileLogs, shutdown);
         logLevels.Minimum = (LogLevel)settings.Current.LogLevel;
         LogUnhandledExceptions(logger, fileLogs);
         if (logger.IsEnabled(LogLevel.Information))
@@ -153,7 +166,7 @@ public partial class App : Application
         };
 
         var mainWindow = services.GetRequiredService<MainWindow>();
-        mainWindow.ExitApplication = () => Exit(desktop, mainWindow, logger, "window closed in Window mode");
+        mainWindow.ExitApplication = reason => Exit(desktop, mainWindow, logger, reason);
         viewModel.ExitRequested += (_, _) => Exit(desktop, mainWindow, logger, "installing an update");
 
         // The desktop lifetime shows its MainWindow when startup finishes, which would undo starting hidden in
@@ -164,24 +177,44 @@ public partial class App : Application
             mainWindow.ShowAndActivate();
         }
 
-        var popup = new TrayPopupWindow(viewModel, ShowMainWindow, services.GetRequiredService<ILogger<TrayPopupWindow>>());
+        var popup = new TrayPopupWindow(viewModel, ShowMainWindow, services.GetRequiredService<ILogger<TrayPopupWindow>>(), shutdown);
         trayIcon = new TrayIcon(
             this, viewModel, popup.Toggle, ShowMainWindow, () => Exit(desktop, mainWindow, logger, "tray menu"),
             services.GetRequiredService<ILogger<TrayIcon>>());
-        services.GetRequiredService<OverlayWindow>().SyncVisibility();
+        var overlay = services.GetRequiredService<OverlayWindow>();
+        overlay.SyncVisibility();
+        WatchWindowLifecycles(services.GetRequiredService<IWindowInterop>(), logger, (mainWindow, "main window"), (overlay, "overlay"), (popup, "tray popup"));
         options.RegisterShowRequest?.Invoke(() =>
         {
             LogShowRequested(logger);
             ShowMainWindow();
         });
         options.RegisterExitRequest?.Invoke(() => Exit(desktop, mainWindow, logger, "asked to close by setup"));
-        desktop.Exit += (_, _) =>
+        // A session end (shutdown, restart, sign-out, or an installer's Restart Manager request) exits the app.
+        // Without this, the hidden main window cancels its close in Tray mode and that vetoes the shutdown.
+        desktop.ShutdownRequested += (_, _) =>
         {
-            LogExited(logger);
+            if (shutdown.BeginExit("the session is ending"))
+            {
+                LogSessionEnding(logger);
+            }
+
+            mainWindow.IsExiting = true;
+        };
+        cleanup = () =>
+        {
+            watchdogTimer?.Dispose();
+            lifecycleWatchers.ForEach(w => w.Dispose());
             trayIcon.Dispose();
             settings.Flush();
             host.Dispose();
         };
+        desktop.Exit += (_, _) =>
+        {
+            LogExited(logger, shutdown.Reason ?? "unknown");
+            shutdown.CleanUpOnce(cleanup);
+        };
+        StartWatchdog(logger, fileLogs, services.GetRequiredService<IGlobalHotkeys>());
 
         // Tray mode starts hidden (also at sign-in); Window mode is a normal app. First run always shows setup.
         if (!settings.Current.SetupCompleted || settings.Current.Window.AppMode == AppMode.Window)
@@ -215,8 +248,100 @@ public partial class App : Application
         await viewModel.StartAsync();
     }
 
-    private static void Exit(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, ILogger logger, string reason)
+    /// <summary>
+    /// Called by the platform head after the UI loop has returned. If it ended without going through our exit (for
+    /// example a stray WM_QUIT), clean up here so the tray icon, keyboard hook and settings don't outlive the UI.
+    /// </summary>
+    public void OnMainLoopEnded(int exitCode)
     {
+        if (appLogger is null || appShutdown is null || cleanup is null)
+        {
+            return;
+        }
+
+        if (appShutdown.CleanUpOnce(cleanup))
+        {
+            LogMainLoopEndedUnexpectedly(appLogger, exitCode);
+        }
+        else
+        {
+            LogMainLoopEnded(appLogger, exitCode, appShutdown.Reason ?? "unknown");
+        }
+
+        fileLogger?.Dispose();
+    }
+
+    private void WatchWindowLifecycles(IWindowInterop interop, ILogger logger, params (Avalonia.Controls.Window Window, string Name)[] windows)
+    {
+        // Our own windows: log who asks them to close. Their Closing handlers decide what happens.
+        foreach (var (window, name) in windows)
+        {
+            if (window.TryGetPlatformHandle()?.Handle is { } handle and not 0)
+            {
+                lifecycleWatchers.Add(interop.WatchLifecycle(handle, name, message =>
+                {
+                    LogWindowMessage(logger, message.Window, message.Message, message.Details, message.Origin, message.ForegroundProcess ?? "unknown");
+                    return false;
+                }));
+            }
+        }
+
+        // Avalonia's hidden helper window carries dispatcher wake-ups, timers and the tray icon. If anything closes
+        // it, the app becomes a zombie: no tray icon, hotkeys and timers dead, process alive. Never let it close.
+        foreach (var handle in interop.FindToolkitHelperWindows())
+        {
+            lifecycleWatchers.Add(interop.WatchLifecycle(handle, "UI message window", message =>
+            {
+                LogWindowMessage(logger, message.Window, message.Message, message.Details, message.Origin, message.ForegroundProcess ?? "unknown");
+                if (message.Kind == WindowLifecycleKind.CloseRequest)
+                {
+                    LogHelperCloseRefused(logger, message.Message, message.Origin, message.ForegroundProcess ?? "unknown");
+                    return true;
+                }
+
+                if (message.Kind == WindowLifecycleKind.Destroyed && appShutdown?.IsExiting != true)
+                {
+                    LogHelperDestroyed(logger);
+                }
+
+                return false;
+            }));
+        }
+
+        LogLifecycleWatch(logger, lifecycleWatchers.Count);
+    }
+
+    /// <summary>
+    /// Checks every 20 seconds that the UI thread still runs posted work. After a minute without a response the app
+    /// is a zombie (hung, or its dispatcher window is gone): release the keyboard hook so keys aren't swallowed,
+    /// write the log, start a fresh copy and end this one.
+    /// </summary>
+    private void StartWatchdog(ILogger logger, FileLoggerProvider fileLogs, IGlobalHotkeys hotkeys)
+    {
+        var watchdog = new UiWatchdog(ping => Avalonia.Threading.Dispatcher.UIThread.Post(ping), missesBeforeFailure: 3);
+        var interval = TimeSpan.FromSeconds(20);
+        watchdogTimer = new Timer(_ =>
+        {
+            switch (watchdog.Check())
+            {
+                case UiWatchdogState.Late:
+                    LogUiLate(logger, watchdog.Misses * (int)interval.TotalSeconds);
+                    break;
+                case UiWatchdogState.Failed:
+                    watchdogTimer?.Dispose();
+                    LogUiStopped(logger, watchdog.Misses * (int)interval.TotalSeconds, options?.Relaunch is not null);
+                    (hotkeys as IDisposable)?.Dispose();
+                    fileLogs.Dispose();
+                    options?.Relaunch?.Invoke();
+                    Environment.Exit(3);
+                    break;
+            }
+        }, null, interval, interval);
+    }
+
+    private void Exit(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, ILogger logger, string reason)
+    {
+        appShutdown?.BeginExit(reason);
         LogExiting(logger, reason);
         window.IsExiting = true;
         window.Close();
@@ -258,8 +383,35 @@ public partial class App : Application
     [LoggerMessage(Level = LogLevel.Information, Message = "Exiting ({Reason})")]
     private static partial void LogExiting(ILogger logger, string reason);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Exited")]
-    private static partial void LogExited(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Exited ({Reason})")]
+    private static partial void LogExited(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Session ending (shutdown, restart, sign-out or an installer request): exiting instead of hiding to the tray")]
+    private static partial void LogSessionEnding(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Window} received {Message} {Details} ({Origin}; foreground: {Foreground})")]
+    private static partial void LogWindowMessage(ILogger logger, string window, string message, string details, string origin, string foreground);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Refused {Message} to the UI message window ({Origin}; foreground: {Foreground}); closing it would leave the app running without a tray icon or working hotkeys")]
+    private static partial void LogHelperCloseRefused(ILogger logger, string message, string origin, string foreground);
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "The UI message window was destroyed while the app is running; the watchdog will restart the app")]
+    private static partial void LogHelperDestroyed(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Watching {Count} windows for close and session-end messages")]
+    private static partial void LogLifecycleWatch(ILogger logger, int count);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "UI thread hasn't processed work for about {Seconds} s")]
+    private static partial void LogUiLate(ILogger logger, int seconds);
+
+    [LoggerMessage(Level = LogLevel.Critical, Message = "UI thread stopped processing work for about {Seconds} s: releasing the keyboard hook and ending this copy (restarting: {Restarting})")]
+    private static partial void LogUiStopped(ILogger logger, int seconds, bool restarting);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "UI loop ended (exit code {ExitCode}, reason: {Reason})")]
+    private static partial void LogMainLoopEnded(ILogger logger, int exitCode, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "UI loop ended without an exit request (exit code {ExitCode}); cleaned up and ending the process")]
+    private static partial void LogMainLoopEndedUnexpectedly(ILogger logger, int exitCode);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception (terminating: {IsTerminating})")]
     private static partial void LogCrash(ILogger logger, Exception? exception, bool isTerminating);

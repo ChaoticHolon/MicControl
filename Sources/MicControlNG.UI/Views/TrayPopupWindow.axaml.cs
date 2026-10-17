@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using MicControlNG.ViewModels;
+using MicControlNG.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -17,13 +18,24 @@ public partial class TrayPopupWindow : Window
     private readonly Action openFullWindow;
     private readonly ILogger logger;
 
-    public TrayPopupWindow(MainViewModel viewModel, Action openFullWindow, ILogger<TrayPopupWindow>? logger = null)
+    public TrayPopupWindow(MainViewModel viewModel, Action openFullWindow, ILogger<TrayPopupWindow>? logger = null, AppShutdown? shutdown = null)
     {
+        var appShutdown = shutdown ?? new AppShutdown();
         this.viewModel = viewModel;
         this.openFullWindow = openFullWindow;
         this.logger = logger ?? NullLogger<TrayPopupWindow>.Instance;
         DataContext = viewModel;
         InitializeComponent();
+        // A closed window can't be shown again, so only an app exit may close it; anything else (e.g. another
+        // program closing all our windows) is refused and logged.
+        Closing += (_, e) =>
+        {
+            if (!appShutdown.IsExiting)
+            {
+                e.Cancel = true;
+                LogCloseRefused(this.logger);
+            }
+        };
         OpenWindowButton.Click += (_, _) => OpenFullWindow();
         Deactivated += (_, _) => Hide();
         Opened += (_, _) => Reposition();
@@ -89,4 +101,7 @@ public partial class TrayPopupWindow : Window
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tray popup: Open full window")]
     private static partial void LogOpenFullWindow(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a request to close the tray popup window while the app is running")]
+    private static partial void LogCloseRefused(ILogger logger);
 }
