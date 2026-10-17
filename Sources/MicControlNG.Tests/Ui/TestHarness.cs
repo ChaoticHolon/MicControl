@@ -69,7 +69,10 @@ internal sealed class TestHarness : IDisposable
 
     public string SettingsFile => Path.Combine(directory, SettingsStore.FileName);
 
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UseHeadless(new AvaloniaHeadlessPlatformOptions());
+    // Skia rather than headless drawing: windows really render, so they can be captured (see ScreenshotTests).
+    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
+        .UseSkia()
+        .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 
     public void Dispose()
     {

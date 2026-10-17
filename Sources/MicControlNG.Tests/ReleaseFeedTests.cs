@@ -11,15 +11,22 @@ public sealed class ReleaseFeedTests
 
     private static string Release(string tag = "v2.1.0", string asset = "MicControlNG-Setup-2.1.0.exe", string? digest = Digest,
         string url = "https://github.com/ChaoticHolon/MicControlNG/releases/download/v2.1.0/MicControlNG-Setup-2.1.0.exe",
-        bool draft = false, bool prerelease = false) => $$"""
+        bool draft = false, bool prerelease = false, string? sumsUrl = null) => $$"""
         {
           "tag_name": "{{tag}}", "draft": {{(draft ? "true" : "false")}}, "prerelease": {{(prerelease ? "true" : "false")}},
           "assets": [
             { "name": "notes.txt", "browser_download_url": "https://example.com/notes.txt", "digest": "{{Digest}}" },
+            {{(sumsUrl is null ? "" : $"{{ \"name\": \"SHA512SUMS\", \"browser_download_url\": \"{sumsUrl}\" }},")}}
             { "name": "{{asset}}", "browser_download_url": "{{url}}"{{(digest is null ? "" : $", \"digest\": \"{digest}\"")}} }
           ]
         }
         """;
+
+    private const string SumsUrl = "https://github.com/ChaoticHolon/MicControlNG/releases/download/v2.1.0/SHA512SUMS";
+
+    private static readonly byte[] Setup = Encoding.UTF8.GetBytes("installer bytes");
+
+    private static string Sha512Hex => Convert.ToHexStringLower(SHA512.HashData(Setup));
 
     [Fact]
     public void Parse_FindsTheSetupAndItsDigest()
@@ -31,6 +38,56 @@ public sealed class ReleaseFeedTests
         Assert.Equal("MicControlNG-Setup-2.1.0.exe", release.FileName);
         Assert.Equal("https", release.SetupUrl.Scheme);
         Assert.Equal(Digest["sha256:".Length..], release.Sha256);
+        Assert.Null(release.Sha512SumsUrl);
+    }
+
+    [Fact]
+    public void Parse_FindsSha512Sums_AndAcceptsItWithoutADigest()
+    {
+        var release = ReleaseFeed.Parse(Release(digest: null, sumsUrl: SumsUrl));
+
+        Assert.NotNull(release);
+        Assert.Null(release.Sha256);
+        Assert.Equal(new Uri(SumsUrl), release.Sha512SumsUrl);
+        // Only over HTTPS; without it and without a digest there's nothing to verify against.
+        Assert.Null(ReleaseFeed.Parse(Release(digest: null, sumsUrl: "http://example.com/SHA512SUMS")));
+    }
+
+    [Theory]
+    [InlineData("{0}  MicControlNG-Setup-2.1.0.exe\n")]
+    [InlineData("{0} *MicControlNG-Setup-2.1.0.exe\r\n")] // binary mode marker, Windows line ending
+    [InlineData("{1}  Other.exe\n{0}  micontrolng-typo.exe\n{0}  MicControlNG-Setup-2.1.0.exe")]
+    public void FindSha512_ReadsSha512sumFormat(string format)
+    {
+        var sums = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, Sha512Hex.ToUpperInvariant(), new string('a', 128));
+
+        Assert.Equal(Sha512Hex, ReleaseFeed.FindSha512(sums, "MicControlNG-Setup-2.1.0.exe"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("abc  MicControlNG-Setup-2.1.0.exe")] // not a SHA-512
+    [InlineData("{0}  MicControlNG-Setup-2.0.0.exe")] // another file
+    public void FindSha512_WithoutAnEntry_ReturnsNull(string format)
+    {
+        var sums = string.Format(System.Globalization.CultureInfo.InvariantCulture, format, Sha512Hex);
+
+        Assert.Null(ReleaseFeed.FindSha512(sums, "MicControlNG-Setup-2.1.0.exe"));
+    }
+
+    [Fact]
+    public void ChooseChecksum_PrefersSha512Sums_AndFallsBackToGitHubsSha256()
+    {
+        var both = ReleaseFeed.Parse(Release(sumsUrl: SumsUrl))!;
+        var listed = $"{Sha512Hex}  MicControlNG-Setup-2.1.0.exe\n";
+
+        Assert.Equal(new ExpectedChecksum(HashAlgorithmName.SHA512, Sha512Hex), ReleaseFeed.ChooseChecksum(both, listed));
+        // SHA512SUMS missing, unreadable or not listing the setup: GitHub's digest.
+        var sha256 = new ExpectedChecksum(HashAlgorithmName.SHA256, Digest["sha256:".Length..]);
+        Assert.Equal(sha256, ReleaseFeed.ChooseChecksum(both, null));
+        Assert.Equal(sha256, ReleaseFeed.ChooseChecksum(both, "nothing here"));
+        // Neither: nothing to verify against.
+        Assert.Null(ReleaseFeed.ChooseChecksum(ReleaseFeed.Parse(Release(digest: null, sumsUrl: SumsUrl))!, "nothing here"));
     }
 
     [Theory]
@@ -74,13 +131,16 @@ public sealed class ReleaseFeedTests
     }
 
     [Fact]
-    public async Task MatchesSha256_ChecksTheContent()
+    public async Task Matches_ChecksTheContent_WithEitherAlgorithm()
     {
-        var content = Encoding.UTF8.GetBytes("installer bytes");
-        var hex = Convert.ToHexStringLower(SHA256.HashData(content));
+        var token = TestContext.Current.CancellationToken;
+        var sha512 = new ExpectedChecksum(HashAlgorithmName.SHA512, Sha512Hex);
+        var sha256 = new ExpectedChecksum(HashAlgorithmName.SHA256, Convert.ToHexStringLower(SHA256.HashData(Setup)));
 
-        Assert.True(await ReleaseFeed.MatchesSha256Async(new MemoryStream(content), hex, TestContext.Current.CancellationToken));
-        Assert.True(await ReleaseFeed.MatchesSha256Async(new MemoryStream(content), hex.ToUpperInvariant(), TestContext.Current.CancellationToken));
-        Assert.False(await ReleaseFeed.MatchesSha256Async(new MemoryStream([1, 2, 3]), hex, TestContext.Current.CancellationToken));
+        Assert.True(await ReleaseFeed.MatchesAsync(new MemoryStream(Setup), sha512, token));
+        Assert.True(await ReleaseFeed.MatchesAsync(new MemoryStream(Setup), sha256, token));
+        Assert.True(await ReleaseFeed.MatchesAsync(new MemoryStream(Setup), sha512 with { Hex = Sha512Hex.ToUpperInvariant() }, token));
+        Assert.False(await ReleaseFeed.MatchesAsync(new MemoryStream([1, 2, 3]), sha512, token));
+        Assert.False(await ReleaseFeed.MatchesAsync(new MemoryStream([1, 2, 3]), sha256, token));
     }
 }

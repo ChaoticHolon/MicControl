@@ -156,7 +156,56 @@ public interface IWindowInterop
 {
     /// <summary>Makes an overlay window ignore mouse input (click-through) and stay out of Alt+Tab.</summary>
     void ConfigureOverlay(nint handle, bool clickThrough);
+
+    /// <summary>
+    /// Reports close and session-end messages a window receives (close requests, session ending, destruction).
+    /// The handler runs on the window's thread; returning <c>true</c> handles the message so the window's own code
+    /// never sees it: a close request is refused, and a session-end query is answered "yes, the session may end".
+    /// The window may belong to another thread of this process; the handler then runs on that thread.
+    /// Dispose the result to stop watching. Returns <c>null</c> if the window can't be watched (already watched,
+    /// gone, or the OS refused).
+    /// </summary>
+    IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler);
+
+    /// <summary>
+    /// Hidden helper windows of this process, on any thread, that the app needs but didn't create itself: Avalonia's
+    /// dispatcher and tray icon window (if it's closed, the UI stops processing work while the process stays alive),
+    /// the hidden owner of windows kept off the taskbar (closing it destroys the overlay and tray popup), and the
+    /// input method windows.
+    /// </summary>
+    IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows();
 }
+
+/// <summary>A hidden helper window, with a name for the log (e.g. "UI message window").</summary>
+/// <param name="OnUiThread">False for a window on another thread: its messages are handled on that thread.</param>
+public sealed record ToolkitHelperWindow(nint Handle, string Name, int ThreadId, bool OnUiThread);
+
+public enum WindowLifecycleKind
+{
+    /// <summary>A request to close the window (e.g. WM_CLOSE, or Close from the system menu).</summary>
+    CloseRequest,
+
+    /// <summary>The OS asks whether the session may end (shutdown, restart, sign-out, or an app restart request).</summary>
+    SessionEndQuery,
+
+    /// <summary>The session is ending now: the OS ends the process soon after this message returns.</summary>
+    SessionEnd,
+
+    /// <summary>A session end that was asked about was cancelled (e.g. another app vetoed it); the session goes on.</summary>
+    SessionEndCancelled,
+
+    /// <summary>The window is being destroyed.</summary>
+    Destroyed,
+}
+
+/// <summary>A lifecycle message a window received, with the context needed to tell who sent it.</summary>
+/// <param name="Window">Which of our windows received it.</param>
+/// <param name="Message">The raw message name, e.g. "WM_CLOSE".</param>
+/// <param name="Details">Message-specific flags, e.g. "restart or shutdown", "close app (Restart Manager)".</param>
+/// <param name="Origin">"sent from another thread or process", "posted or sent by this thread", …</param>
+/// <param name="ForegroundProcess">The process owning the foreground window at that moment, if known.</param>
+public sealed record WindowLifecycleMessage(
+    WindowLifecycleKind Kind, string Window, string Message, string Details, string Origin, string? ForegroundProcess);
 
 /// <summary>What the current platform can do, so the UI can hide unsupported options.</summary>
 public sealed record PlatformCapabilities

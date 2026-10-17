@@ -1,16 +1,65 @@
 # Build output
 [Bb]in/
 [Oo]bj/
+[Dd]ebug/
+[Rr]elease/
 [Pp]ublish/
 [Rr]eleases/
+x64/
+x86/
 artifacts/
-TestResults/
 *.binlog
 
-# IDEs
+# Tests and coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Visual Studio
 .vs/
-.idea/
+.vshistory/
 *.user
+*.rsuser
 *.suo
-*.DotSettings.user
+*.userosscache
+*.sln.docstates
+*.opendb
+*.VC.db
+ipch/
 *_wpftmp.csproj
+*.DotSettings.user
+
+# Other IDEs and editors
+.idea/
+*.sln.iml
+.vscode/
+*.sublime-workspace
+*.swp
+*~
+
+# Claude Code: personal settings (the shared .claude/settings.json is tracked)
+.claude/settings.local.json
+
+# Signing keys and certificates (release signing keys stay out of the repo)
+*.pfx
+*.p12
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.directory

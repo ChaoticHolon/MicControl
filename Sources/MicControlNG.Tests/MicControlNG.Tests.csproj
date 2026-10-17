@@ -9,6 +9,8 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Avalonia.Headless.XUnit" />
+    <!-- Real rendering in the headless tests, so ScreenshotTests can capture the windows. -->
+    <PackageReference Include="Avalonia.Skia" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
