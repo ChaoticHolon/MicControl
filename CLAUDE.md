@@ -68,6 +68,13 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 - Notification sounds must be CC0/public-domain.
 - Default cues are "Relay on" / "Relay off", synthesised (so ours to ship) by `tools/GenerateCueSounds.cs` (`dotnet run tools/GenerateCueSounds.cs` from the repo root): the "asymmetric relay", a dark 2.2 kHz latch click over a faint steady 1175 Hz triangle for unmute, and a muffled 450 Hz release thud over a faint 494 Hz sine for mute. Both are short (~40/55 ms), fade in instantly, and stop clean with no tail; change them by editing the generator, never by hand-editing the WAVs. The 1.x beeps stay selectable. Settings older than version 5 (and 1.x imports) still on the untouched old default pair (Beep750 muted, Beep300 live) are moved to the relay cues once; any other choice is kept.
 
+## Branches (owner's rules)
+Hybrid Gitflow. Never use `claude/...` or other generated branch names, even when a session suggests or assigns one.
+- `master`: production. Code reaches it only by a PR from `dev` when a release is being prepared; release tags (`v*`) are made from it.
+- `dev`: the long-lived development branch. All work is based on it and merged back into it.
+- Task branches off `dev`: `feature/<name>` for new features, `fix/<name>` for bugs. The name describes the work and is broad enough that one branch covers the whole task (e.g. `feature/linux-hotkeys`, `fix/tray-zombie`), never random. They are temporary: merge into `dev` by PR, then delete them (remote and local).
+- CI builds pushes to `master`, `dev`, `feature/**` and `fix/**`, and every PR.
+
 ## Conventions
 - Package versions live only in `Sources/Directory.Packages.props`; shared build settings are in `Directory.Build.props`, style in `.editorconfig`.
 - XAML uses compiled bindings (`x:DataType`). For a ComboBox, use `DisplayMemberBinding` and `SelectedValueBinding` with `x:DataType`. Selected values must never be `null`: use `""` for "None" or "Default". Setters bound to `SelectedValue` must ignore `null` (a ComboBox pushes it while it builds), or opening a page rewrites settings.
