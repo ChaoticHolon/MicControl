@@ -1,0 +1,92 @@
+name: Maintenance
+
+# Repository chores that need GitHub's own token, started by hand (Actions → Maintenance → Run workflow) or through
+# the GitHub API:
+# - delete-merged-branches: deletes feature/* and fix/* branches that are fully merged into dev.
+# - move-tag: moves a release tag to a commit on master with exactly the same files as the one it points at now
+#   (after the history was condensed). The message and tagger are kept, and nothing is released: a tag pushed with
+#   this workflow's token doesn't start the Release workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: What to do
+        type: choice
+        options: [delete-merged-branches, move-tag]
+        required: true
+      tag:
+        description: "move-tag only: the release tag, e.g. v2.0.0"
+        type: string
+        required: false
+      commit:
+        description: "move-tag only: the commit on master to move it to"
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+concurrency: maintenance
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history, all branches and tags: the checks compare commits across them.
+          fetch-depth: 0
+
+      - name: Delete merged task branches
+        if: inputs.task == 'delete-merged-branches'
+        run: |
+          set -euo pipefail
+          deleted=() kept=() failed=()
+          for branch in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/feature/*' 'refs/remotes/origin/fix/*'); do
+            if ! git merge-base --is-ancestor "origin/$branch" origin/dev; then
+              kept+=("$branch")
+            elif git push origin --delete "$branch"; then
+              deleted+=("$branch")
+            else
+              failed+=("$branch")
+            fi
+          done
+          {
+            echo "### Task branches"
+            echo "- Deleted (merged into dev): ${deleted[*]:-none}"
+            echo "- Kept (not merged into dev): ${kept[*]:-none}"
+            echo "- Couldn't delete: ${failed[*]:-none}"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          [ ${#failed[@]} -eq 0 ]
+
+      - name: Move release tag
+        if: inputs.task == 'move-tag'
+        env:
+          TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::'$TAG' isn't a vMAJOR.MINOR.PATCH tag"; exit 1
+          fi
+          git rev-parse --verify --quiet "refs/tags/$TAG" > /dev/null || { echo "::error::$TAG doesn't exist"; exit 1; }
+          new=$(git rev-parse --verify --quiet "$COMMIT^{commit}") || { echo "::error::'$COMMIT' isn't a commit"; exit 1; }
+          old=$(git rev-parse "$TAG^{commit}")
+          if [ "$old" = "$new" ]; then
+            echo "$TAG already points at $new" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          git merge-base --is-ancestor "$new" origin/master || { echo "::error::$new isn't on master"; exit 1; }
+          git diff --quiet "$old" "$new" || { echo "::error::$new doesn't have the same files as $old, which $TAG points at now"; exit 1; }
+
+          # Keep the tag's message and tagger (name, email and date).
+          if [ "$(git cat-file -t "refs/tags/$TAG")" = tag ]; then
+            git for-each-ref --format='%(contents)' "refs/tags/$TAG" > "$RUNNER_TEMP/message"
+            export GIT_COMMITTER_NAME="$(git for-each-ref --format='%(taggername)' "refs/tags/$TAG")"
+            export GIT_COMMITTER_EMAIL="$(git for-each-ref --format='%(taggeremail:trim)' "refs/tags/$TAG")"
+            export GIT_COMMITTER_DATE="$(git for-each-ref --format='%(taggerdate:raw)' "refs/tags/$TAG")"
+            git tag -f -a "$TAG" -F "$RUNNER_TEMP/message" "$new"
+          else
+            git tag -f "$TAG" "$new"
+          fi
+          git push --force origin "refs/tags/$TAG"
+          echo "Moved $TAG from $old to $new (same files)" | tee -a "$GITHUB_STEP_SUMMARY"
