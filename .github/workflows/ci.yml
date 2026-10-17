@@ -1,8 +1,9 @@
 name: CI
 
+# Task branches (feature/**, fix/**) are built through their PR, so each commit is built once.
 on:
   push:
-    branches: [master, dev, 'feature/**', 'fix/**']
+    branches: [master, dev]
   pull_request:
 
 jobs:

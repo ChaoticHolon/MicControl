@@ -1,8 +1,9 @@
 name: Release
 
-# Push a Semantic Versioning tag, vMAJOR.MINOR.PATCH such as v2.0.0, to publish MicControlNG-Setup-<version>.exe to GitHub Releases. The setup is the app
-# itself (one self-contained file). In-app updates read the latest release and verify the setup against the SHA-256
-# digest GitHub reports for it.
+# Push a Semantic Versioning tag, vMAJOR.MINOR.PATCH such as v2.1.0, on a commit in master to publish a GitHub
+# release: MicControlNG-Setup-<version>.exe plus SHA256SUMS. Pushes to master without a tag release nothing.
+# The setup is the app itself (one self-contained file). In-app updates read the latest release and verify the
+# setup against the SHA-256 digest GitHub reports for it.
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
@@ -15,27 +16,49 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history and branches, to check that the tagged commit is in master.
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - name: Version
+      - name: Check tag
         id: version
         shell: pwsh
         run: |
           $tag = '${{ github.ref_name }}'
-          if ($tag -notmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+          if ($tag -cnotmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
             throw "Release tags must be vMAJOR.MINOR.PATCH (Semantic Versioning), e.g. v2.1.0; got '$tag'"
           }
-          echo "value=$($tag.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+          $version = $tag.Substring(1)
+
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/master
+          if ($LASTEXITCODE -ne 0) { throw "$tag is not on master: releases are only made from master" }
+
+          $props = ([xml](Get-Content Sources/Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ($props -ne $version) {
+            throw "$tag doesn't match <Version>$props</Version> in Sources/Directory.Build.props; bump it to $version first"
+          }
+
+          echo "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Build
+        run: dotnet build Sources/MicControlNG.slnx -c Release
       - name: Test
-        run: dotnet test --project Sources/MicControlNG.Tests -c Release
+        run: dotnet test --project Sources/MicControlNG.Tests -c Release --no-build
       - name: Build setup
         shell: pwsh
         run: installer/build.ps1 -Version ${{ steps.version.outputs.value }}
+      - name: Checksums
+        shell: pwsh
+        run: |
+          # sha256sum format, so `sha256sum -c SHA256SUMS` checks the download.
+          $setup = Get-Item "artifacts/MicControlNG-Setup-${{ steps.version.outputs.value }}.exe"
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("$PWD/artifacts/SHA256SUMS", "$hash  $($setup.Name)`n")
       - name: Publish release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.version.outputs.value }}'
-          gh release create '${{ github.ref_name }}' "artifacts/MicControlNG-Setup-$v.exe" --title "MicControlNG $v" --generate-notes
+          gh release create '${{ github.ref_name }}' "artifacts/MicControlNG-Setup-$v.exe" artifacts/SHA256SUMS --title "MicControlNG $v" --generate-notes

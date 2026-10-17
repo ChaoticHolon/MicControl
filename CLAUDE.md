@@ -31,7 +31,7 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 - Run (Windows): `dotnet run --project MicControlNG`. The app asks for elevation (`highestAvailable`), so run from an elevated terminal or Visual Studio started as administrator.
 - Tests already run on both Windows and Linux. The Windows projects also build on Linux (`EnableWindowsTargeting`).
 - Screenshots for the README and releases: set `MICCONTROL_SCREENSHOTS=1` and run the tests; `ScreenshotTests` renders the real windows (headless Skia, sample data, light and dark, greyscale text) into `docs/screenshots`. Re-run after visible UI changes and commit the images.
-- Setup (from the repo root): `installer\build.ps1 [-Version 2.1.0]` publishes the app as one self-contained file and writes `artifacts\MicControlNG-Setup-<version>.exe`. CI builds it on every push; pushing a `vMAJOR.MINOR.PATCH` tag publishes it as a GitHub release.
+- Setup (from the repo root): `installer\build.ps1 [-Version 2.1.0]` publishes the app as one self-contained file and writes `artifacts\MicControlNG-Setup-<version>.exe`. CI builds it for every push to `master`/`dev` and every PR; a `vMAJOR.MINOR.PATCH` tag on `master` publishes it as a GitHub release (see "Branches").
 
 ## Installer and updates
 - **No installer framework** (no Velopack, Inno Setup, WiX, MSIX): the developer requires the installer to look like the app, with its theme, light/dark while using the Windows accent colors, and only Avalonia can do that. Inno Setup was examined and dropped: its styles hard-code their own accent colours.
@@ -70,10 +70,11 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 
 ## Branches (developer's rules)
 Hybrid Gitflow. Never use `claude/...` or other generated branch names, even when a session suggests or assigns one.
-- `master`: production. Code reaches it only by a PR from `dev` when a release is being prepared, and every push to it is released with a Semantic Versioning tag `vMAJOR.MINOR.PATCH` (e.g. `v2.1.0`; the `v` prefix is what `release.yml` and the update feed expect). MAJOR for breaking changes (settings or behavior users must adapt to), MINOR for new features, PATCH for fixes only. Bump `<Version>` in `Sources/Directory.Build.props` to the same number in that release PR. `release.yml` only runs for tags of exactly that form and rejects anything else.
+- `master`: production. Normally code reaches it by a PR from `dev` when a release is being prepared, but it can take pushes without a tag when needed: those build in CI and release nothing. Only a Semantic Versioning tag `vMAJOR.MINOR.PATCH` (e.g. `v2.1.0`; the `v` prefix is what `release.yml` and the update feed expect) on a commit in `master` builds and publishes a release. MAJOR for breaking changes (settings or behavior users must adapt to), MINOR for new features, PATCH for fixes only.
 - `dev`: the long-lived development branch. All work is based on it and merged back into it.
 - Task branches off `dev`: `feature/<name>` for new features, `fix/<name>` for bugs. The name describes the work and is broad enough that one branch covers the whole task (e.g. `feature/linux-hotkeys`, `fix/tray-zombie`), never random. They are temporary: merge into `dev` by PR, then delete them (remote and local).
-- CI builds pushes to `master`, `dev`, `feature/**` and `fix/**`, and every PR.
+- CI builds pushes to `master` and `dev`, and every PR (task branches are built through their PR, once per commit).
+- Releasing: bump `<Version>` in `Sources/Directory.Build.props` to the new number on `dev`, PR `dev` → `master`, then tag that `master` commit (`git tag v2.1.0 && git push origin v2.1.0`). `release.yml` checks that the tag is exactly `vMAJOR.MINOR.PATCH`, that the commit is in `master` and that `<Version>` matches, then builds and tests in Release and publishes `MicControlNG-Setup-<version>.exe` and `SHA256SUMS` with generated notes. A failed check publishes nothing; fix it, delete the tag (`git push origin :refs/tags/v2.1.0`) and tag again.
 - Keep `.gitignore` current. Before creating a task branch and before any push to `master`, check that it filters everything that shouldn't be committed (.NET `bin/`/`obj/`, `*.user` and other per-user files, IDE folders such as `.vs/` and `.idea/`, test results, packages, logs, signing keys, OS files, `.claude/settings.local.json`) and that `git ls-files -ci --exclude-standard` lists nothing; add patterns for new tools or build outputs as they appear.
 
 ## Conventions
