@@ -48,7 +48,8 @@ internal sealed class WindowLifecycleWatcher : IDisposable
             var message = new WindowLifecycleMessage(info.Kind, watcher.window, info.Name, info.Details, Origin(), ForegroundProcess());
             if (watcher.handler(message))
             {
-                return 0;
+                // Handled: a refused close returns 0; a handled session-end query answers TRUE (the session may end).
+                return msg == WM_QUERYENDSESSION ? 1 : 0;
             }
 
             if (msg == WM_DESTROY)
@@ -65,7 +66,8 @@ internal sealed class WindowLifecycleWatcher : IDisposable
         WM_CLOSE => (WindowLifecycleKind.CloseRequest, "WM_CLOSE", string.Empty),
         WM_SYSCOMMAND when ((int)wParam & 0xFFF0) == SC_CLOSE => (WindowLifecycleKind.CloseRequest, "WM_SYSCOMMAND", "SC_CLOSE"),
         WM_QUERYENDSESSION => (WindowLifecycleKind.SessionEndQuery, "WM_QUERYENDSESSION", EndSessionFlags(lParam)),
-        WM_ENDSESSION => (WindowLifecycleKind.SessionEnd, "WM_ENDSESSION", $"{(wParam != 0 ? "ending" : "not ending")}; {EndSessionFlags(lParam)}"),
+        WM_ENDSESSION when wParam != 0 => (WindowLifecycleKind.SessionEnd, "WM_ENDSESSION", $"ending; {EndSessionFlags(lParam)}"),
+        WM_ENDSESSION => (WindowLifecycleKind.SessionEndCancelled, "WM_ENDSESSION", $"not ending; {EndSessionFlags(lParam)}"),
         WM_DESTROY => (WindowLifecycleKind.Destroyed, "WM_DESTROY", string.Empty),
         _ => null,
     };

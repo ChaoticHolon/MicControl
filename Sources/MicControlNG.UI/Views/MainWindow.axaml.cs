@@ -89,7 +89,8 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
-        if (WindowState == WindowState.Normal)
+        // A hidden window's position isn't the user's (it may never have been shown).
+        if (WindowState == WindowState.Normal && IsVisible)
         {
             settings.Current.Window.Bounds = new WindowBounds(Position.X, Position.Y, Width, Height);
             settings.ScheduleSave();
@@ -98,7 +99,14 @@ public partial class MainWindow : Window
         LogClosing(logger, IsExiting, viewModel.AppMode, IsVisible);
         if (!IsExiting)
         {
-            if (viewModel.IsTrayMode)
+            if (!IsVisible)
+            {
+                // Another program closing our hidden window: the user didn't close anything, so neither hide with
+                // the tray notice nor exit.
+                e.Cancel = true;
+                LogHiddenCloseRefused(logger);
+            }
+            else if (viewModel.IsTrayMode)
             {
                 // Tray mode: closing hides to the tray; exit from the tray icon's menu.
                 e.Cancel = true;
@@ -142,6 +150,9 @@ public partial class MainWindow : Window
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Main window closing (exiting: {Exiting}, app mode: {AppMode}, visible: {Visible})")]
     private static partial void LogClosing(ILogger logger, bool exiting, AppMode appMode, bool visible);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a request to close the hidden main window while the app is running")]
+    private static partial void LogHiddenCloseRefused(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Main window's saved position {Position} is off every monitor; centring it on the primary one")]
     private static partial void LogOffScreen(ILogger logger, PixelPoint position);

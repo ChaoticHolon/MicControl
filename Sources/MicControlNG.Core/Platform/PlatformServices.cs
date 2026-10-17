@@ -159,17 +159,23 @@ public interface IWindowInterop
 
     /// <summary>
     /// Reports close and session-end messages a window receives (close requests, session ending, destruction).
-    /// The handler runs on the window's thread; returning <c>true</c> swallows the message so the window survives.
+    /// The handler runs on the window's thread; returning <c>true</c> handles the message so the window's own code
+    /// never sees it: a close request is refused, and a session-end query is answered "yes, the session may end".
     /// Dispose the result to stop watching.
     /// </summary>
     IDisposable WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler);
 
     /// <summary>
-    /// Hidden helper windows the UI toolkit created on the calling (UI) thread, such as Avalonia's dispatcher and
-    /// tray icon window. If one is closed, the UI stops processing work while the process stays alive.
+    /// Hidden helper windows on the calling (UI) thread that the app needs but didn't create itself: Avalonia's
+    /// dispatcher and tray icon window (if it's closed, the UI stops processing work while the process stays alive),
+    /// the hidden owner of windows kept off the taskbar (closing it destroys the overlay and tray popup), and the
+    /// input method windows.
     /// </summary>
-    IReadOnlyList<nint> FindToolkitHelperWindows();
+    IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows();
 }
+
+/// <summary>A hidden helper window, with a name for the log (e.g. "UI message window").</summary>
+public sealed record ToolkitHelperWindow(nint Handle, string Name);
 
 public enum WindowLifecycleKind
 {
@@ -179,8 +185,11 @@ public enum WindowLifecycleKind
     /// <summary>The OS asks whether the session may end (shutdown, restart, sign-out, or an app restart request).</summary>
     SessionEndQuery,
 
-    /// <summary>The session is (or is no longer) ending.</summary>
+    /// <summary>The session is ending now: the OS ends the process soon after this message returns.</summary>
     SessionEnd,
+
+    /// <summary>A session end that was asked about was cancelled (e.g. another app vetoed it); the session goes on.</summary>
+    SessionEndCancelled,
 
     /// <summary>The window is being destroyed.</summary>
     Destroyed,

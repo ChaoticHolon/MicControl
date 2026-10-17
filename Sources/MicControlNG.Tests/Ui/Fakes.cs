@@ -227,7 +227,9 @@ internal sealed class FakeWindowInterop : IWindowInterop
         return new Watch(() => Watched.RemoveAll(w => w.Handler == handler));
     }
 
-    public IReadOnlyList<nint> FindToolkitHelperWindows() => [];
+    public List<ToolkitHelperWindow> HelperWindows { get; } = [];
+
+    public IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows() => HelperWindows;
 
     private sealed class Watch(Action dispose) : IDisposable
     {

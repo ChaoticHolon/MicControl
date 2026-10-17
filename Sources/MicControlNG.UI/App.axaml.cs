@@ -51,7 +51,6 @@ public partial class App : Application
     private AppShutdown? appShutdown;
     private Action? cleanup;
     private Timer? watchdogTimer;
-    private readonly List<IDisposable> lifecycleWatchers = [];
 
     /// <summary>Used by the XAML previewer and headless tests; nothing is composed.</summary>
     public App()
@@ -86,8 +85,7 @@ public partial class App : Application
                 Path.Combine(AppContext.BaseDirectory, "Resources", "Notifications"),
                 Path.Combine(settingsDirectory, "Resources", "Notifications")))
             .AddSingleton<MainViewModel>()
-            .AddSingleton<MainWindow>()
-            .AddSingleton<OverlayWindow>();
+            .AddSingleton<MainWindow>();
     }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -177,13 +175,54 @@ public partial class App : Application
             mainWindow.ShowAndActivate();
         }
 
-        var popup = new TrayPopupWindow(viewModel, ShowMainWindow, services.GetRequiredService<ILogger<TrayPopupWindow>>(), shutdown);
+        // Windows ends the process soon after WM_ENDSESSION returns, so write the log out before returning.
+        var guard = new WindowGuard(services.GetRequiredService<IWindowInterop>(), shutdown, logger, () =>
+        {
+            Exit(desktop, mainWindow, logger, "the session is ending");
+            fileLogs.Dispose();
+        });
+        guard.Watch(mainWindow, "main window");
+
+        // The overlay and tray popup refuse to close, but a window can still be destroyed without being asked (e.g.
+        // with its owner). A destroyed window can't be shown again, so a new one replaces it.
+        OverlayWindow CreateOverlay()
+        {
+            var overlay = ActivatorUtilities.CreateInstance<OverlayWindow>(services);
+            overlay.Closed += (_, _) => ReplaceWhenDestroyed("overlay", () => CreateOverlay().SyncVisibility());
+            guard.Watch(overlay, "overlay");
+            return overlay;
+        }
+
+        TrayPopupWindow? popup = null;
+        TrayPopupWindow CreatePopup()
+        {
+            var created = new TrayPopupWindow(viewModel, ShowMainWindow, services.GetRequiredService<ILogger<TrayPopupWindow>>(), shutdown);
+            created.Closed += (_, _) => ReplaceWhenDestroyed("tray popup", () => popup = CreatePopup());
+            guard.Watch(created, "tray popup");
+            return created;
+        }
+
+        void ReplaceWhenDestroyed(string window, Action replace)
+        {
+            if (!shutdown.IsExiting)
+            {
+                LogWindowReplaced(logger, window);
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (!shutdown.IsExiting)
+                    {
+                        replace();
+                    }
+                });
+            }
+        }
+
+        popup = CreatePopup();
         trayIcon = new TrayIcon(
-            this, viewModel, popup.Toggle, ShowMainWindow, () => Exit(desktop, mainWindow, logger, "tray menu"),
+            this, viewModel, () => popup.Toggle(), ShowMainWindow, () => Exit(desktop, mainWindow, logger, "tray menu"),
             services.GetRequiredService<ILogger<TrayIcon>>());
-        var overlay = services.GetRequiredService<OverlayWindow>();
-        overlay.SyncVisibility();
-        WatchWindowLifecycles(services.GetRequiredService<IWindowInterop>(), logger, (mainWindow, "main window"), (overlay, "overlay"), (popup, "tray popup"));
+        CreateOverlay().SyncVisibility();
+        guard.ProtectHelperWindows();
         options.RegisterShowRequest?.Invoke(() =>
         {
             LogShowRequested(logger);
@@ -191,7 +230,8 @@ public partial class App : Application
         });
         options.RegisterExitRequest?.Invoke(() => Exit(desktop, mainWindow, logger, "asked to close by setup"));
         // A session end (shutdown, restart, sign-out, or an installer's Restart Manager request) exits the app.
-        // Without this, the hidden main window cancels its close in Tray mode and that vetoes the shutdown.
+        // Without this, the hidden main window cancels its close in Tray mode and that vetoes the shutdown. On Windows
+        // the guard answers the query and exits on WM_ENDSESSION instead; this covers platforms without it.
         desktop.ShutdownRequested += (_, _) =>
         {
             if (shutdown.BeginExit("the session is ending"))
@@ -204,7 +244,7 @@ public partial class App : Application
         cleanup = () =>
         {
             watchdogTimer?.Dispose();
-            lifecycleWatchers.ForEach(w => w.Dispose());
+            guard.Dispose();
             trayIcon.Dispose();
             settings.Flush();
             host.Dispose();
@@ -269,46 +309,6 @@ public partial class App : Application
         }
 
         fileLogger?.Dispose();
-    }
-
-    private void WatchWindowLifecycles(IWindowInterop interop, ILogger logger, params (Avalonia.Controls.Window Window, string Name)[] windows)
-    {
-        // Our own windows: log who asks them to close. Their Closing handlers decide what happens.
-        foreach (var (window, name) in windows)
-        {
-            if (window.TryGetPlatformHandle()?.Handle is { } handle and not 0)
-            {
-                lifecycleWatchers.Add(interop.WatchLifecycle(handle, name, message =>
-                {
-                    LogWindowMessage(logger, message.Window, message.Message, message.Details, message.Origin, message.ForegroundProcess ?? "unknown");
-                    return false;
-                }));
-            }
-        }
-
-        // Avalonia's hidden helper window carries dispatcher wake-ups, timers and the tray icon. If anything closes
-        // it, the app becomes a zombie: no tray icon, hotkeys and timers dead, process alive. Never let it close.
-        foreach (var handle in interop.FindToolkitHelperWindows())
-        {
-            lifecycleWatchers.Add(interop.WatchLifecycle(handle, "UI message window", message =>
-            {
-                LogWindowMessage(logger, message.Window, message.Message, message.Details, message.Origin, message.ForegroundProcess ?? "unknown");
-                if (message.Kind == WindowLifecycleKind.CloseRequest)
-                {
-                    LogHelperCloseRefused(logger, message.Message, message.Origin, message.ForegroundProcess ?? "unknown");
-                    return true;
-                }
-
-                if (message.Kind == WindowLifecycleKind.Destroyed && appShutdown?.IsExiting != true)
-                {
-                    LogHelperDestroyed(logger);
-                }
-
-                return false;
-            }));
-        }
-
-        LogLifecycleWatch(logger, lifecycleWatchers.Count);
     }
 
     /// <summary>
@@ -389,17 +389,8 @@ public partial class App : Application
     [LoggerMessage(Level = LogLevel.Information, Message = "Session ending (shutdown, restart, sign-out or an installer request): exiting instead of hiding to the tray")]
     private static partial void LogSessionEnding(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "{Window} received {Message} {Details} ({Origin}; foreground: {Foreground})")]
-    private static partial void LogWindowMessage(ILogger logger, string window, string message, string details, string origin, string foreground);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Refused {Message} to the UI message window ({Origin}; foreground: {Foreground}); closing it would leave the app running without a tray icon or working hotkeys")]
-    private static partial void LogHelperCloseRefused(ILogger logger, string message, string origin, string foreground);
-
-    [LoggerMessage(Level = LogLevel.Critical, Message = "The UI message window was destroyed while the app is running; the watchdog will restart the app")]
-    private static partial void LogHelperDestroyed(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Watching {Count} windows for close and session-end messages")]
-    private static partial void LogLifecycleWatch(ILogger logger, int count);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The {Window} was destroyed while the app is running; replacing it with a new one")]
+    private static partial void LogWindowReplaced(ILogger logger, string window);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "UI thread hasn't processed work for about {Seconds} s")]
     private static partial void LogUiLate(ILogger logger, int seconds);

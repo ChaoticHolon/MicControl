@@ -20,22 +20,30 @@ public sealed class WindowInterop : IWindowInterop
     public IDisposable WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler) =>
         new WindowLifecycleWatcher(handle, window, handler);
 
-    public IReadOnlyList<nint> FindToolkitHelperWindows()
+    public IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows()
     {
-        // Avalonia's hidden top-level window that receives dispatcher wake-ups, dispatcher timers and tray icon
-        // messages. Its class name is "AvaloniaMessageWindow <guid>".
-        var found = new List<nint>();
+        var found = new List<ToolkitHelperWindow>();
         var buffer = new char[256];
         EnumThreadWindows(GetCurrentThreadId(), (hWnd, _) =>
         {
             var length = GetClassName(hWnd, buffer, buffer.Length);
-            if (length > 0 && new string(buffer, 0, length).StartsWith("AvaloniaMessageWindow", StringComparison.Ordinal))
+            if (length > 0 && HelperName(new string(buffer, 0, length)) is { } name)
             {
-                found.Add(hWnd);
+                found.Add(new ToolkitHelperWindow(hWnd, name));
             }
 
             return true;
         }, 0);
         return found;
     }
+
+    private static string? HelperName(string className) =>
+        // "AvaloniaMessageWindow <guid>": dispatcher wake-ups, dispatcher timers and tray icon messages.
+        className.StartsWith("AvaloniaMessageWindow", StringComparison.Ordinal) ? "UI message window"
+        // "AvaloniaSimpleWindow-<guid>": among others the hidden owner of windows kept off the taskbar (overlay,
+        // tray popup). Windows destroys owned windows with their owner.
+        : className.StartsWith("AvaloniaSimpleWindow", StringComparison.Ordinal) ? "hidden owner window"
+        // The thread's default input method (IME) windows, created by Windows for text input.
+        : className is "IME" or "MSCTFIME UI" ? "input method window"
+        : null;
 }
