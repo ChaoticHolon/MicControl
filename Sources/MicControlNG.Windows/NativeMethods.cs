@@ -96,4 +96,61 @@ internal static partial class NativeMethods
     public static partial nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
 
     public static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
+
+    // Window lifecycle diagnostics (WindowLifecycleWatcher).
+    public const uint WM_DESTROY = 0x0002;
+    public const uint WM_CLOSE = 0x0010;
+    public const uint WM_QUERYENDSESSION = 0x0011;
+    public const uint WM_ENDSESSION = 0x0016;
+    public const uint WM_SYSCOMMAND = 0x0112;
+    public const int SC_CLOSE = 0xF060;
+    public const uint ENDSESSION_CLOSEAPP = 0x00000001;
+    public const uint ENDSESSION_CRITICAL = 0x40000000;
+    public const uint ENDSESSION_LOGOFF = 0x80000000;
+    public const uint ISMEX_SEND = 0x00000001;
+    public const uint ISMEX_NOTIFY = 0x00000002;
+    public const uint ISMEX_CALLBACK = 0x00000004;
+    public const uint ISMEX_REPLIED = 0x00000008;
+
+    public delegate nint SubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam, nuint uIdSubclass, nuint dwRefData);
+
+    public delegate bool EnumWindowsProc(nint hWnd, nint lParam);
+
+    public delegate nint WndProc(nint hWnd, uint uMsg, nint wParam, nint lParam);
+
+    public const int GWLP_WNDPROC = -4;
+
+    [LibraryImport("user32.dll", EntryPoint = "CallWindowProcW")]
+    public static partial nint CallWindowProc(nint lpPrevWndFunc, nint hWnd, uint uMsg, nint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [LibraryImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetWindowSubclass(nint hWnd, SubclassProc pfnSubclass, nuint uIdSubclass, nuint dwRefData);
+
+    [LibraryImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool RemoveWindowSubclass(nint hWnd, SubclassProc pfnSubclass, nuint uIdSubclass);
+
+    [LibraryImport("comctl32.dll")]
+    public static partial nint DefSubclassProc(nint hWnd, uint uMsg, nint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    public static partial uint InSendMessageEx(nint lpReserved);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetForegroundWindow();
+
+    [LibraryImport("user32.dll")]
+    public static partial uint GetWindowThreadProcessId(nint hWnd, out uint processId);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EnumThreadWindows(uint dwThreadId, EnumWindowsProc lpfn, nint lParam);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetClassNameW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int GetClassName(nint hWnd, [Out] char[] lpClassName, int nMaxCount);
 }

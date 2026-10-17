@@ -20,9 +20,11 @@ public partial class OverlayWindow : Window
     private readonly IWindowInterop interop;
     private readonly ILogger logger;
     private readonly bool isConstructed;
+    private bool isClosed;
 
-    public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop, ILogger<OverlayWindow>? logger = null)
+    public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop, ILogger<OverlayWindow>? logger = null, AppShutdown? shutdown = null)
     {
+        var appShutdown = shutdown ?? new AppShutdown();
         this.viewModel = viewModel;
         this.settings = settings;
         this.interop = interop;
@@ -30,16 +32,37 @@ public partial class OverlayWindow : Window
         DataContext = viewModel;
         InitializeComponent();
         ToolTip.SetServiceEnabled(Badge, false);
+        // A closed window can't be shown again, so only an app exit may close it; anything else (e.g. another
+        // program closing all our windows) is refused and logged.
+        Closing += (_, e) =>
+        {
+            if (!appShutdown.IsExiting)
+            {
+                e.Cancel = true;
+                LogCloseRefused(this.logger);
+            }
+        };
 
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        viewModel.OverlayPlacementRequested += (_, _) => Place("corner preset", fromCurrentScreen: true);
+        viewModel.OverlayPlacementRequested += OnPlacementRequested;
         Badge.PointerPressed += OnBadgePointerPressed;
         PositionChanged += (_, _) => SaveBounds();
         // A monitor was connected or disconnected: fall back to the primary one, and go back when it returns.
         Screens.Changed += (_, _) =>
         {
-            LogMonitors(changed: true);
-            Place("monitors changed");
+            if (!isClosed)
+            {
+                LogMonitors(changed: true);
+                Place("monitors changed");
+            }
+        };
+        // Closed for good (the app exits, or the window was destroyed and the app replaces it): stop following the
+        // view model, so a closed window is never shown again.
+        Closed += (_, _) =>
+        {
+            isClosed = true;
+            viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            viewModel.OverlayPlacementRequested -= OnPlacementRequested;
         };
         Opened += (_, _) =>
         {
@@ -52,6 +75,11 @@ public partial class OverlayWindow : Window
 
     public void SyncVisibility()
     {
+        if (isClosed)
+        {
+            return;
+        }
+
         LogVisibility(logger, viewModel.IsOverlayVisible, viewModel.OverlayVisibility, viewModel.IsMuted);
         if (viewModel.IsOverlayVisible)
         {
@@ -92,6 +120,8 @@ public partial class OverlayWindow : Window
                 break;
         }
     }
+
+    private void OnPlacementRequested(object? sender, EventArgs e) => Place("corner preset", fromCurrentScreen: true);
 
     private void OnBadgePointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -235,4 +265,7 @@ public partial class OverlayWindow : Window
 
     [LoggerMessage(Level = LogLevel.Trace, Message = "Overlay dragged to {Position}")]
     private static partial void LogDragged(ILogger logger, PixelPoint position);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a request to close the overlay window while the app is running")]
+    private static partial void LogCloseRefused(ILogger logger);
 }
