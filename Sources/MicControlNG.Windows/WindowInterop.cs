@@ -16,4 +16,42 @@ public sealed class WindowInterop : IWindowInterop
         style = clickThrough ? style | WS_EX_TRANSPARENT : style & ~WS_EX_TRANSPARENT;
         SetWindowLongPtr(handle, GWL_EXSTYLE, style);
     }
+
+    public IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler) =>
+        WindowLifecycleWatcher.TryStart(handle, window, handler);
+
+    public IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows()
+    {
+        // Every thread of this process, not just the UI thread: Avalonia also keeps hidden windows on other threads
+        // (e.g. its renderer's), and a WM_CLOSE posted to all of a process's windows (taskkill) destroys those too.
+        var found = new List<ToolkitHelperWindow>();
+        var buffer = new char[256];
+        var uiThread = GetCurrentThreadId();
+        EnumWindows((hWnd, _) =>
+        {
+            var thread = GetWindowThreadProcessId(hWnd, out var pid);
+            if (pid == Environment.ProcessId)
+            {
+                var length = GetClassName(hWnd, buffer, buffer.Length);
+                if (length > 0 && HelperName(new string(buffer, 0, length)) is { } name)
+                {
+                    var onUiThread = thread == uiThread;
+                    found.Add(new ToolkitHelperWindow(hWnd, onUiThread ? name : $"{name} on thread {thread}", (int)thread, onUiThread));
+                }
+            }
+
+            return true;
+        }, 0);
+        return found;
+    }
+
+    private static string? HelperName(string className) =>
+        // "AvaloniaMessageWindow <guid>": dispatcher wake-ups, dispatcher timers and tray icon messages.
+        className.StartsWith("AvaloniaMessageWindow", StringComparison.Ordinal) ? "UI message window"
+        // "AvaloniaSimpleWindow-<guid>": Avalonia's other hidden windows. On the UI thread, among others the owner of
+        // windows kept off the taskbar (overlay, tray popup): Windows destroys owned windows with their owner.
+        : className.StartsWith("AvaloniaSimpleWindow", StringComparison.Ordinal) ? "hidden Avalonia window"
+        // Each thread's default input method (IME) windows, created by Windows for text input.
+        : className is "IME" or "MSCTFIME UI" ? "input method window"
+        : null;
 }

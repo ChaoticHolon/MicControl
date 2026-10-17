@@ -34,6 +34,32 @@ public sealed class FileLoggerTests : IDisposable
     }
 
     [Fact]
+    public void Flush_WritesEverythingQueued_AndKeepsLogging()
+    {
+        var provider = new FileLoggerProvider(directory, new LogLevelSwitch());
+        var logger = provider.CreateLogger("MicControlNG.Tests.Sample");
+        for (var i = 0; i < 100; i++)
+        {
+            Write(logger, LogLevel.Information, $"line {i}");
+        }
+
+        Assert.True(provider.Flush(TimeSpan.FromSeconds(5)));
+        Assert.Contains("line 99", ReadShared(provider.FilePath), StringComparison.Ordinal);
+
+        // A session end flushes, then the app still logs its last lines.
+        Write(logger, LogLevel.Information, "after the flush");
+        provider.Dispose();
+        Assert.Contains("after the flush", File.ReadAllText(provider.FilePath), StringComparison.Ordinal);
+    }
+
+    private static string ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    [Fact]
     public void DefaultLevel_IsDebug()
     {
         Assert.Equal(LogLevel.Debug, new LogLevelSwitch().Minimum);
@@ -55,8 +81,29 @@ public sealed class FileLoggerTests : IDisposable
 
         new FileLoggerProvider(directory, new LogLevelSwitch()).Dispose();
 
-        Assert.All(files.Take(3), f => Assert.False(File.Exists(f), $"{Path.GetFileName(f)} should have been deleted"));
-        Assert.All(files.Skip(3), f => Assert.True(File.Exists(f), $"{Path.GetFileName(f)} should have been kept"));
+        // Today's file counts as one of the seven.
+        Assert.All(files.Take(4), f => Assert.False(File.Exists(f), $"{Path.GetFileName(f)} should have been deleted"));
+        Assert.All(files.Skip(4), f => Assert.True(File.Exists(f), $"{Path.GetFileName(f)} should have been kept"));
+    }
+
+    [Fact]
+    public void StartsANewFileAtMidnight()
+    {
+        var now = new DateTime(2026, 10, 17, 23, 59, 59, DateTimeKind.Local);
+        var provider = new FileLoggerProvider(directory, new LogLevelSwitch(), () => now);
+        var logger = provider.CreateLogger("MicControlNG.Tests.Sample");
+
+        Write(logger, LogLevel.Information, "before midnight");
+        now = now.AddSeconds(2);
+        Write(logger, LogLevel.Information, "after midnight");
+        provider.Dispose();
+
+        var first = File.ReadAllText(Path.Combine(directory, "MicControlNG-20261017.log"));
+        var second = File.ReadAllText(Path.Combine(directory, "MicControlNG-20261018.log"));
+        Assert.Contains("before midnight", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("after midnight", first, StringComparison.Ordinal);
+        Assert.Contains("00:00:01.000 [Information] Sample: after midnight", second, StringComparison.Ordinal);
+        Assert.Equal("MicControlNG-20261018.log", Path.GetFileName(provider.FilePath));
     }
 
     [Fact]

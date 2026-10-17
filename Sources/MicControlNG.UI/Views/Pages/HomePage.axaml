@@ -47,7 +47,7 @@
             <ComboBox MinWidth="280" ItemsSource="{Binding Microphones}" SelectedValue="{Binding SelectedMicrophoneId}"
                       DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}" />
         </c:SettingRow>
-        <c:SettingRow Glyph="&#xE7C3;" Header="Mode" Description="{Binding ModeDescription}">
+        <c:SettingRow Glyph="&#xE8AB;" Header="Mode" Description="{Binding ModeDescription}">
             <ComboBox MinWidth="200" ItemsSource="{Binding MuteModes}" SelectedValue="{Binding MuteMode}"
                       DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
         </c:SettingRow>

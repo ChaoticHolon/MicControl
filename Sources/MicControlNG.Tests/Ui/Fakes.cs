@@ -218,4 +218,29 @@ internal sealed class FakeWindowInterop : IWindowInterop
     public void ConfigureOverlay(nint handle, bool clickThrough)
     {
     }
+
+    public List<(string Window, Func<WindowLifecycleMessage, bool> Handler)> Watched { get; } = [];
+
+    /// <summary>Windows the OS "refuses" to let us watch.</summary>
+    public HashSet<nint> Unwatchable { get; } = [];
+
+    public IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler)
+    {
+        if (Unwatchable.Contains(handle))
+        {
+            return null;
+        }
+
+        Watched.Add((window, handler));
+        return new Watch(() => Watched.RemoveAll(w => w.Handler == handler));
+    }
+
+    public List<ToolkitHelperWindow> HelperWindows { get; } = [];
+
+    public IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows() => HelperWindows;
+
+    private sealed class Watch(Action dispose) : IDisposable
+    {
+        public void Dispose() => dispose();
+    }
 }

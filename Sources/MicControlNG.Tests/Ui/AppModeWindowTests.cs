@@ -15,7 +15,7 @@ public sealed class AppModeWindowTests
     {
         using var harness = new TestHarness(s => s.Window.TrayNoticeDismissed = true);
         var exited = false;
-        var window = new MainWindow(harness.ViewModel, harness.Settings) { ExitApplication = () => exited = true };
+        var window = new MainWindow(harness.ViewModel, harness.Settings) { ExitApplication = _ => exited = true };
         window.Show();
 
         window.Close();
@@ -30,7 +30,7 @@ public sealed class AppModeWindowTests
     public void TrayMode_MinimizeHidesToTray()
     {
         using var harness = new TestHarness(s => s.Window.TrayNoticeDismissed = true);
-        var window = new MainWindow(harness.ViewModel, harness.Settings) { ExitApplication = () => { } };
+        var window = new MainWindow(harness.ViewModel, harness.Settings) { ExitApplication = _ => { } };
         window.Show();
 
         window.WindowState = WindowState.Minimized;
@@ -44,7 +44,7 @@ public sealed class AppModeWindowTests
     {
         using var harness = new TestHarness(s => s.Window.AppMode = AppMode.Window);
         var exited = false;
-        var window = new MainWindow(harness.ViewModel, harness.Settings) { ExitApplication = () => exited = true };
+        var window = new MainWindow(harness.ViewModel, harness.Settings) { ExitApplication = _ => exited = true };
         window.Show();
 
         window.WindowState = WindowState.Minimized;
