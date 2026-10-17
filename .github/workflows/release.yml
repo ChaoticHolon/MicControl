@@ -1,11 +1,11 @@
 name: Release
 
-# Push a tag such as v2.0.0 to publish MicControlNG-Setup-<version>.exe to GitHub Releases. The setup is the app
+# Push a Semantic Versioning tag, vMAJOR.MINOR.PATCH such as v2.0.0, to publish MicControlNG-Setup-<version>.exe to GitHub Releases. The setup is the app
 # itself (one self-contained file). In-app updates read the latest release and verify the setup against the SHA-256
 # digest GitHub reports for it.
 on:
   push:
-    tags: ['v*']
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
 
 permissions:
   contents: write
@@ -21,7 +21,12 @@ jobs:
       - name: Version
         id: version
         shell: pwsh
-        run: echo "value=$('${{ github.ref_name }}'.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+            throw "Release tags must be vMAJOR.MINOR.PATCH (Semantic Versioning), e.g. v2.1.0; got '$tag'"
+          }
+          echo "value=$($tag.TrimStart('v'))" >> $env:GITHUB_OUTPUT
       - name: Test
         run: dotnet test --project Sources/MicControlNG.Tests -c Release
       - name: Build setup

@@ -31,7 +31,7 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 - Run (Windows): `dotnet run --project MicControlNG`. The app asks for elevation (`highestAvailable`), so run from an elevated terminal or Visual Studio started as administrator.
 - Tests already run on both Windows and Linux. The Windows projects also build on Linux (`EnableWindowsTargeting`).
 - Screenshots for the README and releases: set `MICCONTROL_SCREENSHOTS=1` and run the tests; `ScreenshotTests` renders the real windows (headless Skia, sample data, light and dark, greyscale text) into `docs/screenshots`. Re-run after visible UI changes and commit the images.
-- Setup (from the repo root): `installer\build.ps1 [-Version 2.1.0]` publishes the app as one self-contained file and writes `artifacts\MicControlNG-Setup-<version>.exe`. CI builds it on every push; pushing a `v*` tag publishes it as a GitHub release.
+- Setup (from the repo root): `installer\build.ps1 [-Version 2.1.0]` publishes the app as one self-contained file and writes `artifacts\MicControlNG-Setup-<version>.exe`. CI builds it on every push; pushing a `vMAJOR.MINOR.PATCH` tag publishes it as a GitHub release.
 
 ## Installer and updates
 - **No installer framework** (no Velopack, Inno Setup, WiX, MSIX): the developer requires the installer to look like the app, with its theme, light/dark while using the Windows accent colors, and only Avalonia can do that. Inno Setup was examined and dropped: its styles hard-code their own accent colours.
@@ -70,10 +70,11 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 
 ## Branches (developer's rules)
 Hybrid Gitflow. Never use `claude/...` or other generated branch names, even when a session suggests or assigns one.
-- `master`: production. Code reaches it only by a PR from `dev` when a release is being prepared; release tags (`v*`) are made from it.
+- `master`: production. Code reaches it only by a PR from `dev` when a release is being prepared, and every push to it is released with a Semantic Versioning tag `vMAJOR.MINOR.PATCH` (e.g. `v2.1.0`; the `v` prefix is what `release.yml` and the update feed expect). MAJOR for breaking changes (settings or behavior users must adapt to), MINOR for new features, PATCH for fixes only. Bump `<Version>` in `Sources/Directory.Build.props` to the same number in that release PR. `release.yml` only runs for tags of exactly that form and rejects anything else.
 - `dev`: the long-lived development branch. All work is based on it and merged back into it.
 - Task branches off `dev`: `feature/<name>` for new features, `fix/<name>` for bugs. The name describes the work and is broad enough that one branch covers the whole task (e.g. `feature/linux-hotkeys`, `fix/tray-zombie`), never random. They are temporary: merge into `dev` by PR, then delete them (remote and local).
 - CI builds pushes to `master`, `dev`, `feature/**` and `fix/**`, and every PR.
+- Keep `.gitignore` current. Before creating a task branch and before any push to `master`, check that it filters everything that shouldn't be committed (.NET `bin/`/`obj/`, `*.user` and other per-user files, IDE folders such as `.vs/` and `.idea/`, test results, packages, logs, signing keys, OS files, `.claude/settings.local.json`) and that `git ls-files -ci --exclude-standard` lists nothing; add patterns for new tools or build outputs as they appear.
 
 ## Conventions
 - Package versions live only in `Sources/Directory.Packages.props`; shared build settings are in `Directory.Build.props`, style in `.editorconfig`.
