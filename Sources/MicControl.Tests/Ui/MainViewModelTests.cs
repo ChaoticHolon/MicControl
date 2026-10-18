@@ -235,7 +235,7 @@ public sealed class MainViewModelTests
 
         Assert.True(harness.ViewModel.ShouldShowTrayNotice());
         Assert.False(harness.ViewModel.ShouldShowTrayNotice());
-        Assert.Contains("right-click the tray icon to exit", harness.ViewModel.TrayNoticeText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window.", harness.ViewModel.TrayNoticeText);
 
         harness.ViewModel.DismissTrayNoticeForever();
         Assert.True(harness.ViewModel.Settings.Window.TrayNoticeDismissed);
@@ -394,5 +394,26 @@ public sealed class MainViewModelTests
 
         vm.IsTrayMode = true;
         Assert.Equal(AppMode.Tray, vm.Settings.Window.AppMode);
+    }
+
+    [AvaloniaFact]
+    public void ShowOverlaySlider_StepsFromNeverToAlways()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+
+        string[] names = [];
+        foreach (var step in new[] { 0.0, 1, 2, 3 })
+        {
+            vm.OverlayVisibilityStep = step;
+            Assert.Equal(step, vm.OverlayVisibilityStep);
+            names = [.. names, vm.OverlayVisibilityName];
+        }
+
+        Assert.Equal(["Never", "When muted", "When live", "Always"], names);
+        vm.OverlayVisibilityStep = 1.4; // a drag snaps to the nearest stop
+        Assert.Equal(OverlayVisibilityMode.WhenMuted, vm.OverlayVisibility);
+        vm.OverlayEnabled = false;
+        Assert.Equal(0, vm.OverlayVisibilityStep);
     }
 }

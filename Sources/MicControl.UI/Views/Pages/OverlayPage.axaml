@@ -25,8 +25,12 @@
         </Border>
 
         <c:SettingRow Glyph="&#xE7F4;" Header="Show overlay">
-            <ComboBox MinWidth="200" ItemsSource="{Binding OverlayVisibilityModes}" SelectedValue="{Binding OverlayVisibility}"
-                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Slider Width="200" Minimum="0" Maximum="3" TickFrequency="1" IsSnapToTickEnabled="True" TickPlacement="BottomRight"
+                        SmallChange="1" LargeChange="1" Value="{Binding OverlayVisibilityStep}" VerticalAlignment="Center"
+                        AutomationProperties.Name="Show overlay" ToolTip.Tip="Never, When muted, When live, Always" />
+                <TextBlock Width="84" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding OverlayVisibilityName}" />
+            </StackPanel>
         </c:SettingRow>
         <StackPanel IsEnabled="{Binding OverlayEnabled}">
             <c:SettingRow Glyph="&#xE8B0;" Header="Position" Description="Snap to a corner, or move it anywhere with Edit position (double-click the overlay when done)">

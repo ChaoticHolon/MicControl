@@ -104,7 +104,7 @@
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupDone}">
                         <TextBlock FontSize="24" FontWeight="SemiBold" Text="You're all set" />
                         <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding MainHotkey.Key, StringFormat='Use {0} to talk. Change anything later from Home.'}" IsVisible="{Binding HasMainHotkey}" />
-                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: click the MicControl icon in the notification area (near the clock) for quick controls, or right-click it for everything else." />
+                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: MicControl lives in the notification area, near the clock. Right-click its icon for quick controls or to exit; click it to open this window." />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">

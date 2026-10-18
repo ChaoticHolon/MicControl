@@ -47,9 +47,25 @@ public sealed partial class MainViewModel
             }
 
             OnPropertyChanged(nameof(OverlayEnabled));
+            OnPropertyChanged(nameof(OverlayVisibilityStep));
+            OnPropertyChanged(nameof(OverlayVisibilityName));
             OnOverlayVisibilityInputsChanged();
         }
     }
+
+    /// <summary>The Overlay page's "Show overlay" slider, from least to most shown.</summary>
+    private static readonly OverlayVisibilityMode[] VisibilitySteps =
+        [OverlayVisibilityMode.Never, OverlayVisibilityMode.WhenMuted, OverlayVisibilityMode.WhenUnmuted, OverlayVisibilityMode.Always];
+
+    /// <summary>The slider's position: Never (0) → When muted → When live → Always (3).</summary>
+    public double OverlayVisibilityStep
+    {
+        get => Array.IndexOf(VisibilitySteps, OverlayVisibility);
+        set => OverlayVisibility = VisibilitySteps[Math.Clamp((int)Math.Round(value), 0, VisibilitySteps.Length - 1)];
+    }
+
+    /// <summary>The name of the slider's current stop, shown beside it.</summary>
+    public string OverlayVisibilityName => OverlayVisibilityModes.First(m => Equals(m.Value, OverlayVisibility)).Name;
 
     /// <summary>Quick on/off switch; turning it back on restores the last visibility mode.</summary>
     public bool OverlayEnabled

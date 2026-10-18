@@ -503,7 +503,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Save();
     }
 
-    public string TrayNoticeText => $"{AppName} is still running in the tray. Right-click the tray icon to exit.";
+    public string TrayNoticeText => "Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window.";
 
     public void Dispose()
     {
