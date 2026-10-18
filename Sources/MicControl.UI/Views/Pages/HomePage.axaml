@@ -64,25 +64,29 @@
                       DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE767;" Header="Input volume" Description="When on, MicControl keeps your microphone at this level">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Slider Width="180" Minimum="0" Maximum="100" Value="{Binding MicrophoneVolume}" VerticalAlignment="Center"
-                        IsEnabled="{Binding MicrophoneVolumeControlEnabled}" AutomationProperties.Name="Microphone volume" />
-                <TextBlock Width="44" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding MicrophoneVolume, StringFormat={}{0:0}%}" />
+            <!-- The level only shows while it's kept: a greyed slider next to "Off" read as "50% Off" -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding MicrophoneVolumeControlEnabled}">
+                    <Slider Classes="row" Minimum="0" Maximum="100" Value="{Binding MicrophoneVolume}" AutomationProperties.Name="Microphone volume" />
+                    <TextBlock Classes="sliderValue" Text="{Binding MicrophoneVolume, StringFormat={}{0:0}%}" />
+                </StackPanel>
                 <ToggleSwitch IsChecked="{Binding MicrophoneVolumeControlEnabled}" AutomationProperties.Name="Keep input volume" />
             </StackPanel>
         </c:SettingRow>
 
-        <TextBlock Classes="section" Text="Quick settings" />
+        <TextBlock Classes="section" Text="Overlay and sounds" />
         <c:SettingRow Glyph="&#xE7F4;" Header="Show overlay" Description="An on-screen indicator of whether you're muted. Details on the Overlay page.">
             <ToggleSwitch IsChecked="{Binding OverlayEnabled}" AutomationProperties.Name="Show overlay" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE995;" Header="Play sounds" Description="{Binding SoundsDescription}">
             <ToggleSwitch IsChecked="{Binding SoundsEnabled}" AutomationProperties.Name="Play sounds" />
         </c:SettingRow>
-        <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows">
+
+        <TextBlock Classes="section" Text="App" />
+        <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows" Description="Opens MicControl in the tray when you sign in">
             <ToggleSwitch IsChecked="{Binding RunAtStartup}" AutomationProperties.Name="Start with Windows" />
         </c:SettingRow>
-        <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding AppModeDescription}">
+        <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding CloseToTrayDescription}">
             <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE790;" Header="Theme">

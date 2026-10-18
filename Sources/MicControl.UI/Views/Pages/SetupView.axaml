@@ -8,11 +8,11 @@
              x:DataType="vm:MainViewModel">
     <Border Background="{DynamicResource PageBackgroundBrush}">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <Border Classes="card" MaxWidth="640" Margin="24,40" Padding="32,28" VerticalAlignment="Top">
+            <Border Classes="card setupCard" MaxWidth="640" Margin="24,40" Padding="32,28" VerticalAlignment="Top">
                 <StackPanel Spacing="16">
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Skip setup" Command="{Binding SkipSetupCommand}" IsVisible="{Binding !IsSetupDone}" />
-                        <TextBlock Classes="secondary" FontSize="13" VerticalAlignment="Center" Text="{Binding SetupProgressText}" />
+                        <TextBlock Classes="secondary" FontSize="13" VerticalAlignment="Center" Text="{Binding SetupProgressText}" IsVisible="{Binding !IsSetupDone}" />
                     </DockPanel>
 
                     <!-- Step 1: microphone -->
@@ -59,16 +59,22 @@
                             <ToggleSwitch IsChecked="{Binding OverlayEnabled}" />
                         </c:SettingRow>
                         <c:SettingRow Glyph="&#xE8B0;" Header="Overlay corner" IsEnabled="{Binding OverlayEnabled}">
+                            <!-- The same four corner buttons as the Overlay page -->
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Content="Top left" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopLeft}" />
-                                <Button Content="Top right" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopRight}" />
+                                <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopLeft}" ToolTip.Tip="Top left" AutomationProperties.Name="Top left" />
+                                <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopRight}" ToolTip.Tip="Top right" AutomationProperties.Name="Top right" RenderTransform="scaleX(-1)" />
+                                <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.BottomLeft}" ToolTip.Tip="Bottom left" AutomationProperties.Name="Bottom left" RenderTransform="scaleY(-1)" />
+                                <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.BottomRight}" ToolTip.Tip="Bottom right" AutomationProperties.Name="Bottom right" RenderTransform="scale(-1,-1)" />
                             </StackPanel>
                         </c:SettingRow>
                         <c:SettingRow Glyph="&#xE995;" Header="Play sounds" Description="A short sound when you mute or unmute">
                             <ToggleSwitch IsChecked="{Binding SoundsEnabled}" />
                         </c:SettingRow>
-                        <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows">
+                        <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows" Description="Opens MicControl in the tray when you sign in">
                             <ToggleSwitch IsChecked="{Binding RunAtStartup}" />
+                        </c:SettingRow>
+                        <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding CloseToTrayDescription}">
+                            <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
                         </c:SettingRow>
                         <StackPanel Spacing="4" IsVisible="{Binding OffersImports}">
                             <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold" Text="Bring over more from MicSwitch?" />
@@ -83,27 +89,12 @@
                                 <ToggleSwitch IsChecked="{Binding CustomSoundsEnabled}" AutomationProperties.Name="Import sounds" />
                             </c:SettingRow>
                         </StackPanel>
-                        <TextBlock Margin="0,16,0,4" FontSize="16" FontWeight="SemiBold" Text="How do you want MicControl to run?" />
-                        <RadioButton GroupName="appMode" IsChecked="{Binding AppMode, Mode=OneWay, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:MainViewModel.TrayAppMode}}"
-                                     Command="{Binding SetAppModeCommand}" CommandParameter="{x:Static vm:MainViewModel.TrayAppMode}">
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold" Text="In the tray (recommended)" />
-                                <TextBlock Classes="secondary" Text="Runs quietly in the notification area. Closing the window keeps it running." />
-                            </StackPanel>
-                        </RadioButton>
-                        <RadioButton GroupName="appMode" IsChecked="{Binding AppMode, Mode=OneWay, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:MainViewModel.WindowAppMode}}"
-                                     Command="{Binding SetAppModeCommand}" CommandParameter="{x:Static vm:MainViewModel.WindowAppMode}">
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold" Text="As a window" />
-                                <TextBlock Classes="secondary" Text="A normal app with a taskbar button. Closing the window exits." />
-                            </StackPanel>
-                        </RadioButton>
                     </StackPanel>
 
                     <!-- Done -->
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupDone}">
                         <TextBlock FontSize="24" FontWeight="SemiBold" Text="You're all set" />
-                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding MainHotkey.Key, StringFormat='Use {0} to talk. Change anything later from Home.'}" IsVisible="{Binding HasMainHotkey}" />
+                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding MainHotkeySummary, StringFormat='{}{0}. Change anything later from Home.'}" IsVisible="{Binding HasMainHotkey}" />
                         <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: MicControl lives in the notification area, near the clock. Right-click its icon for quick controls or to exit; click it to open this window." />
                     </StackPanel>
 

@@ -116,7 +116,7 @@ public partial class MainWindow : Window
             {
                 // Window mode: closing exits the app (which closes this window for real).
                 e.Cancel = true;
-                exit("window closed in Window mode");
+                exit("window closed with Close to the tray off");
             }
         }
 

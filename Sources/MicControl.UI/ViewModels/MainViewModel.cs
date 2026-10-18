@@ -488,12 +488,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    public IReadOnlyList<Choice> AppModes { get; } =
-    [
-        new(AppMode.Tray, "Tray", "Runs in the notification area. Closing or minimizing the window keeps it running there."),
-        new(AppMode.Window, "Window", "A normal app. Closing the window exits; minimizing goes to the taskbar."),
-    ];
-
     public AppMode AppMode
     {
         get => Settings.Window.AppMode;
@@ -502,7 +496,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (SetAndSave(Settings.Window.AppMode, value, v => Settings.Window.AppMode = v))
             {
                 OnPropertyChanged(nameof(IsTrayMode));
-                OnPropertyChanged(nameof(AppModeDescription));
+                OnPropertyChanged(nameof(CloseToTrayDescription));
             }
         }
     }
@@ -529,7 +523,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         RunAtStartup = true;
     }
 
-    public string AppModeDescription => AppModes.First(m => Equals(m.Value, AppMode)).Description ?? string.Empty;
+    /// <summary>What the "Close to the tray" switch does right now.</summary>
+    public string CloseToTrayDescription => IsTrayMode
+        ? "Closing or minimizing the window keeps MicControl running in the tray."
+        : "Closing the window exits MicControl; minimizing goes to the taskbar.";
 
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }

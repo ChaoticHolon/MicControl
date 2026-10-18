@@ -220,19 +220,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    // Boxed once so XAML radio buttons can compare against them.
-    public static readonly object TrayAppMode = AppMode.Tray;
-    public static readonly object WindowAppMode = AppMode.Window;
-
-    [RelayCommand]
-    private void SetAppMode(object? mode)
-    {
-        if (mode is AppMode value)
-        {
-            AppMode = value;
-        }
-    }
-
     [RelayCommand]
     private void SkipSetup() => SetupCompleted = true;
 

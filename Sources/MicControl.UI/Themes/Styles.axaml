@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:MicControl.Controls">
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
@@ -94,6 +95,27 @@
     <Style Selector="RadioButton.segment:checked">
         <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
         <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Sliders in setting rows: one width and one value column, so every slider on a page lines up, and the
+         height of a switch so slider rows are as tall as the others -->
+    <Style Selector="Slider.row">
+        <Setter Property="Width" Value="200" />
+        <!-- A slider asks for more height than a switch; let it overhang the row's padding instead of growing the row -->
+        <Setter Property="Margin" Value="0,-9" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.sliderValue">
+        <Setter Property="Width" Value="84" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- Setup's rows sit inside its card: plain rows with a divider, not cards in a card -->
+    <Style Selector="Border.setupCard c|SettingRow /template/ Border.card">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0,10" />
     </Style>
 
     <Style Selector="TextBlock.pageSubtitle">

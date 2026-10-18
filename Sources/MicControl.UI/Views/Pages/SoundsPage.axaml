@@ -30,9 +30,9 @@
                 </StackPanel>
             </c:SettingRow>
             <c:SettingRow Glyph="&#xE994;" Header="Volume">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Slider Width="200" Minimum="0" Maximum="100" Value="{Binding NotificationVolume}" VerticalAlignment="Center" AutomationProperties.Name="Sound volume" />
-                    <TextBlock Width="44" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding NotificationVolume, StringFormat={}{0:0}%}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Classes="row" Minimum="0" Maximum="100" Value="{Binding NotificationVolume}" AutomationProperties.Name="Sound volume" />
+                    <TextBlock Classes="sliderValue" Text="{Binding NotificationVolume, StringFormat={}{0:0}%}" />
                 </StackPanel>
             </c:SettingRow>
             <c:SettingRow Glyph="&#xE7F5;" Header="Play through" Description="Useful if your headset and speakers are different devices">

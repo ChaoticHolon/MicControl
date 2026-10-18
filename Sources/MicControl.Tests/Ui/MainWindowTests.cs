@@ -274,4 +274,37 @@ public sealed class MainWindowTests
         Assert.Equal(["Toggle", "Dark"], Checked());
         harness.ViewModel.Theme = AppTheme.System;
     }
+
+    [AvaloniaFact]
+    public void InputVolumeSlider_ShowsOnlyWhileTheLevelIsKept()
+    {
+        using var harness = new TestHarness();
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+        bool SliderShown() => window.GetVisualDescendants().OfType<Slider>()
+            .Single(s => Avalonia.Automation.AutomationProperties.GetName(s) == "Microphone volume").IsEffectivelyVisible;
+
+        Assert.False(SliderShown());
+        harness.ViewModel.MicrophoneVolumeControlEnabled = true;
+        window.UpdateLayout();
+        Assert.True(SliderShown());
+    }
+
+    [AvaloniaFact]
+    public void SetupLastStep_ShowsWhatTheKeyDoes_WithoutARepeatedLabel()
+    {
+        using var harness = new TestHarness(firstRun: true);
+        harness.ViewModel.MainHotkey.Key = HotkeyGesture.Parse("F13");
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+        while (!harness.ViewModel.IsSetupDone)
+        {
+            harness.ViewModel.SetupNextCommand.Execute(null);
+        }
+
+        window.UpdateLayout();
+        var texts = window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+        Assert.Contains("Hold F13 to talk. Change anything later from Home.", texts);
+        Assert.DoesNotContain("All set", texts);
+    }
 }

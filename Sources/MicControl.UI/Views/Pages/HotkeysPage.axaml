@@ -15,16 +15,17 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:CustomHotkeyViewModel">
                     <Border Classes="card">
-                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                            <ToggleSwitch IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" VerticalAlignment="Center"
-                                          ToolTip.Tip="Turn this hotkey on or off" AutomationProperties.Name="Enabled" />
-                            <ComboBox Grid.Column="1" MinWidth="240" Margin="8,0,0,0" VerticalAlignment="Center"
+                        <!-- Like every other row: what it does on the left, its on/off switch on the right -->
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto">
+                            <ComboBox MinWidth="240" VerticalAlignment="Center"
                                       ItemsSource="{Binding Actions}" SelectedValue="{Binding Action}"
                                       DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}"
                                       AutomationProperties.Name="Action" />
-                            <Button Grid.Column="2" Padding="8" VerticalAlignment="Center" FontFamily="{StaticResource IconFont}" Content="&#xE74D;"
+                            <ToggleSwitch Grid.Column="2" Margin="0,0,12,0" IsChecked="{Binding IsEnabled}" VerticalAlignment="Center"
+                                          ToolTip.Tip="Turn this hotkey on or off" AutomationProperties.Name="Enabled" />
+                            <Button Grid.Column="3" Padding="8" VerticalAlignment="Center" FontFamily="{StaticResource IconFont}" Content="&#xE74D;"
                                     Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this hotkey" AutomationProperties.Name="Remove" />
-                            <ContentControl Grid.Row="1" Grid.ColumnSpan="3" Margin="0,12,0,0" HorizontalAlignment="Left"
+                            <ContentControl Grid.Row="1" Grid.ColumnSpan="4" Margin="0,12,0,0" HorizontalAlignment="Left"
                                             Content="{Binding Editor}" ContentTemplate="{StaticResource HotkeyEditorTemplate}" IsEnabled="{Binding IsEnabled}" />
                         </Grid>
                     </Border>

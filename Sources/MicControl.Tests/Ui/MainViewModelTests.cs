@@ -247,9 +247,9 @@ public sealed class MainViewModelTests
         using var harness = new TestHarness();
 
         Assert.True(harness.ViewModel.IsTrayMode);
-        harness.ViewModel.SetAppModeCommand.Execute(AppMode.Window);
+        harness.ViewModel.IsTrayMode = false; // setup's "Close to the tray" switch
         Assert.Equal(AppMode.Window, harness.ViewModel.Settings.Window.AppMode);
-        Assert.Contains("Closing the window exits", harness.ViewModel.AppModeDescription, StringComparison.Ordinal);
+        Assert.Contains("Closing the window exits MicControl", harness.ViewModel.CloseToTrayDescription, StringComparison.Ordinal);
     }
 
     [AvaloniaFact]
@@ -390,7 +390,7 @@ public sealed class MainViewModelTests
 
         vm.IsTrayMode = false;
         Assert.Equal(AppMode.Window, vm.Settings.Window.AppMode);
-        Assert.Contains("Closing the window exits", vm.AppModeDescription, StringComparison.Ordinal);
+        Assert.Contains("Closing the window exits MicControl", vm.CloseToTrayDescription, StringComparison.Ordinal);
 
         vm.IsTrayMode = true;
         Assert.Equal(AppMode.Tray, vm.Settings.Window.AppMode);
