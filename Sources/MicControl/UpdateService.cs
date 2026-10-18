@@ -29,7 +29,21 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
             return null;
         }
 
-        var release = ReleaseFeed.Parse(await http.GetStringAsync(ReleaseFeed.LatestReleaseUrl).ConfigureAwait(false));
+        string feed;
+        try
+        {
+            feed = await http.GetStringAsync(ReleaseFeed.LatestReleaseUrl).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // GitHub's answer while nothing is published yet (drafts don't count): nothing to update to.
+            LogNoReleases();
+            pending = null;
+            pendingSha512 = null;
+            return null;
+        }
+
+        var release = ReleaseFeed.Parse(feed);
         var version = Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0);
         LogChecked(current.Scope, version, release?.Version);
         pending = null;
@@ -147,6 +161,9 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Release {Version} isn't signed by a trusted release key ({Keys} trusted), or its SHA512SUMS doesn't list the setup; not offering it")]
     private partial void LogNotSigned(Version version, int keys);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Update check: no release is published yet")]
+    private partial void LogNoReleases();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Release {Version}: SHA512SUMS signature verified")]
     private partial void LogSignatureVerified(Version version);
