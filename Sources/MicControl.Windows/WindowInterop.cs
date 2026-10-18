@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using MicControl.Platform;
 using static MicControl.Windows.NativeMethods;
 
@@ -15,6 +16,14 @@ public sealed class WindowInterop : IWindowInterop
         var style = (int)GetWindowLongPtr(handle, GWL_EXSTYLE) | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED;
         style = clickThrough ? style | WS_EX_TRANSPARENT : style & ~WS_EX_TRANSPARENT;
         SetWindowLongPtr(handle, GWL_EXSTYLE, style);
+    }
+
+    public bool HideTitleBarText(nint handle)
+    {
+        // With the client area extended into the frame, Windows still draws the caption's icon and title under the
+        // app's header unless told not to.
+        var options = new WTA_OPTIONS { Flags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON, Mask = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON };
+        return handle != 0 && SetWindowThemeAttribute(handle, WTA_NONCLIENT, ref options, (uint)Marshal.SizeOf<WTA_OPTIONS>()) == 0;
     }
 
     public IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler) =>

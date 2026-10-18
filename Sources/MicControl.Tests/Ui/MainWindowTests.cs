@@ -215,4 +215,18 @@ public sealed class MainWindowTests
         Assert.Contains(hidden, s => s.Contains("PART_TitleTextPanel", StringComparison.Ordinal));
         Assert.Contains(hidden, s => s.Contains("PART_FullScreenButton", StringComparison.Ordinal));
     }
+
+    [AvaloniaFact]
+    public void SystemTitleText_IsHiddenOnlyWhenTheHeaderReplacesTheTitleBar()
+    {
+        using var harness = new TestHarness();
+        var interop = new FakeWindowInterop();
+        var window = new MainWindow(harness.ViewModel, harness.Settings, interop: interop);
+
+        window.Show();
+
+        // Where the header really is the title bar (Windows), the OS must not draw its title and icon under it; where
+        // the platform keeps its own title bar (as here), that title is the only one and must stay.
+        Assert.Equal(window.IsExtendedIntoWindowDecorations ? 1 : 0, interop.TitleBarTextHidden.Count);
+    }
 }
