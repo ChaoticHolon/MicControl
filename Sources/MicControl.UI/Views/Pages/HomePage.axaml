@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:MicControl.Controls"
+             xmlns:vm="using:MicControl.ViewModels"
+             xmlns:s="using:MicControl.Settings"
+             xmlns:p="using:MicControl.Platform"
+             x:Class="MicControl.Views.Pages.HomePage"
+             x:DataType="vm:MainViewModel">
+    <StackPanel Classes="page">
+        <TextBlock Classes="pageTitle" Text="Home" />
+
+        <!-- Status hero -->
+        <Border Classes="card" Padding="24,20">
+            <StackPanel Spacing="16">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Classes="badge" Classes.muted="{Binding IsMutedState}" Classes.live="{Binding IsLiveState}">
+                        <TextBlock Classes="glyph" FontSize="26" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding MicrophoneStatus}" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock Classes="secondary" FontSize="13" Text="{Binding MicrophoneStatusDetail}" />
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="accent" MinWidth="130" Padding="20,10" FontSize="15"
+                            Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}"
+                            IsEnabled="{Binding IsMicrophoneConnected}" ToolTip.Tip="Mute or unmute now (the hotkey does the same)" />
+                </Grid>
+                <StackPanel Spacing="6" IsVisible="{Binding IsMicrophoneConnected}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Classes="secondary" Text="Speak to test: the bar moves while you're live" />
+                        <TextBlock Classes="secondary" Text="Input level" />
+                    </DockPanel>
+                    <ProgressBar Classes="meter" Value="{Binding InputLevel}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Call to action -->
+        <Border Classes="card caution" IsVisible="{Binding !HasMainHotkey}">
+            <DockPanel>
+                <TextBlock Classes="glyph" Text="&#xE765;" Margin="0,0,12,0" Foreground="{DynamicResource CautionForegroundBrush}" />
+                <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding GetStartedText}" />
+            </DockPanel>
+        </Border>
+
+        <TextBlock Classes="section" Text="Microphone" />
+        <c:SettingRow Glyph="&#xE720;" Header="Microphone" Description="Which microphone to control">
+            <ComboBox MinWidth="280" ItemsSource="{Binding Microphones}" SelectedValue="{Binding SelectedMicrophoneId}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE8AB;" Header="Mode" Description="{Binding ModeDescription}">
+            <ComboBox MinWidth="200" ItemsSource="{Binding MuteModes}" SelectedValue="{Binding MuteMode}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE765;" Header="{Binding MainHotkeyLabel}" Description="{Binding MainHotkeyDescription}"
+                      Content="{Binding MainHotkey}" ContentTemplate="{StaticResource HotkeyEditorTemplate}" />
+        <c:SettingRow Glyph="&#xE7E8;" Header="State at startup" Description="Whether to mute or unmute when MicControl starts" IsVisible="{Binding IsToggleMode}">
+            <ComboBox MinWidth="200" ItemsSource="{Binding InitialStates}" SelectedValue="{Binding InitialState}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE767;" Header="Input volume" Description="When on, MicControl keeps your microphone at this level">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Slider Width="180" Minimum="0" Maximum="100" Value="{Binding MicrophoneVolume}" VerticalAlignment="Center"
+                        IsEnabled="{Binding MicrophoneVolumeControlEnabled}" AutomationProperties.Name="Microphone volume" />
+                <TextBlock Width="44" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding MicrophoneVolume, StringFormat={}{0:0}%}" />
+                <ToggleSwitch IsChecked="{Binding MicrophoneVolumeControlEnabled}" AutomationProperties.Name="Keep input volume" />
+            </StackPanel>
+        </c:SettingRow>
+
+        <TextBlock Classes="section" Text="Quick settings" />
+        <c:SettingRow Glyph="&#xE7F4;" Header="Show overlay" Description="An on-screen indicator of whether you're muted. Details on the Overlay page.">
+            <ToggleSwitch IsChecked="{Binding OverlayEnabled}" AutomationProperties.Name="Show overlay" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE995;" Header="Play sounds" Description="A short sound when you mute or unmute. Choose sounds on the Sounds page.">
+            <ToggleSwitch IsChecked="{Binding SoundsEnabled}" AutomationProperties.Name="Play sounds" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows">
+            <ToggleSwitch IsChecked="{Binding RunAtStartup}" AutomationProperties.Name="Start with Windows" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE73F;" Header="App mode" Description="{Binding AppModeDescription}">
+            <ComboBox MinWidth="200" ItemsSource="{Binding AppModes}" SelectedValue="{Binding AppMode}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}"
+                      AutomationProperties.Name="App mode" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE790;" Header="Theme">
+            <ComboBox MinWidth="200" ItemsSource="{Binding Themes}" SelectedValue="{Binding Theme}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+        </c:SettingRow>
+    </StackPanel>
+</UserControl>

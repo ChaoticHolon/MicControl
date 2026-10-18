@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-Builds the setup: artifacts\MicControlNG-Setup-<version>.exe
+Builds the setup: artifacts\MicControl-Setup-<version>.exe
 
 .DESCRIPTION
 The setup is the app itself, published as one self-contained file. Started under its setup name it shows the
-installer; once installed it is MicControlNG.exe. No installer framework is involved (see SetupCommand and
+installer; once installed it is MicControl.exe. No installer framework is involved (see SetupCommand and
 WindowsInstaller).
 
 .EXAMPLE
@@ -23,9 +23,9 @@ if (-not $Version) {
 $publish = Join-Path $root 'artifacts\publish'
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 
-dotnet publish (Join-Path $root 'Sources\MicControlNG\MicControlNG.csproj') -c Release -p:PublishSingleFile=true "-p:Version=$Version" -o $publish
+dotnet publish (Join-Path $root 'Sources\MicControl\MicControl.csproj') -c Release -p:PublishSingleFile=true "-p:Version=$Version" -o $publish
 if ($LASTEXITCODE) { throw "dotnet publish failed ($LASTEXITCODE)" }
 
-$setup = Join-Path $root "artifacts\MicControlNG-Setup-$Version.exe"
-Copy-Item (Join-Path $publish 'MicControlNG.exe') $setup -Force
+$setup = Join-Path $root "artifacts\MicControl-Setup-$Version.exe"
+Copy-Item (Join-Path $publish 'MicControl.exe') $setup -Force
 Get-Item $setup
