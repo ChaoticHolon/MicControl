@@ -27,7 +27,9 @@ if ! ssh-keygen -y -f "$key" > "$key.pub" 2>/dev/null; then
   exit 0
 fi
 
+# Replaces any signing program the environment set up, so this key is the one that signs.
 git config --global gpg.format ssh
+git config --global gpg.ssh.program "$(command -v ssh-keygen)"
 git config --global user.signingkey "$key"
 git config --global commit.gpgsign true
 git config --global tag.gpgsign true
