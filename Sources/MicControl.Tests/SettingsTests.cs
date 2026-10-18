@@ -176,7 +176,7 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(MouseHotkey.XButton1, settings.Microphone.Hotkey.AlternativeKey.Mouse);
         Assert.False(settings.Microphone.Hotkey.Suppress);
         Assert.False(settings.SetupCompleted); // setup still runs, to review what was imported
-        var toggle = Assert.Single(settings.ExtraHotkeys, e => e.Action == HotkeyAction.ToggleMute);
+        var toggle = Assert.Single(settings.CustomHotkeys, e => e.Action == HotkeyAction.ToggleMute);
         Assert.True(toggle.IsEnabled);
         Assert.Equal("F9", toggle.Hotkey.Key.Key);
         Assert.Equal("custom", settings.Notifications.WhenMuted);
@@ -188,7 +188,7 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(new WindowBounds(10, 20, 120, 120), settings.Overlay.Bounds);
         Assert.Equal(0.8, settings.Overlay.Opacity, 3);
         Assert.Equal([1, 2, 3], File.ReadAllBytes(settings.Overlay.UnmutedIconPath!));
-        var volumeUp = Assert.Single(settings.ExtraHotkeys, e => e.Action == HotkeyAction.SpeakerVolumeUp);
+        var volumeUp = Assert.Single(settings.CustomHotkeys, e => e.Action == HotkeyAction.SpeakerVolumeUp);
         Assert.True(volumeUp.IsEnabled);
         Assert.Equal(HotkeyGesture.Parse("Ctrl+Up"), volumeUp.Hotkey.Key);
         Assert.True(File.Exists(Path.Combine(directory, SettingsStore.FileName)));

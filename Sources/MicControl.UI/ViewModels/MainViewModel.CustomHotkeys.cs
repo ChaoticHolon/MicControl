@@ -32,11 +32,11 @@ public sealed partial class MainViewModel
         new(HotkeyAction.ToggleOverlay, "Show or hide the overlay"),
     ];
 
-    public ObservableCollection<ExtraHotkeyViewModel> ExtraHotkeys { get; } = [];
+    public ObservableCollection<CustomHotkeyViewModel> CustomHotkeys { get; } = [];
 
-    public bool HasExtraHotkeys => ExtraHotkeys.Count > 0;
+    public bool HasCustomHotkeys => CustomHotkeys.Count > 0;
 
-    public bool HasSpeakerActions => Settings.ExtraHotkeys.Any(e => MuteRules.IsSpeakerAction(e.Action));
+    public bool HasSpeakerActions => Settings.CustomHotkeys.Any(e => MuteRules.IsSpeakerAction(e.Action));
 
     public ObservableCollection<AudioDeviceInfo> Speakers { get; } = [];
 
@@ -65,7 +65,7 @@ public sealed partial class MainViewModel
 
     public string OutputIndicatorText => speakers.Mute == true ? "Muted" : $"{SpeakerVolume:0}%";
 
-    /// <summary>Actions offered for an extra hotkey: everything except what the main key already does in this mode.</summary>
+    /// <summary>Actions offered for an custom hotkey: everything except what the main key already does in this mode.</summary>
     internal IReadOnlyList<Choice> ActionsFor(HotkeyAction current)
     {
         var main = MuteRules.MainActionFor(MuteMode);
@@ -73,30 +73,30 @@ public sealed partial class MainViewModel
     }
 
     [RelayCommand]
-    private void AddExtraHotkey()
+    private void AddCustomHotkey()
     {
         var main = MuteRules.MainActionFor(MuteMode);
         var action = new[] { HotkeyAction.ToggleMute, HotkeyAction.Mute, HotkeyAction.PushToTalk }.First(a => a != main);
-        var extra = new ExtraHotkey { Action = action };
-        LogExtraHotkeyAdded(action);
-        Settings.ExtraHotkeys.Add(extra);
-        ExtraHotkeys.Add(CreateExtraHotkey(extra));
-        OnExtraHotkeysChanged();
+        var custom = new CustomHotkey { Action = action };
+        LogCustomHotkeyAdded(action);
+        Settings.CustomHotkeys.Add(custom);
+        CustomHotkeys.Add(CreateCustomHotkey(custom));
+        OnCustomHotkeysChanged();
     }
 
-    internal void RemoveExtraHotkey(ExtraHotkeyViewModel item)
+    internal void RemoveCustomHotkey(CustomHotkeyViewModel item)
     {
-        LogExtraHotkeyRemoved(item.Model.Hotkey.Key, item.Model.Action);
-        Settings.ExtraHotkeys.Remove(item.Model);
-        ExtraHotkeys.Remove(item);
-        OnExtraHotkeysChanged();
+        LogCustomHotkeyRemoved(item.Model.Hotkey.Key, item.Model.Action);
+        Settings.CustomHotkeys.Remove(item.Model);
+        CustomHotkeys.Remove(item);
+        OnCustomHotkeysChanged();
     }
 
-    private ExtraHotkeyViewModel CreateExtraHotkey(ExtraHotkey model) => new(this, model, Capabilities, OnExtraHotkeysChanged);
+    private CustomHotkeyViewModel CreateCustomHotkey(CustomHotkey model) => new(this, model, Capabilities, OnCustomHotkeysChanged);
 
-    private void OnExtraHotkeysChanged()
+    private void OnCustomHotkeysChanged()
     {
-        OnPropertyChanged(nameof(HasExtraHotkeys));
+        OnPropertyChanged(nameof(HasCustomHotkeys));
         OnPropertyChanged(nameof(HasSpeakerActions));
         ApplyHotkeys();
         Save();
@@ -169,11 +169,11 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(OutputIndicatorText));
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Extra hotkey added ({Action})")]
-    private partial void LogExtraHotkeyAdded(HotkeyAction action);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Custom hotkey added ({Action})")]
+    private partial void LogCustomHotkeyAdded(HotkeyAction action);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Extra hotkey removed ({Key} -> {Action})")]
-    private partial void LogExtraHotkeyRemoved(Hotkeys.HotkeyGesture key, HotkeyAction action);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Custom hotkey removed ({Key} -> {Action})")]
+    private partial void LogCustomHotkeyRemoved(Hotkeys.HotkeyGesture key, HotkeyAction action);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Action {Action} ({Pressed})")]
     private partial void LogRunAction(HotkeyAction action, bool pressed);
@@ -182,22 +182,22 @@ public sealed partial class MainViewModel
     private partial void LogSpeakerState(bool? muted, float? volume);
 }
 
-/// <summary>One row on the Extra hotkeys page.</summary>
-public sealed partial class ExtraHotkeyViewModel : ObservableObject
+/// <summary>One row on the Custom hotkeys page.</summary>
+public sealed partial class CustomHotkeyViewModel : ObservableObject
 {
     private readonly MainViewModel owner;
     private readonly Action changed;
 
-    internal ExtraHotkeyViewModel(MainViewModel owner, ExtraHotkey model, PlatformCapabilities capabilities, Action changed)
+    internal CustomHotkeyViewModel(MainViewModel owner, CustomHotkey model, PlatformCapabilities capabilities, Action changed)
     {
         this.owner = owner;
         this.changed = changed;
         Model = model;
-        Editor = new HotkeyEditorViewModel("Extra hotkey", model.Hotkey, changed, capabilities.CanSuppressHotkeys, capabilities.SupportsMouseHotkeys);
+        Editor = new HotkeyEditorViewModel("Custom hotkey", model.Hotkey, changed, capabilities.CanSuppressHotkeys, capabilities.SupportsMouseHotkeys);
         Actions = owner.ActionsFor(model.Action);
     }
 
-    public ExtraHotkey Model { get; }
+    public CustomHotkey Model { get; }
 
     public HotkeyEditorViewModel Editor { get; }
 
@@ -240,5 +240,5 @@ public sealed partial class ExtraHotkeyViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Remove() => owner.RemoveExtraHotkey(this);
+    private void Remove() => owner.RemoveCustomHotkey(this);
 }

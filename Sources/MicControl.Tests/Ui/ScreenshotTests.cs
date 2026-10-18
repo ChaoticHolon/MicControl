@@ -38,7 +38,7 @@ public sealed class ScreenshotTests
         window.Show();
         harness.ViewModel.IsWindowVisible = true;
 
-        foreach (var (page, name) in new[] { (Page.Home, "home"), (Page.ExtraHotkeys, "extra-hotkeys"), (Page.Sounds, "sounds"), (Page.Overlay, "overlay"), (Page.About, "about") })
+        foreach (var (page, name) in new[] { (Page.Home, "home"), (Page.Sounds, "sounds"), (Page.Overlay, "overlay"), (Page.CustomHotkeys, "custom-hotkeys"), (Page.About, "about") })
         {
             harness.ViewModel.Navigate(page);
             if (page == Page.Home)
@@ -96,7 +96,7 @@ public sealed class ScreenshotTests
         window.Close();
     }
 
-    /// <summary>A believable setup: a named microphone, F13 push-to-talk, two extra hotkeys, live and speaking.</summary>
+    /// <summary>A believable setup: a named microphone, F13 push-to-talk, two custom hotkeys, live and speaking.</summary>
     private static TestHarness SampleHarness()
     {
         var harness = new TestHarness(s =>
@@ -105,8 +105,8 @@ public sealed class ScreenshotTests
             s.Microphone.Hotkey.AlternativeKey = HotkeyGesture.Parse("XButton2");
             s.Microphone.DeviceId = "mic-1";
             s.Overlay.ShowSpeakingIndicator = true;
-            s.ExtraHotkeys.Add(new ExtraHotkey { Action = HotkeyAction.ToggleMute, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("Ctrl+F13") } });
-            s.ExtraHotkeys.Add(new ExtraHotkey { Action = HotkeyAction.SpeakerVolumeUp, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("Ctrl+Up") } });
+            s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.ToggleMute, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("Ctrl+F13") } });
+            s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.SpeakerVolumeUp, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("Ctrl+Up") } });
         });
         harness.Devices.Microphones.Clear();
         harness.Devices.Microphones.Add(new AudioDeviceInfo("mic-1", "Microphone (USB Audio Device)"));

@@ -81,7 +81,7 @@ public sealed class MainWindowTests
         window.Show();
 
         var nav = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Classes.Contains("nav"));
-        Assert.Equal(["Home", "Extra hotkeys", "Sounds", "Overlay", "About"], harness.ViewModel.NavItems.Select(n => n.Title));
+        Assert.Equal(["Home", "Sounds", "Overlay", "Custom hotkeys", "About"], harness.ViewModel.NavItems.Select(n => n.Title));
 
         foreach (var item in harness.ViewModel.NavItems)
         {

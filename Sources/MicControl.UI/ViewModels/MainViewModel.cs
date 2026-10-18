@@ -14,16 +14,16 @@ namespace MicControl.ViewModels;
 public enum Page
 {
     Home,
-    ExtraHotkeys,
     Sounds,
     Overlay,
+    CustomHotkeys,
     About,
 }
 
 public sealed record NavItem(Page Page, string Title, string Glyph);
 
 /// <summary>
-/// The app's single view model. Split into partial files per page: Home (this file), ExtraHotkeys, Sounds,
+/// The app's single view model. Split into partial files per page: Home (this file), CustomHotkeys, Sounds,
 /// Overlay, About and Setup.
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject, IDisposable
@@ -74,9 +74,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Capabilities = capabilities;
 
         MainHotkey = Editor("Main hotkey", Settings.Microphone.Hotkey);
-        foreach (var extra in Settings.ExtraHotkeys)
+        foreach (var custom in Settings.CustomHotkeys)
         {
-            ExtraHotkeys.Add(CreateExtraHotkey(extra));
+            CustomHotkeys.Add(CreateCustomHotkey(custom));
         }
 
         microphone = deviceService.CreateGroup(AudioFlow.Capture);
@@ -120,9 +120,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public IReadOnlyList<NavItem> NavItems { get; } =
     [
         new(Page.Home, "Home", ""),
-        new(Page.ExtraHotkeys, "Extra hotkeys", ""),
         new(Page.Sounds, "Sounds", ""),
         new(Page.Overlay, "Overlay", ""),
+        new(Page.CustomHotkeys, "Custom hotkeys", ""),
         new(Page.About, "About", ""),
     ];
 
@@ -133,7 +133,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsHomePage => CurrentPage == Page.Home;
 
-    public bool IsExtraHotkeysPage => CurrentPage == Page.ExtraHotkeys;
+    public bool IsCustomHotkeysPage => CurrentPage == Page.CustomHotkeys;
 
     public bool IsSoundsPage => CurrentPage == Page.Sounds;
 
@@ -144,14 +144,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public void Navigate(Page page) => SelectedNav = NavItems.First(n => n.Page == page);
 
     [RelayCommand]
-    private void GoToExtraHotkeys() => Navigate(Page.ExtraHotkeys);
+    private void GoToCustomHotkeys() => Navigate(Page.CustomHotkeys);
 
     partial void OnSelectedNavChanged(NavItem value)
     {
         LogNavigated(value.Page);
         OnPropertyChanged(nameof(CurrentPage));
         OnPropertyChanged(nameof(IsHomePage));
-        OnPropertyChanged(nameof(IsExtraHotkeysPage));
+        OnPropertyChanged(nameof(IsCustomHotkeysPage));
         OnPropertyChanged(nameof(IsSoundsPage));
         OnPropertyChanged(nameof(IsOverlayPage));
         OnPropertyChanged(nameof(IsAboutPage));
@@ -240,9 +240,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(MainHotkeyDescription));
             OnPropertyChanged(nameof(ModeDescription));
             OnPropertyChanged(nameof(GetStartedText));
-            foreach (var extra in ExtraHotkeys)
+            foreach (var custom in CustomHotkeys)
             {
-                extra.RefreshActions();
+                custom.RefreshActions();
             }
 
             if (MuteRules.InitialMute(value, InitialState) is { } mute)
@@ -454,15 +454,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         hotkeyRegistrations.Clear();
         var mic = Settings.Microphone;
         Register(mic.Hotkey, "main", pressed => SetMute(MuteRules.OnMainHotkey(mic.MuteMode, pressed, microphone.Mute)));
-        foreach (var extra in Settings.ExtraHotkeys.Where(e => e.IsEnabled))
+        foreach (var custom in Settings.CustomHotkeys.Where(e => e.IsEnabled))
         {
-            var action = extra.Action;
-            Register(extra.Hotkey, action.ToString(), pressed => RunAction(action, pressed));
-            LogExtraHotkey(extra.Hotkey.Key, extra.Hotkey.AlternativeKey, action, extra.Hotkey.Suppress);
+            var action = custom.Action;
+            Register(custom.Hotkey, action.ToString(), pressed => RunAction(action, pressed));
+            LogCustomHotkey(custom.Hotkey.Key, custom.Hotkey.AlternativeKey, action, custom.Hotkey.Suppress);
         }
 
-        var extraCount = hotkeyRegistrations.Count - 1;
-        LogHotkeysApplied(mic.MuteMode, mic.Hotkey.Key, mic.Hotkey.AlternativeKey, extraCount);
+        var customCount = hotkeyRegistrations.Count - 1;
+        LogHotkeysApplied(mic.MuteMode, mic.Hotkey.Key, mic.Hotkey.AlternativeKey, customCount);
 
         void Register(HotkeySettings settings, string name, Action<bool> handler) => hotkeyRegistrations.Add(hotkeys.Register(settings, pressed =>
         {
@@ -621,8 +621,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Hotkeys applied: mode {Mode}, main {MainHotkey} / {AlternativeHotkey}, {ExtraCount} extra")]
-    private partial void LogHotkeysApplied(MuteMode mode, Hotkeys.HotkeyGesture mainHotkey, Hotkeys.HotkeyGesture alternativeHotkey, int extraCount);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Hotkeys applied: mode {Mode}, main {MainHotkey} / {AlternativeHotkey}, {CustomCount} custom")]
+    private partial void LogHotkeysApplied(MuteMode mode, Hotkeys.HotkeyGesture mainHotkey, Hotkeys.HotkeyGesture alternativeHotkey, int customCount);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Audio devices: {Microphones} microphones, {Speakers} speakers; selected microphone {Selected}")]
     private partial void LogDevices(int microphones, int speakers, string selected);
@@ -651,8 +651,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [LoggerMessage(Level = LogLevel.Debug, Message = "Hotkey {Name} {Event}")]
     private partial void LogHotkeyEvent(string name, string @event);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Extra hotkey {Key} / {AlternativeKey} -> {Action} (exclusive: {Suppress})")]
-    private partial void LogExtraHotkey(Hotkeys.HotkeyGesture key, Hotkeys.HotkeyGesture alternativeKey, HotkeyAction action, bool suppress);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Custom hotkey {Key} / {AlternativeKey} -> {Action} (exclusive: {Suppress})")]
+    private partial void LogCustomHotkey(Hotkeys.HotkeyGesture key, Hotkeys.HotkeyGesture alternativeKey, HotkeyAction action, bool suppress);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Binding {Group} to device {DeviceId}")]
     private partial void LogRebind(string group, string deviceId);

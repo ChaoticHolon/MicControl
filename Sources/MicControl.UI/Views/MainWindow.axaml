@@ -60,9 +60,9 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                     <Panel>
                         <pages:HomePage IsVisible="{Binding IsHomePage}" />
-                        <pages:ExtraHotkeysPage IsVisible="{Binding IsExtraHotkeysPage}" />
                         <pages:SoundsPage IsVisible="{Binding IsSoundsPage}" />
                         <pages:OverlayPage IsVisible="{Binding IsOverlayPage}" />
+                        <pages:CustomHotkeysPage IsVisible="{Binding IsCustomHotkeysPage}" />
                         <pages:AboutPage IsVisible="{Binding IsAboutPage}" />
                     </Panel>
                 </ScrollViewer>

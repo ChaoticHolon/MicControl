@@ -8,7 +8,7 @@ Built on .NET 10 and Avalonia, with Linux (KDE Plasma 6 on Wayland) planned next
 | Light | Dark |
 | --- | --- |
 | ![Home, light](docs/screenshots/home-light.png) | ![Home, dark](docs/screenshots/home-dark.png) |
-| ![Extra hotkeys, light](docs/screenshots/extra-hotkeys-light.png) | ![Overlay settings, dark](docs/screenshots/overlay-dark.png) |
+| ![Custom hotkeys, light](docs/screenshots/custom-hotkeys-light.png) | ![Overlay settings, dark](docs/screenshots/overlay-dark.png) |
 
 | Quick controls from the tray | The overlay | Setup |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ Built on .NET 10 and Avalonia, with Linux (KDE Plasma 6 on Wayland) planned next
 ## Features
 - **Three modes:** push-to-talk (the default), toggle, and push-to-mute
 - **Hotkeys that work everywhere,** including in elevated games: keyboard keys, combinations and mouse side buttons, with an optional alternative key and an "exclusive" option that hides the key from other apps
-- **Extra hotkeys** for mute, unmute, toggle, push-to-talk, speaker mute and volume, and showing or hiding the overlay
+- **Custom hotkeys** for mute, unmute, toggle, push-to-talk, speaker mute and volume, and showing or hiding the overlay
 - **One microphone or all of them** at once, handy for streamers with several inputs
 - **Overlay:** a small always-on-top badge that shows Live or Muted, even over games. Snap it to any corner of any monitor or drag it anywhere; show it always, only when muted or only when live; adjust size and opacity; optional speaking indicator; your own icons
 - **Sounds** when the microphone switches on and off: subtle built-in cues, or your own audio files

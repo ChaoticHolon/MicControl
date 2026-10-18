@@ -19,9 +19,9 @@ public sealed class AppSettings
     public MicrophoneSettings Microphone { get; set; } = new();
 
     /// <summary>Additional hotkeys, each bound to one action.</summary>
-    public List<ExtraHotkey> ExtraHotkeys { get; set; } = [];
+    public List<CustomHotkey> CustomHotkeys { get; set; } = [];
 
-    /// <summary>Output device that speaker actions in <see cref="ExtraHotkeys"/> control.</summary>
+    /// <summary>Output device that speaker actions in <see cref="CustomHotkeys"/> control.</summary>
     public string SpeakerDeviceId { get; set; } = AllDevices;
 
     public NotificationSettings Notifications { get; set; } = new();
@@ -76,7 +76,7 @@ public enum HotkeyAction
     ToggleOverlay,
 }
 
-public sealed class ExtraHotkey
+public sealed class CustomHotkey
 {
     public HotkeyAction Action { get; set; }
 

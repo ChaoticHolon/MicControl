@@ -56,7 +56,7 @@ public static class MuteRules
         _ => false,
     };
 
-    /// <summary>Microphone mute state after an extra hotkey is pressed or released; <c>null</c> means no change.</summary>
+    /// <summary>Microphone mute state after an custom hotkey is pressed or released; <c>null</c> means no change.</summary>
     public static bool? OnAction(HotkeyAction action, bool isPressed, bool? currentMute) => action switch
     {
         HotkeyAction.ToggleMute => isPressed ? !(currentMute ?? false) : null,
@@ -69,7 +69,7 @@ public static class MuteRules
 
     public static bool IsSpeakerAction(HotkeyAction action) => action is >= HotkeyAction.SpeakerToggleMute and <= HotkeyAction.SpeakerVolumeDown;
 
-    /// <summary>The extra-hotkey action that would duplicate what the main hotkey already does in this mode.</summary>
+    /// <summary>The custom-hotkey action that would duplicate what the main hotkey already does in this mode.</summary>
     public static HotkeyAction MainActionFor(MuteMode mode) => mode switch
     {
         MuteMode.PushToTalk => HotkeyAction.PushToTalk,

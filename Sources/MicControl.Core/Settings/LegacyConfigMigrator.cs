@@ -55,11 +55,11 @@ public static class LegacyConfigMigrator
             var mic = settings.Microphone;
             mic.Hotkey = Hotkey(hotkeys["Hotkey"]) ?? mic.Hotkey;
             var enabled = Bool(hotkeys["EnableAdvancedHotkeys"]) ?? false;
-            AddExtra(settings, HotkeyAction.ToggleMute, hotkeys["HotkeyForToggle"], enabled);
-            AddExtra(settings, HotkeyAction.Mute, hotkeys["HotkeyForMute"], enabled);
-            AddExtra(settings, HotkeyAction.Unmute, hotkeys["HotkeyForUnmute"], enabled);
-            AddExtra(settings, HotkeyAction.PushToTalk, hotkeys["HotkeyForPushToTalk"], enabled);
-            AddExtra(settings, HotkeyAction.PushToMute, hotkeys["HotkeyForPushToMute"], enabled);
+            AddCustom(settings, HotkeyAction.ToggleMute, hotkeys["HotkeyForToggle"], enabled);
+            AddCustom(settings, HotkeyAction.Mute, hotkeys["HotkeyForMute"], enabled);
+            AddCustom(settings, HotkeyAction.Unmute, hotkeys["HotkeyForUnmute"], enabled);
+            AddCustom(settings, HotkeyAction.PushToTalk, hotkeys["HotkeyForPushToTalk"], enabled);
+            AddCustom(settings, HotkeyAction.PushToMute, hotkeys["HotkeyForPushToMute"], enabled);
         }
 
         if (configs.TryGetValue("MicSwitchOverlayConfig", out var overlay))
@@ -71,11 +71,11 @@ public static class LegacyConfigMigrator
         {
             var enabled = Bool(output["IsEnabled"]) ?? false;
             settings.SpeakerDeviceId = String(output["DeviceId"]?["LineId"]) ?? settings.SpeakerDeviceId;
-            AddExtra(settings, HotkeyAction.SpeakerToggleMute, output["HotkeyForToggle"], enabled);
-            AddExtra(settings, HotkeyAction.SpeakerMute, output["HotkeyForMute"], enabled);
-            AddExtra(settings, HotkeyAction.SpeakerUnmute, output["HotkeyForUnmute"], enabled);
-            AddExtra(settings, HotkeyAction.SpeakerVolumeUp, output["HotkeyForVolumeUp"], enabled);
-            AddExtra(settings, HotkeyAction.SpeakerVolumeDown, output["HotkeyForVolumeDown"], enabled);
+            AddCustom(settings, HotkeyAction.SpeakerToggleMute, output["HotkeyForToggle"], enabled);
+            AddCustom(settings, HotkeyAction.SpeakerMute, output["HotkeyForMute"], enabled);
+            AddCustom(settings, HotkeyAction.SpeakerUnmute, output["HotkeyForUnmute"], enabled);
+            AddCustom(settings, HotkeyAction.SpeakerVolumeUp, output["HotkeyForVolumeUp"], enabled);
+            AddCustom(settings, HotkeyAction.SpeakerVolumeDown, output["HotkeyForVolumeDown"], enabled);
         }
 
         return settings;
@@ -167,11 +167,11 @@ public static class LegacyConfigMigrator
         return path;
     }
 
-    private static void AddExtra(AppSettings settings, HotkeyAction action, JsonNode? node, bool enabled)
+    private static void AddCustom(AppSettings settings, HotkeyAction action, JsonNode? node, bool enabled)
     {
         if (Hotkey(node) is { IsEmpty: false } hotkey)
         {
-            settings.ExtraHotkeys.Add(new ExtraHotkey { Action = action, IsEnabled = enabled, Hotkey = hotkey });
+            settings.CustomHotkeys.Add(new CustomHotkey { Action = action, IsEnabled = enabled, Hotkey = hotkey });
         }
     }
 

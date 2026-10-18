@@ -100,13 +100,13 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
-    public void ExtraHotkeys_AddRunAndRemove()
+    public void CustomHotkeys_AddRunAndRemove()
     {
         using var harness = new TestHarness();
         var vm = harness.ViewModel;
 
-        vm.AddExtraHotkeyCommand.Execute(null);
-        var row = Assert.Single(vm.ExtraHotkeys);
+        vm.AddCustomHotkeyCommand.Execute(null);
+        var row = Assert.Single(vm.CustomHotkeys);
         row.Action = HotkeyAction.Mute;
         row.Editor.Key = HotkeyGesture.Parse("F14");
         vm.ToggleMuteCommand.Execute(null);
@@ -121,17 +121,17 @@ public sealed class MainViewModelTests
         Assert.False(vm.IsMuted);
 
         row.RemoveCommand.Execute(null);
-        Assert.Empty(vm.ExtraHotkeys);
-        Assert.Empty(vm.Settings.ExtraHotkeys);
+        Assert.Empty(vm.CustomHotkeys);
+        Assert.Empty(vm.Settings.CustomHotkeys);
     }
 
     [AvaloniaFact]
-    public void ExtraHotkeyActions_ExcludeWhatTheMainKeyDoes()
+    public void CustomHotkeyActions_ExcludeWhatTheMainKeyDoes()
     {
         using var harness = new TestHarness();
         var vm = harness.ViewModel;
-        vm.AddExtraHotkeyCommand.Execute(null);
-        var row = vm.ExtraHotkeys[0];
+        vm.AddCustomHotkeyCommand.Execute(null);
+        var row = vm.CustomHotkeys[0];
 
         Assert.DoesNotContain(row.Actions, a => Equals(a.Value, HotkeyAction.PushToTalk));
         Assert.NotEqual(HotkeyAction.PushToTalk, row.Action);
@@ -144,14 +144,14 @@ public sealed class MainViewModelTests
     [AvaloniaFact]
     public void SpeakerAction_ChangesSpeakers_AndShowsOverlayIndicator()
     {
-        using var harness = new TestHarness(s => s.ExtraHotkeys.Add(new ExtraHotkey
+        using var harness = new TestHarness(s => s.CustomHotkeys.Add(new CustomHotkey
         {
             Action = HotkeyAction.SpeakerMute,
             Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("F15") },
         }));
 
         Assert.True(harness.ViewModel.HasSpeakerActions);
-        harness.Hotkeys.Trigger(harness.ViewModel.Settings.ExtraHotkeys[0].Hotkey, pressed: true);
+        harness.Hotkeys.Trigger(harness.ViewModel.Settings.CustomHotkeys[0].Hotkey, pressed: true);
 
         Assert.True(harness.Devices.Speaker.Mute);
         Assert.True(harness.ViewModel.ShowOutputIndicator);
