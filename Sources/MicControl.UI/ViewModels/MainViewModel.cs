@@ -15,10 +15,10 @@ namespace MicControl.ViewModels;
 public enum Page
 {
     Home,
-    Sounds,
     Overlay,
-    Hotkeys,
     About,
+    Hotkeys,
+    Sounds,
 }
 
 public sealed record NavItem(Page Page, string Title, string Glyph);
@@ -119,14 +119,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     // ---------------------------------------------------------------- Navigation
 
-    /// <summary>Every page, in sidebar order; <see cref="NavItems"/> holds the ones currently shown.</summary>
+    /// <summary>Every page, in tab order (the optional pages last, in the order of their switches); <see cref="NavItems"/> holds the ones currently shown.</summary>
     private static readonly NavItem[] AllNavItems =
     [
         new(Page.Home, "Home", ""),
-        new(Page.Sounds, "Sounds", ""),
         new(Page.Overlay, "Overlay", ""),
-        new(Page.Hotkeys, "Hotkeys", ""),
         new(Page.About, "About", ""),
+        new(Page.Hotkeys, "Hotkeys", ""),
+        new(Page.Sounds, "Sounds", ""),
     ];
 
     /// <summary>The page tabs: Sounds and Hotkeys only appear while their switch (About → Advanced) is on.</summary>
