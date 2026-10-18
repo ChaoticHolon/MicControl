@@ -45,14 +45,24 @@ In Visual Studio, open `Sources\MicControl.slnx`, set **MicControl** as the star
 
 To build the setup, run `installer\build.ps1` from the repository root. It writes `artifacts\MicControl-Setup-<version>.exe`, which is the app itself published as one file: started under that name it shows the installer.
 
-Releases are automated: pushing a `vMAJOR.MINOR.PATCH` tag (e.g. `v1.1.0`) on a commit in `master` builds the setup in GitHub Actions and publishes it to [Releases](https://github.com/ChaoticHolon/MicControl/releases) with a `SHA512SUMS` file (`sha512sum -c SHA512SUMS` checks a download). The tag must match `<Version>` in `Sources\Directory.Build.props`.
+Releases: pushing a `vMAJOR.MINOR.PATCH` tag (e.g. `v1.1.0`) on a commit in `master` builds the setup in GitHub Actions as a draft release with a `SHA512SUMS` file. The tag must match `<Version>` in `Sources\Directory.Build.props`. The developer then signs `SHA512SUMS` with the release key, which never leaves their PC, and publishes the release (`tools\Signing.ps1 SignRelease v1.1.0`). The in-app updater only installs a setup whose SHA-512 is in a `SHA512SUMS` carrying that signature.
+
+### Verifying a download
+Every release has `SHA512SUMS` and its Ed25519 signature `SHA512SUMS.sig`, made with `ssh-keygen`. The trusted keys are in [`docs/release_signers`](docs/release_signers). With OpenSSH (built into Windows 10 and 11, macOS and Linux), in the folder with the downloads:
+
+```
+ssh-keygen -Y verify -f release_signers -I release@miccontrol -n miccontrol-release -s SHA512SUMS.sig < SHA512SUMS
+sha512sum -c SHA512SUMS --ignore-missing
+```
+
+On Windows without `sha512sum`, compare `(Get-FileHash MicControl-Setup-1.0.0.exe -Algorithm SHA512).Hash` with the line in `SHA512SUMS`. Commits and release tags are signed too, so GitHub shows them as Verified.
 
 The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux soon (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
 
 ### Project layout
 | Project | Contents |
 | --- | --- |
-| `MicControl.Core` | Platform-independent logic and contracts: settings model and JSON storage, MicSwitch 1.x import, hotkey text format, mute rules, notification sound library, and the `MicControl.Platform` interfaces each OS implements |
+| `MicControl.Core` | Platform-independent logic and contracts: settings model and JSON storage, MicSwitch 1.x import, hotkey text format, mute rules, notification sound library, update feed and release signature checks (Ed25519, SSHSIG), and the `MicControl.Platform` interfaces each OS implements |
 | `MicControl.UI` | Avalonia 12 UI (Fluent theme, light/dark): views, view models (CommunityToolkit.Mvvm), tray icon, app composition |
 | `MicControl.Windows` | Windows implementations: Core Audio mute/volume (NAudio), low-level keyboard/mouse hooks, WASAPI sound playback, start with Windows, overlay click-through |
 | `MicControl` | Windows executable (`MicControl.exe`): wires the UI to the Windows services; single instance; updates through the installer |

@@ -1,16 +1,14 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using MicControl.Installation;
+using MicControl.Security;
 
 namespace MicControl.Updates;
 
-/// <summary>A published installer: its version, where to download it, and what it can be verified against.</summary>
-/// <param name="Sha256">The SHA-256 digest GitHub reports for the setup, if any: the fallback check.</param>
-/// <param name="Sha512SumsUrl">The release's <c>SHA512SUMS</c> file, if attached: the preferred check.</param>
-public sealed record InstallerRelease(Version Version, Uri SetupUrl, string FileName, string? Sha256, Uri? Sha512SumsUrl);
-
-/// <summary>The hash a download must match, as lowercase hex.</summary>
-public sealed record ExpectedChecksum(HashAlgorithmName Algorithm, string Hex);
+/// <summary>A published installer: its version, where to download it, and the signed checksums that verify it.</summary>
+/// <param name="Sha512SumsUrl">The release's <c>SHA512SUMS</c>.</param>
+/// <param name="SignatureUrl">The developer's signature of it, <c>SHA512SUMS.sig</c>.</param>
+public sealed record InstallerRelease(Version Version, Uri SetupUrl, string FileName, Uri Sha512SumsUrl, Uri SignatureUrl);
 
 /// <summary>
 /// Reads MicControl releases from GitHub and decides what to install. The installer is
@@ -26,9 +24,18 @@ public static class ReleaseFeed
     public const string Sha512SumsFileName = "SHA512SUMS";
 
     /// <summary>
+    /// <c>ssh-keygen -Y sign -n miccontrol-release</c>'s signature of <see cref="Sha512SumsFileName"/>, made with the
+    /// developer's release key (<see cref="ReleaseKeys"/>) on their own PC.
+    /// </summary>
+    public const string SignatureFileName = Sha512SumsFileName + ".sig";
+
+    /// <summary>What release signatures are made for (<c>ssh-keygen -n</c>), so no other signature of that key passes.</summary>
+    public const string SignatureNamespace = "miccontrol-release";
+
+    /// <summary>
     /// The installer in GitHub's "latest release" JSON, or <c>null</c> when there is nothing safe to install:
-    /// a draft or prerelease, a tag that isn't a version, no matching setup file over HTTPS, or nothing to verify it
-    /// against (neither a <c>SHA512SUMS</c> file nor a SHA-256 digest from GitHub).
+    /// a draft or prerelease, a tag that isn't a version, or no matching setup, <c>SHA512SUMS</c> and signature over
+    /// HTTPS.
     /// </summary>
     public static InstallerRelease? Parse(string json)
     {
@@ -44,27 +51,27 @@ public static class ReleaseFeed
         var expectedName = $"{SetupFilePrefix}{version.ToString(3)}.exe";
         Uri? setupUrl = null;
         Uri? sumsUrl = null;
-        string? sha256 = null;
+        Uri? signatureUrl = null;
         foreach (var asset in assets.EnumerateArray())
         {
             var name = Text(asset, "name");
             if (string.Equals(name, expectedName, StringComparison.OrdinalIgnoreCase))
             {
                 setupUrl = HttpsUrl(asset);
-                var digest = Text(asset, "digest");
-                sha256 = digest is not null && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)
-                    ? digest["sha256:".Length..].ToLowerInvariant()
-                    : null;
             }
             else if (string.Equals(name, Sha512SumsFileName, StringComparison.Ordinal))
             {
                 sumsUrl = HttpsUrl(asset);
             }
+            else if (string.Equals(name, SignatureFileName, StringComparison.Ordinal))
+            {
+                signatureUrl = HttpsUrl(asset);
+            }
         }
 
-        return setupUrl is null || (sha256 is null && sumsUrl is null)
+        return setupUrl is null || sumsUrl is null || signatureUrl is null
             ? null
-            : new InstallerRelease(version, setupUrl, expectedName, sha256, sumsUrl);
+            : new InstallerRelease(version, setupUrl, expectedName, sumsUrl, signatureUrl);
     }
 
     /// <summary>
@@ -93,14 +100,17 @@ public static class ReleaseFeed
     }
 
     /// <summary>
-    /// What the setup is verified against: its SHA-512 from the release's <c>SHA512SUMS</c> when that lists it,
-    /// otherwise GitHub's SHA-256 digest; <c>null</c> when neither is available.
+    /// The SHA-512 the setup must have: its entry in <paramref name="sha512Sums"/>, but only when
+    /// <paramref name="signature"/> is a valid signature of exactly those bytes by one of
+    /// <paramref name="trustedKeys"/>. <c>null</c> otherwise: an unsigned release is never installed.
     /// </summary>
-    /// <param name="sha512Sums">The downloaded <c>SHA512SUMS</c>, or <c>null</c> if there is none or it couldn't be read.</param>
-    public static ExpectedChecksum? ChooseChecksum(InstallerRelease release, string? sha512Sums) =>
-        sha512Sums is not null && FindSha512(sha512Sums, release.FileName) is { } sha512 ? new ExpectedChecksum(HashAlgorithmName.SHA512, sha512)
-        : release.Sha256 is { } sha256 ? new ExpectedChecksum(HashAlgorithmName.SHA256, sha256)
-        : null;
+    public static string? VerifiedSha512(InstallerRelease release, ReadOnlySpan<byte> sha512Sums, string signature, IEnumerable<string> trustedKeys)
+    {
+        ArgumentNullException.ThrowIfNull(release);
+        return SshSignature.Verify(sha512Sums, signature, SignatureNamespace, trustedKeys)
+            ? FindSha512(System.Text.Encoding.UTF8.GetString(sha512Sums), release.FileName)
+            : null;
+    }
 
     /// <summary>Accepts "2.1.0" or "v2.1.0"; the result always has major, minor and build.</summary>
     public static bool TryParseVersion(string? text, out Version version)
@@ -126,14 +136,10 @@ public static class ReleaseFeed
     public static string SilentInstallArguments(InstallScope scope) =>
         new SetupCommand(SetupMode.Install, Silent: true, Scope: scope, Relaunch: true).ToArguments();
 
-    public static async Task<bool> MatchesAsync(Stream content, ExpectedChecksum expected, CancellationToken cancellationToken = default)
+    public static async Task<bool> MatchesAsync(Stream content, string sha512, CancellationToken cancellationToken = default)
     {
-        var hash = expected.Algorithm == HashAlgorithmName.SHA512
-            ? await SHA512.HashDataAsync(content, cancellationToken).ConfigureAwait(false)
-            : expected.Algorithm == HashAlgorithmName.SHA256
-                ? await SHA256.HashDataAsync(content, cancellationToken).ConfigureAwait(false)
-                : throw new ArgumentException($"Unsupported checksum algorithm {expected.Algorithm}", nameof(expected));
-        return string.Equals(Convert.ToHexStringLower(hash), expected.Hex, StringComparison.OrdinalIgnoreCase);
+        var hash = await SHA512.HashDataAsync(content, cancellationToken).ConfigureAwait(false);
+        return string.Equals(Convert.ToHexStringLower(hash), sha512, StringComparison.OrdinalIgnoreCase);
     }
 
     private static Version Normalize(Version v) => new(v.Major, Math.Max(v.Minor, 0), Math.Max(v.Build, 0));

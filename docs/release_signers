@@ -1,0 +1,5 @@
+# MicControl release signing keys, in OpenSSH allowed-signers format. Each release's SHA512SUMS is signed by one of
+# these; check a download with:
+#   ssh-keygen -Y verify -f release_signers -I release@miccontrol -n miccontrol-release -s SHA512SUMS.sig < SHA512SUMS
+#   sha512sum -c SHA512SUMS
+# The same keys are built into the app (Sources/MicControl.Core/Updates/ReleaseKeys.cs); a test keeps them equal.

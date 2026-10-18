@@ -133,7 +133,7 @@ public sealed class ScreenshotTests
         frame.Save(Path.Combine(folder, name + ".png"), PngBitmapEncoderOptions.Default);
     }
 
-    private static string RepositoryRoot()
+    internal static string RepositoryRoot()
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
