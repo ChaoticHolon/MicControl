@@ -16,7 +16,7 @@
     <ProjectReference Include="..\MicControl.Core\MicControl.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <AvaloniaResource Include="Assets\*.png;Assets\*.ico" />
+    <AvaloniaResource Include="Assets\*.png;Assets\*.ico;Assets\Fonts\*.ttf" />
     <Content Include="Assets\Notifications\*.wav" CopyToOutputDirectory="PreserveNewest" Link="Resources\Notifications\%(Filename)%(Extension)" />
     <InternalsVisibleTo Include="MicControl.Tests" />
   </ItemGroup>

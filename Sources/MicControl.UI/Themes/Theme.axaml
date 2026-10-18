@@ -33,7 +33,8 @@
     <SolidColorBrush x:Key="SpeakingBrush" Color="#23A55A" />
     <SolidColorBrush x:Key="LiveBrush" Color="#0F7B0F" />
     <SolidColorBrush x:Key="DisconnectedBrush" Color="#8A8A8A" />
-    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <!-- Bundled (tools/GenerateIconFont.py): Fluent UI System Icons at Segoe Fluent Icons code points, the same on every OS -->
+    <FontFamily x:Key="IconFont">avares://MicControl.UI/Assets/Fonts#MicControl Icons</FontFamily>
 
     <ControlTheme x:Key="{x:Type c:SettingRow}" TargetType="c:SettingRow">
         <Setter Property="Template">
