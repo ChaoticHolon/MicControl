@@ -80,15 +80,35 @@ function Test-Signature([string]$Signers, [string]$Signature, [string]$Message) 
     return $process.ExitCode
 }
 
-function New-SshKey([string]$Path, [string]$Comment, [switch]$NoPassphrase) {
-    $arguments = "-t ed25519 -C `"$Comment`" -f `"$Path`""
-    if ($NoPassphrase) {
-        $arguments += ' -N ""'
+# 64 bytes from the OS's cryptographic generator, as 128 hex characters (512 bits; the key itself has 256).
+function New-Passphrase {
+    $bytes = New-Object byte[] 64
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($bytes)
+    }
+    finally {
+        $generator.Dispose()
     }
 
-    if ((Start-Native $SshKeygen $arguments) -ne 0) {
+    return -join ($bytes | ForEach-Object { $_.ToString('x2') })
+}
+
+# An empty passphrase leaves the key unprotected (only the cloud key, which lives in the cloud environment).
+function New-SshKey([string]$Path, [string]$Comment, [string]$Passphrase) {
+    if ((Start-Native $SshKeygen "-q -t ed25519 -C `"$Comment`" -N `"$Passphrase`" -f `"$Path`"") -ne 0) {
         throw "ssh-keygen couldn't create $Path"
     }
+}
+
+function Save-Passphrase([string]$Passphrase, [string]$Entry) {
+    Copy-Text $Passphrase 'The generated passphrase'
+    Write-Host "Save it in your password manager now, as `"$Entry`"."
+    Read-Host 'Press Enter once it is saved' | Out-Null
+}
+
+function Clear-Clipboard {
+    try { Set-Clipboard -Value ' ' } catch { Write-Verbose 'No clipboard to clear.' }
 }
 
 function Test-HasPassphrase([string]$Path) {
@@ -156,14 +176,20 @@ function Enable-GitSigning {
     }
     else {
         New-Item -ItemType Directory -Force $SshDir | Out-Null
-        Write-Host 'Creating your commit signing key. Pick a passphrase; the SSH agent remembers it, so Git and Visual Studio never ask.'
-        New-SshKey $GitKey "$Email (commit signing)"
+        $passphrase = New-Passphrase
+        New-SshKey $GitKey "$Email (commit signing)" $passphrase
+        Write-Host "Created your commit signing key $(Get-Fingerprint $GitKey), protected by a random passphrase."
+        Save-Passphrase $passphrase 'MicControl commit signing key'
+        $passphrase = $null
     }
 
     $public = Get-PublicKey $GitKey
     if ($OnWindows) {
         Start-SshAgent
+        Write-Host 'The SSH agent asks for the passphrase once (paste it from the clipboard or your password manager with'
+        Write-Host 'a right-click); after that it keeps the key unlocked, so Git and Visual Studio never ask.'
         Invoke-Native $SshAdd @($GitKey)
+        Clear-Clipboard
         $signingKey = "$GitKey.pub"
     }
     else {
@@ -206,7 +232,7 @@ function New-CloudKey {
     New-Item -ItemType Directory $dir | Out-Null
     try {
         $key = Join-Path $dir 'cloud_signing_ed25519'
-        New-SshKey $key "$Email (cloud sessions)" -NoPassphrase
+        New-SshKey $key "$Email (cloud sessions)" ''
         Write-Host "Cloud signing key $(Get-Fingerprint $key)"
         Add-ToGitHub (Get-PublicKey $key) 'Claude cloud sessions'
 
@@ -217,7 +243,7 @@ function New-CloudKey {
         Write-Host '  MICCONTROL_GIT_SIGNING_KEY='
         Write-Host 'Sessions started after that sign their commits.'
         Read-Host 'Press Enter once it is saved (this clears the clipboard and deletes the key from this PC)' | Out-Null
-        try { Set-Clipboard -Value ' ' } catch { Write-Verbose 'No clipboard to clear.' }
+        Clear-Clipboard
     }
     finally {
         Remove-Item -Recurse -Force $dir
@@ -232,13 +258,19 @@ function New-ReleaseKey {
     }
 
     New-Item -ItemType Directory -Force (Split-Path $ReleaseKey) | Out-Null
-    Write-Host 'Creating the release key. Pick a strong passphrase: it is asked at every release, and the file plus the'
-    Write-Host 'passphrase is all anyone would need to sign an update that every MicControl installs.'
-    New-SshKey $ReleaseKey "MicControl release key $(Get-Date -Format yyyy-MM)"
+    $passphrase = New-Passphrase
+    New-SshKey $ReleaseKey "MicControl release key $(Get-Date -Format yyyy-MM)" $passphrase
     if (-not (Test-HasPassphrase $ReleaseKey)) {
         Remove-Item $ReleaseKey, "$ReleaseKey.pub"
-        throw 'The release key needs a passphrase; run NewReleaseKey again and set one.'
+        throw "The release key didn't get its passphrase; nothing was kept, run NewReleaseKey again."
     }
+
+    Write-Host "Created the release key $(Get-Fingerprint $ReleaseKey), protected by a random passphrase. SignRelease asks"
+    Write-Host 'for it at every release; the key file plus the passphrase is all anyone would need to sign an update'
+    Write-Host 'that every MicControl installs.'
+    Save-Passphrase $passphrase 'MicControl release key'
+    $passphrase = $null
+    Clear-Clipboard
 
     $public = Get-PublicKey $ReleaseKey
     Copy-Text $public 'The public key'
@@ -332,7 +364,7 @@ function Publish-Release {
             throw "$Tag doesn't trust the key $ReleaseKey ($SignersPath at that tag doesn't list it), so its updater would refuse its own signature."
         }
 
-        Write-Host "Signing SHA512SUMS with $(Get-Fingerprint $ReleaseKey) (enter the release key's passphrase)..."
+        Write-Host "Signing SHA512SUMS with $(Get-Fingerprint $ReleaseKey): paste the release key's passphrase from your password manager (right-click)..."
         Invoke-Native $SshKeygen @('-Y', 'sign', '-f', $ReleaseKey, '-n', $Namespace, $sums)
 
         # The same check the updater makes, by OpenSSH itself.

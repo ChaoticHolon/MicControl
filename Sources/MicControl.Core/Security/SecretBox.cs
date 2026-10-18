@@ -9,8 +9,8 @@ public enum SecretBoxAlgorithm : byte
 }
 
 /// <summary>
-/// Authenticated encryption for local data: ChaCha20-Poly1305 where the OS has it (Windows 11, Linux), otherwise
-/// AES-256-GCM (Windows 10, macOS). Sealed layout: algorithm (1 byte) · nonce (12) · ciphertext · tag (16). Opening
+/// Authenticated encryption for local data: ChaCha20-Poly1305 where .NET has it (Windows 11, Linux, macOS), otherwise
+/// AES-256-GCM (Windows 10, which needs build 20142). Sealed layout: algorithm (1 byte) · nonce (12) · ciphertext · tag (16). Opening
 /// reads the algorithm byte, so data sealed on one machine opens on another that has that algorithm.
 /// </summary>
 public static class SecretBox
