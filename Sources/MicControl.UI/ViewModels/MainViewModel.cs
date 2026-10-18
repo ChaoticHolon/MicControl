@@ -407,7 +407,37 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (SetAndSave(Settings.Window.Theme, value, v => Settings.Window.Theme = v))
             {
                 App.ApplyTheme(value);
+                OnPropertyChanged(nameof(IsSystemTheme));
+                OnPropertyChanged(nameof(IsLightTheme));
+                OnPropertyChanged(nameof(IsDarkTheme));
             }
+        }
+    }
+
+    // Home's segmented Theme control: one of these is on; choosing one sets Theme (unchecking is ignored).
+    public bool IsSystemTheme
+    {
+        get => Theme == AppTheme.System;
+        set => SelectTheme(value, AppTheme.System);
+    }
+
+    public bool IsLightTheme
+    {
+        get => Theme == AppTheme.Light;
+        set => SelectTheme(value, AppTheme.Light);
+    }
+
+    public bool IsDarkTheme
+    {
+        get => Theme == AppTheme.Dark;
+        set => SelectTheme(value, AppTheme.Dark);
+    }
+
+    private void SelectTheme(bool selected, AppTheme theme)
+    {
+        if (selected)
+        {
+            Theme = theme;
         }
     }
 

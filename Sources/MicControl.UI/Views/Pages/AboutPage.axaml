@@ -8,14 +8,15 @@
              x:DataType="vm:MainViewModel">
     <StackPanel Classes="page">
         <TextBlock Classes="pageTitle" Text="About" />
-        <Border Classes="card" Padding="24,20">
+        <TextBlock Classes="pageSubtitle" Text="Version and updates, optional features, and help when something goes wrong." />
+        <Border Classes="card hero">
             <Grid ColumnDefinitions="Auto,*,Auto">
-                <Image Width="56" Height="56" Source="{Binding UnmutedIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                <Image Width="56" Height="56" Source="{Binding CurrentIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
                 <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
-                    <TextBlock FontSize="22" FontWeight="SemiBold" Text="{x:Static vm:MainViewModel.AppName}" />
-                    <TextBlock Classes="secondary" FontSize="13" Text="{Binding VersionText, StringFormat='Version {0}'}" />
+                    <TextBlock Classes="heroTitle" Text="{x:Static vm:MainViewModel.AppName}" />
+                    <TextBlock Classes="secondary heroDetail" Text="{Binding VersionText, StringFormat='Version {0}'}" />
                 </StackPanel>
-                <Button Grid.Column="2" VerticalAlignment="Center" Content="Project page" Command="{Binding OpenProjectPageCommand}" />
+                <Button Grid.Column="2" Classes="heroAction" Content="Project page" Command="{Binding OpenProjectPageCommand}" />
             </Grid>
         </Border>
 

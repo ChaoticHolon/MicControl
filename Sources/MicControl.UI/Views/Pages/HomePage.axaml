@@ -8,19 +8,20 @@
              x:DataType="vm:MainViewModel">
     <StackPanel Classes="page">
         <TextBlock Classes="pageTitle" Text="Home" />
+        <TextBlock Classes="pageSubtitle" Text="Your microphone at a glance, and how you control it." />
 
-        <!-- Status hero -->
-        <Border Classes="card" Padding="24,20">
+        <!-- Status hero (same layout as About's app card: Border.hero) -->
+        <Border Classes="card hero">
             <StackPanel Spacing="16">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <Border Classes="badge" Classes.muted="{Binding IsMutedState}" Classes.live="{Binding IsLiveState}">
                         <TextBlock Classes="glyph" FontSize="26" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
                     </Border>
                     <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding MicrophoneStatus}" FontSize="22" FontWeight="SemiBold" />
-                        <TextBlock Classes="secondary" FontSize="13" Text="{Binding MicrophoneStatusDetail}" />
+                        <TextBlock Classes="heroTitle" Text="{Binding MicrophoneStatus}" />
+                        <TextBlock Classes="secondary heroDetail" Text="{Binding MicrophoneStatusDetail}" />
                     </StackPanel>
-                    <Button Grid.Column="2" Classes="accent" MinWidth="130" Padding="20,10" FontSize="15" HorizontalContentAlignment="Center"
+                    <Button Grid.Column="2" Classes="accent heroAction"
                             Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}"
                             IsEnabled="{Binding IsMicrophoneConnected}" ToolTip.Tip="Mute or unmute now (the hotkey does the same)" />
                 </Grid>
@@ -80,8 +81,14 @@
             <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE790;" Header="Theme">
-            <ComboBox MinWidth="200" ItemsSource="{Binding Themes}" SelectedValue="{Binding Theme}"
-                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+            <!-- Segmented control: three peers with no order between them, so not a slider -->
+            <Border Classes="segmented">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <RadioButton Classes="segment" GroupName="theme" Content="System" IsChecked="{Binding IsSystemTheme}" />
+                    <RadioButton Classes="segment" GroupName="theme" Content="Light" IsChecked="{Binding IsLightTheme}" />
+                    <RadioButton Classes="segment" GroupName="theme" Content="Dark" IsChecked="{Binding IsDarkTheme}" />
+                </StackPanel>
+            </Border>
         </c:SettingRow>
     </StackPanel>
 </UserControl>

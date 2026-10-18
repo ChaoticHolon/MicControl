@@ -416,4 +416,22 @@ public sealed class MainViewModelTests
         vm.OverlayEnabled = false;
         Assert.Equal(0, vm.OverlayVisibilityStep);
     }
+
+    [AvaloniaFact]
+    public void ThemeSegments_PickOneTheme_AndIgnoreUnchecking()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+        Assert.True(vm.IsSystemTheme);
+
+        vm.IsDarkTheme = true;
+        Assert.Equal(AppTheme.Dark, vm.Settings.Window.Theme);
+        Assert.Equal((false, false, true), (vm.IsSystemTheme, vm.IsLightTheme, vm.IsDarkTheme));
+
+        vm.IsSystemTheme = false; // a radio button being unchecked as another one is picked changes nothing
+        Assert.Equal(AppTheme.Dark, vm.Settings.Window.Theme);
+
+        vm.IsSystemTheme = true;
+        Assert.Equal(AppTheme.System, vm.Settings.Window.Theme);
+    }
 }
