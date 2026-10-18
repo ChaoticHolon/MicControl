@@ -124,6 +124,23 @@ public sealed class InstallerViewModelTests
         Assert.Equal([InstallScope.CurrentUser], installer.Launches);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Silent_AllUsersUpdate_WithoutAdmin_RelaunchesAsThisUser(bool approved)
+    {
+        var installer = new FakeInstaller { IsElevated = false, AcceptElevation = approved };
+        var vm = Create(installer, new SetupCommand(SetupMode.Install, Silent: true, Scope: InstallScope.AllUsers, Relaunch: true));
+
+        Assert.Equal(approved, await vm.RunSilentAsync());
+
+        // The administrator's copy installs without --relaunch; this one (the user's) starts the app.
+        var elevated = Assert.Single(installer.ElevatedRestarts);
+        Assert.Equal(new SetupCommand(SetupMode.Install, Silent: true, Scope: InstallScope.AllUsers, Relaunch: false), elevated);
+        Assert.Empty(installer.Installs);
+        Assert.Equal(approved ? [InstallScope.AllUsers] : [], installer.Launches);
+    }
+
     [AvaloniaFact]
     public async Task Uninstall_AllUsersCopy_WithoutAdmin_AsksForIt()
     {

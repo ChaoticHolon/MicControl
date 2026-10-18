@@ -28,9 +28,16 @@ public sealed partial class AudioDeviceService : IAudioDevices, IMMNotificationC
         {
             using (d)
             {
-                return new AudioDeviceInfo(d.ID, d.FriendlyName);
+                try
+                {
+                    return new AudioDeviceInfo(d.ID, d.FriendlyName);
+                }
+                catch (COMException)
+                {
+                    return null; // removed while the list was read
+                }
             }
-        })];
+        }).OfType<AudioDeviceInfo>()];
 
     public IAudioEndpointGroup CreateGroup(AudioFlow flow) => new AudioEndpointGroup(this, flow, dispatcher);
 

@@ -97,27 +97,40 @@ public sealed record HotkeyGesture(HotkeyModifiers Modifiers = HotkeyModifiers.N
             }
         }
 
-        if (keyPart.StartsWith(MousePrefix, StringComparison.OrdinalIgnoreCase)
-            && Enum.TryParse<MouseHotkey>(keyPart[MousePrefix.Length..], ignoreCase: true, out var mouse)
-            && mouse is not (MouseHotkey.None or MouseHotkey.WheelUp or MouseHotkey.WheelDown))
+        if (keyPart.StartsWith(MousePrefix, StringComparison.OrdinalIgnoreCase) && keyPart.Length > MousePrefix.Length)
         {
-            result = new HotkeyGesture(modifiers, Mouse: mouse);
+            // Names only: Enum.TryParse also takes numbers, and "Mouse99" isn't a button.
+            if (!TryParseMouse(keyPart[MousePrefix.Length..], out var button))
+            {
+                return false;
+            }
+
+            result = new HotkeyGesture(modifiers, Mouse: button);
             return true;
         }
 
-        if (keyPart.StartsWith("Wheel", StringComparison.OrdinalIgnoreCase) && Enum.TryParse(keyPart, ignoreCase: true, out mouse))
+        if (keyPart.StartsWith("Wheel", StringComparison.OrdinalIgnoreCase) && TryParseMouse(keyPart, out var wheel))
         {
-            result = new HotkeyGesture(modifiers, Mouse: mouse);
+            result = new HotkeyGesture(modifiers, Mouse: wheel);
             return true;
         }
 
-        if (keyPart.Length == 0 || keyPart.Contains(' ', StringComparison.Ordinal) && !KeyAliases.ContainsKey(keyPart))
+        // A trailing delimiter after a modifier ("Ctrl+") is a gesture typed halfway, not a key named "Ctrl+".
+        if (keyPart.Length == 0 || keyPart.Length > 1 && keyPart[^1] == Delimiter
+            || keyPart.Contains(' ', StringComparison.Ordinal) && !KeyAliases.ContainsKey(keyPart))
         {
             return false;
         }
 
         result = new HotkeyGesture(modifiers, KeyAliases.GetValueOrDefault(keyPart, keyPart));
         return true;
+    }
+
+    private static bool TryParseMouse(string name, out MouseHotkey button)
+    {
+        button = MouseHotkey.None;
+        return name.Length > 0 && char.IsLetter(name[0])
+            && Enum.TryParse(name, ignoreCase: true, out button) && button != MouseHotkey.None;
     }
 
     public override string ToString()

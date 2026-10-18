@@ -276,7 +276,21 @@ public sealed partial class MainViewModel
         var directory = Path.Combine(settingsService.Directory, "Icons");
         Directory.CreateDirectory(directory);
         var target = Path.Combine(directory, name + Path.GetExtension(file));
-        File.Copy(file, target, overwrite: true);
+        try
+        {
+            // Picking the copy that's already in use (it's in the settings folder) needs no copy.
+            if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(file, target, overwrite: true);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogOverlayIconCopyFailed(file, ex);
+            StatusMessage = $"Couldn't use that image: {ex.Message}";
+            return;
+        }
+
         assign(target);
         LogOverlayIconChanged(name, target);
         RefreshIcons();
@@ -288,6 +302,9 @@ public sealed partial class MainViewModel
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Overlay {Which} icon set to {Path}")]
     private partial void LogOverlayIconChanged(string which, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Couldn't copy the overlay icon {File}")]
+    private partial void LogOverlayIconCopyFailed(string file, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Overlay edit position {Editing}")]
     private partial void LogOverlayEditing(bool editing);

@@ -25,9 +25,12 @@ internal sealed partial class SettingsJsonContext : JsonSerializerContext
 /// <summary>Stores hotkeys as their human-readable text form, e.g. "Ctrl+F1".</summary>
 internal sealed class HotkeyGestureJsonConverter : JsonConverter<HotkeyGesture>
 {
+    // A null or non-text value reads as no hotkey, not as a missing object or an unreadable file.
+    public override bool HandleNull => true;
+
     public override HotkeyGesture Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        return HotkeyGesture.TryParse(reader.GetString(), out var gesture) ? gesture : HotkeyGesture.Empty;
+        return reader.TokenType == JsonTokenType.String && HotkeyGesture.TryParse(reader.GetString(), out var gesture) ? gesture : HotkeyGesture.Empty;
     }
 
     public override void Write(Utf8JsonWriter writer, HotkeyGesture value, JsonSerializerOptions options)

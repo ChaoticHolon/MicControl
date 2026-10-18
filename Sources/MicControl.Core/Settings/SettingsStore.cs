@@ -42,9 +42,9 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
             try
             {
                 using var stream = File.OpenRead(FilePath);
-                return JsonSerializer.Deserialize(stream, SettingsJsonContext.Readable.AppSettings) ?? new AppSettings();
+                return (JsonSerializer.Deserialize(stream, SettingsJsonContext.Readable.AppSettings) ?? new AppSettings()).Normalize();
             }
-            catch (JsonException)
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
             {
                 File.Copy(FilePath, FilePath + ".corrupt", overwrite: true);
                 return new AppSettings();
@@ -80,7 +80,7 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
 
     public static string Serialize(AppSettings settings) => JsonSerializer.Serialize(settings, SettingsJsonContext.Default.AppSettings);
 
-    public static AppSettings Deserialize(string json) => JsonSerializer.Deserialize(json, SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
+    public static AppSettings Deserialize(string json) => (JsonSerializer.Deserialize(json, SettingsJsonContext.Default.AppSettings) ?? new AppSettings()).Normalize();
 
     private static void CopyDirectory(string source, string target)
     {

@@ -5,7 +5,10 @@ using NAudio.CoreAudioApi;
 
 namespace MicControl.Windows;
 
-/// <summary>Core Audio implementation of <see cref="IAudioEndpointGroup"/>. In "all" mode new devices inherit the current mute state.</summary>
+/// <summary>
+/// Core Audio implementation of <see cref="IAudioEndpointGroup"/>. Every (re)bound device gets the mute state and the
+/// kept volume the app last set: a microphone plugged back in mid push-to-talk must not come back live.
+/// </summary>
 internal sealed class AudioEndpointGroup : IAudioEndpointGroup
 {
     private readonly AudioDeviceService devices;
@@ -14,6 +17,7 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
     private List<MMDevice> endpoints = [];
     private string deviceId = AppSettings.AllDevices;
     private bool? lastMute;
+    private float? lastVolume;
 
     public AudioEndpointGroup(AudioDeviceService devices, AudioFlow flow, IUiDispatcher dispatcher)
     {
@@ -60,9 +64,10 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
         get => endpoints.Count > 0 ? Try(() => (float?)endpoints[0].AudioEndpointVolume.MasterVolumeLevelScalar, null) : null;
         set
         {
-            if (value is { } volume)
+            lastVolume = value is { } v ? Math.Clamp(v, 0, 1) : null;
+            if (lastVolume is { } volume)
             {
-                endpoints.ForEach(e => Try(() => e.AudioEndpointVolume.MasterVolumeLevelScalar = Math.Clamp(volume, 0, 1)));
+                endpoints.ForEach(e => Try(() => e.AudioEndpointVolume.MasterVolumeLevelScalar = volume));
             }
         }
     }
@@ -70,14 +75,29 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
     public void Rebind()
     {
         Release();
-        var active = devices.GetActiveDevices(flow);
-        endpoints = [.. deviceId == AppSettings.AllDevices ? active : active.Where(d => d.ID == deviceId)];
+        foreach (var device in devices.GetActiveDevices(flow))
+        {
+            if (deviceId == AppSettings.AllDevices || Try(() => device.ID, (string?)null) == deviceId)
+            {
+                endpoints.Add(device);
+            }
+            else
+            {
+                device.Dispose();
+            }
+        }
+
         foreach (var endpoint in endpoints)
         {
             Try(() => endpoint.AudioEndpointVolume.OnVolumeNotification += OnVolumeNotification);
-            if (deviceId == AppSettings.AllDevices && lastMute is { } mute)
+            if (lastMute is { } mute)
             {
                 Try(() => endpoint.AudioEndpointVolume.Mute = mute);
+            }
+
+            if (lastVolume is { } volume)
+            {
+                Try(() => endpoint.AudioEndpointVolume.MasterVolumeLevelScalar = volume);
             }
         }
 

@@ -43,10 +43,16 @@ public interface IAudioEndpointGroup : IDisposable
 
     bool IsConnected { get; }
 
-    /// <summary><c>true</c> only when every controlled device is muted; <c>null</c> when none is connected.</summary>
+    /// <summary>
+    /// <c>true</c> only when every controlled device is muted; <c>null</c> when none is connected. A set state is
+    /// also applied to devices bound later.
+    /// </summary>
     bool? Mute { get; set; }
 
-    /// <summary>Scalar volume 0..1.</summary>
+    /// <summary>
+    /// Scalar volume 0..1. A set volume is also applied to devices bound later (plugged in again); setting
+    /// <c>null</c> stops that and leaves the volume as it is.
+    /// </summary>
     float? Volume { get; set; }
 
     /// <summary>Re-reads the device list and re-attaches to the selected device(s).</summary>
@@ -118,6 +124,12 @@ public interface IInstaller
 
     /// <summary>Starts this program again as administrator with the given command; false if the user declined.</summary>
     bool RestartElevated(Installation.SetupCommand command);
+
+    /// <summary>
+    /// Runs this program as administrator with the given command and waits for it to finish; false if the user
+    /// declined or it failed.
+    /// </summary>
+    Task<bool> RunElevatedAsync(Installation.SetupCommand command);
 
     /// <summary>
     /// Closes any running copy in the target folder, then copies this program there, registers it in Settings → Apps

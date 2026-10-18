@@ -40,6 +40,32 @@ public sealed class AppSettings
 
     /// <summary>How much goes into the log files. Debug for now, while the rewrite is being tested.</summary>
     public LogDetail LogLevel { get; set; } = LogDetail.Debug;
+
+    /// <summary>
+    /// Puts defaults where a hand-edited file has <c>null</c> (a section, a hotkey row, a device id), so the app
+    /// never meets a missing section. Everything else in the file is kept.
+    /// </summary>
+    public AppSettings Normalize()
+    {
+        Microphone ??= new();
+        Microphone.DeviceId ??= AllDevices;
+        Microphone.Hotkey = Normalize(Microphone.Hotkey);
+        CustomHotkeys = [.. (CustomHotkeys ?? []).OfType<CustomHotkey>()];
+        CustomHotkeys.ForEach(h => h.Hotkey = Normalize(h.Hotkey));
+        SpeakerDeviceId ??= AllDevices;
+        Notifications ??= new();
+        Overlay ??= new();
+        Window ??= new();
+        return this;
+    }
+
+    private static HotkeySettings Normalize(HotkeySettings? hotkey)
+    {
+        hotkey ??= new();
+        hotkey.Key ??= HotkeyGesture.Empty;
+        hotkey.AlternativeKey ??= HotkeyGesture.Empty;
+        return hotkey;
+    }
 }
 
 /// <summary>Log file detail. Same names and values as Microsoft.Extensions.Logging's LogLevel (Core doesn't reference it).</summary>

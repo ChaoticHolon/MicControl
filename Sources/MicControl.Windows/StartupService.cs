@@ -30,9 +30,25 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
     /// </summary>
     private static string TaskName => $@"{Name}\{Environment.UserName} ({Environment.UserDomainName})";
 
-    public bool IsEnabled => HasRunKey(Name) || HasScheduledTask(TaskName);
+    // Cached: the tray menu reads this on every mute change, and the task query starts schtasks.exe. Only this
+    // service changes the entries while the app runs; each change queries again.
+    private bool? isEnabled;
+
+    public bool IsEnabled => isEnabled ??= HasRunKey(Name) || HasScheduledTask(TaskName);
 
     public void SetEnabled(bool enabled)
+    {
+        try
+        {
+            Apply(enabled);
+        }
+        finally
+        {
+            isEnabled = null;
+        }
+    }
+
+    private void Apply(bool enabled)
     {
         if (enabled)
         {
@@ -86,17 +102,17 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
             return;
         }
 
-        dynamic scheduler = Activator.CreateInstance(type)!;
-        scheduler.Connect();
-        dynamic root = scheduler.GetFolder(@"\");
         try
         {
+            dynamic scheduler = Activator.CreateInstance(type)!;
+            scheduler.Connect();
+            dynamic root = scheduler.GetFolder(@"\");
             dynamic folder = scheduler.GetFolder(@"\" + Name);
             dynamic tasks = folder.GetTasks(1);
             for (int i = tasks.Count; i >= 1; i--)
             {
                 dynamic task = tasks.Item(i);
-                if (Starts((string)task.Definition.Actions.Item(1).Path, executablePath))
+                if (Starts(ProgramOf(task), executablePath))
                 {
                     folder.DeleteTask((string)task.Name, 0);
                 }
@@ -104,9 +120,25 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
 
             root.DeleteFolder(Name, 0);
         }
-        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or IOException or UnauthorizedAccessException
+            or InvalidCastException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
         {
-            // No folder, or it still holds tasks of another copy.
+            // No scheduler service, no folder, or the folder still holds tasks of another copy: uninstall carries on,
+            // and a task left behind points at a missing program.
+        }
+
+        // A task someone else put in the folder may have no program action; it's skipped, not fatal.
+        static string? ProgramOf(dynamic task)
+        {
+            try
+            {
+                return (string)task.Definition.Actions.Item(1).Path;
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidCastException
+                or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+            {
+                return null;
+            }
         }
 
         static bool Starts(string? command, string exe) =>

@@ -14,6 +14,7 @@ namespace MicControl;
 /// </summary>
 public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateService> logger) : IUpdateService, IDisposable
 {
+    private const string DownloadFolderPrefix = "MicControl-update-";
     private readonly HttpClient http = CreateClient();
     private InstallerRelease? pending;
 
@@ -65,7 +66,9 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
             LogNotInSums(release.FileName);
         }
 
-        var folder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "MicControl-update")).FullName;
+        // A new folder each time, so nothing can be put in place there beforehand.
+        RemoveOldDownloads();
+        var folder = Directory.CreateTempSubdirectory(DownloadFolderPrefix).FullName;
         var file = Path.Combine(folder, release.FileName);
         LogDownloading(release.SetupUrl, file);
         using (var response = await http.GetAsync(release.SetupUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
@@ -78,7 +81,9 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
             }
         }
 
-        var check = File.OpenRead(file);
+        // Held open (others may only read) from the check until the setup has started, so the file that runs is the
+        // file that was verified.
+        var check = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
         await using (check.ConfigureAwait(false))
         {
             if (!await ReleaseFeed.MatchesAsync(check, checksum).ConfigureAwait(false))
@@ -88,14 +93,38 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
                 File.Delete(file);
                 throw new InvalidOperationException("The downloaded update didn't match its published checksum, so it wasn't run.");
             }
+
+            LogVerified(file, checksum.Algorithm.Name);
+            var arguments = ReleaseFeed.SilentInstallArguments(current.Scope);
+            LogStartingInstaller(file, arguments);
+            // Shell execute so an all-users update can ask for admin rights if this process doesn't have them.
+            Process.Start(new ProcessStartInfo(file, arguments) { UseShellExecute = true })?.Dispose();
         }
 
-        LogVerified(file, checksum.Algorithm.Name);
-        var arguments = ReleaseFeed.SilentInstallArguments(current.Scope);
-        LogStartingInstaller(file, arguments);
-        // Shell execute so an all-users update can ask for admin rights if this process doesn't have them.
-        Process.Start(new ProcessStartInfo(file, arguments) { UseShellExecute = true })?.Dispose();
         return true;
+    }
+
+    /// <summary>Earlier updates' downloads (the setup they ran has finished by now); one still in use stays.</summary>
+    private void RemoveOldDownloads()
+    {
+        try
+        {
+            foreach (var old in Directory.EnumerateDirectories(Path.GetTempPath(), DownloadFolderPrefix + "*"))
+            {
+                try
+                {
+                    Directory.Delete(old, recursive: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    LogOldDownloadKept(old, ex);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogOldDownloadKept(DownloadFolderPrefix + "*", ex);
+        }
     }
 
     public void Dispose() => http.Dispose();
@@ -128,6 +157,9 @@ public sealed partial class UpdateService(IInstaller installer, ILogger<UpdateSe
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Downloaded update {File} matches its {Algorithm} checksum")]
     private partial void LogVerified(string file, string? algorithm);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Kept the earlier update download {Folder}")]
+    private partial void LogOldDownloadKept(string folder, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Starting setup {File} {Arguments}")]
     private partial void LogStartingInstaller(string file, string arguments);

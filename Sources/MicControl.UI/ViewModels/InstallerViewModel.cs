@@ -142,6 +142,20 @@ public sealed partial class InstallerViewModel : ObservableObject
         else
         {
             ForAllUsers = (command.Scope ?? (installer.IsElevated ? InstallScope.AllUsers : InstallScope.CurrentUser)) == InstallScope.AllUsers;
+            if (ForAllUsers && !installer.IsElevated)
+            {
+                // A standard user's update of an all-users install: an administrator does the install, and this copy,
+                // still running as the user, starts the app again. Relaunched by the elevated copy, it would run as
+                // the administrator who approved the prompt.
+                var installed = await installer.RunElevatedAsync(command with { Scope = InstallScope.AllUsers, Relaunch = false });
+                if (installed && command.Relaunch)
+                {
+                    installer.Launch(InstallScope.AllUsers);
+                }
+
+                return installed;
+            }
+
             await Install();
             if (Page == InstallerPage.Done && command.Relaunch)
             {

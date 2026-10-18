@@ -52,9 +52,15 @@ public sealed class HotkeyGestureTests
         Assert.Equal(text, HotkeyGesture.Parse(text).ToString());
     }
 
-    [Fact]
-    public void TryParse_RejectsUnknownModifier()
+    [Theory]
+    [InlineData("Hyper+F1")]
+    [InlineData("Mouse99")]
+    [InlineData("MouseNone")]
+    [InlineData("MouseFoo")]
+    [InlineData("Ctrl+")]
+    [InlineData("Ctrl+Shift+")]
+    public void TryParse_RejectsJunk(string text)
     {
-        Assert.False(HotkeyGesture.TryParse("Hyper+F1", out _));
+        Assert.False(HotkeyGesture.TryParse(text, out var gesture), $"{text} parsed as {gesture}");
     }
 }

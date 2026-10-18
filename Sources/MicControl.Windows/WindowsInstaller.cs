@@ -67,6 +67,29 @@ public sealed partial class WindowsInstaller(ILogger<WindowsInstaller> logger) :
         }
     }
 
+    public async Task<bool> RunElevatedAsync(SetupCommand command)
+    {
+        try
+        {
+            var arguments = command.ToArguments();
+            using var process = Process.Start(new ProcessStartInfo(ExecutablePath, arguments) { UseShellExecute = true, Verb = "runas" });
+            LogRestartedElevated(arguments);
+            if (process is null)
+            {
+                return false;
+            }
+
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            LogElevatedCopyExited(process.ExitCode);
+            return process.ExitCode == 0;
+        }
+        catch (Win32Exception ex)
+        {
+            LogElevationDeclined(ex.NativeErrorCode);
+            return false;
+        }
+    }
+
     public async Task InstallAsync(InstallScope scope, IProgress<double> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
@@ -301,6 +324,9 @@ public sealed partial class WindowsInstaller(ILogger<WindowsInstaller> logger) :
         link.Description = "Mute and unmute your microphone from anywhere";
         link.Save();
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "The elevated setup finished with exit code {ExitCode}")]
+    private partial void LogElevatedCopyExited(int exitCode);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Installing MicControl {Version} for {Scope} into {Directory}")]
     private partial void LogInstalling(string version, InstallScope scope, string directory);

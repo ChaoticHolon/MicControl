@@ -52,6 +52,22 @@ public sealed class FileLoggerTests : IDisposable
         Assert.Contains("after the flush", File.ReadAllText(provider.FilePath), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TwoCopies_ShareTheDaysFile()
+    {
+        // The setup (or a second copy) logs to the same folder while the app runs; a locked file made it crash.
+        var app = new FileLoggerProvider(directory, new LogLevelSwitch());
+        var setup = new FileLoggerProvider(directory, new LogLevelSwitch());
+        Write(app.CreateLogger("MicControl.App"), LogLevel.Information, "from the app");
+        Write(setup.CreateLogger("MicControl.Setup"), LogLevel.Information, "from the setup");
+        setup.Dispose();
+        app.Dispose();
+
+        var text = File.ReadAllText(app.FilePath);
+        Assert.Contains("App: from the app", text, StringComparison.Ordinal);
+        Assert.Contains("Setup: from the setup", text, StringComparison.Ordinal);
+    }
+
     private static string ReadShared(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);

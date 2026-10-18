@@ -15,12 +15,15 @@ namespace MicControl.Windows;
 public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
 {
     private const int VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_MENU = 0x12, VK_LWIN = 0x5B, VK_RWIN = 0x5C;
+    private const uint WM_CHECK_HELD = 0x8000 + 1; // WM_APP + 1, posted to the hook thread
+    private static readonly TimeSpan HeldCheckInterval = TimeSpan.FromMilliseconds(250);
 
     private readonly IUiDispatcher dispatcher;
     private readonly ILogger<GlobalHotkeyService> logger;
     private readonly Thread hookThread;
     private readonly HookProc keyboardProc;
     private readonly HookProc mouseProc;
+    private readonly Timer heldCheck;
     private ImmutableArray<Binding> bindings = [];
     private uint hookThreadId;
     private bool isPaused;
@@ -34,6 +37,7 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
         mouseProc = MouseHook;
         hookThread = new Thread(RunHookLoop) { IsBackground = true, Name = "Global hotkey hook" };
         hookThread.Start();
+        heldCheck = new Timer(_ => RequestHeldCheck(), null, HeldCheckInterval, HeldCheckInterval);
     }
 
     public bool IsPaused
@@ -78,6 +82,7 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
 
     public void Dispose()
     {
+        heldCheck.Dispose();
         if (hookThreadId != 0)
         {
             PostThreadMessage(hookThreadId, WM_QUIT, 0, 0);
@@ -101,8 +106,12 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
             LogHooksInstalled();
         }
 
-        while (GetMessage(out _, 0, 0, 0) > 0)
+        while (GetMessage(out var message, 0, 0, 0) > 0)
         {
+            if (message.message == WM_CHECK_HELD)
+            {
+                ReleaseMissedKeyUps();
+            }
         }
 
         UnhookWindowsHookEx(keyboardHook);
@@ -181,19 +190,68 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
                 else if (!binding.IsPressed)
                 {
                     // Auto-repeat key-downs are ignored; only the first press is reported.
+                    binding.PressedBy = trigger;
                     binding.IsPressed = true;
                     Dispatch(binding, true);
                 }
             }
             else if (binding.IsPressed)
             {
-                binding.IsPressed = false;
+                binding.Release();
                 suppress |= binding.Suppress;
                 Dispatch(binding, false);
             }
         }
 
         return suppress;
+    }
+
+    // Thread pool: only wakes the hook thread while a hotkey is held.
+    private void RequestHeldCheck()
+    {
+        if (hookThreadId != 0 && bindings.Any(b => b.IsPressed))
+        {
+            PostThreadMessage(hookThreadId, WM_CHECK_HELD, 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Releases a held hotkey whose key-up never reached the hook: Windows doesn't send it while the lock screen or a
+    /// UAC prompt has the input (Win+L while holding push-to-talk), and a held push-to-talk must not stay live. Two
+    /// checks in a row must find the key up. Exclusive hotkeys are left alone: a key the hook swallows never shows
+    /// as down in the key state.
+    /// </summary>
+    private void ReleaseMissedKeyUps()
+    {
+        foreach (var binding in bindings)
+        {
+            if (!binding.IsPressed || binding.Suppress || binding.PressedBy is not { } trigger || VirtualKeyOf(trigger) is not { } key)
+            {
+                continue;
+            }
+
+            if (IsKeyDown(key))
+            {
+                binding.MissedChecks = 0;
+            }
+            else if (++binding.MissedChecks >= 2)
+            {
+                LogMissedKeyUp(trigger.Gesture);
+                binding.Release();
+                Dispatch(binding, false);
+            }
+        }
+
+        static int? VirtualKeyOf(Trigger trigger) => trigger.Gesture.Mouse switch
+        {
+            MouseHotkey.None => trigger.VirtualKey,
+            MouseHotkey.Left => 0x01,
+            MouseHotkey.Right => 0x02,
+            MouseHotkey.Middle => 0x04,
+            MouseHotkey.XButton1 => 0x05,
+            MouseHotkey.XButton2 => 0x06,
+            _ => null,
+        };
     }
 
     private void Dispatch(Binding binding, bool isPressed) =>
@@ -227,6 +285,9 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to install low-level input hooks, Win32 error {Error}")]
     private partial void LogHookFailed(int error);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Hotkey {Key} is no longer held but its release never arrived (lock screen or a UAC prompt?); released it")]
+    private partial void LogMissedKeyUp(HotkeyGesture key);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Hotkey handler failed")]
     private partial void LogHandlerFailed(Exception exception);
 
@@ -253,7 +314,18 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
         public bool Suppress { get; } = suppress;
         public bool IgnoreModifiers { get; } = ignoreModifiers;
         public Action<bool> Handler { get; } = handler;
-        public bool IsPressed { get; set; }
+
+        // Written on the hook thread only; IsPressed is also read by the held-key timer.
+        public volatile bool IsPressed;
+        public Trigger? PressedBy { get; set; }
+        public int MissedChecks { get; set; }
+
+        public void Release()
+        {
+            IsPressed = false;
+            PressedBy = null;
+            MissedChecks = 0;
+        }
     }
 
     private sealed class Registration(Action dispose) : IDisposable

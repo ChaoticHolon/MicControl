@@ -41,9 +41,15 @@ public static class LegacyConfigMigrator
         // imported hotkeys, sounds and overlay can be reviewed.
         var settings = new AppSettings();
         var items = JsonNode.Parse(legacyJson, documentOptions: DocumentOptions)?["Items"]?.AsArray() ?? [];
-        var configs = items
-            .Where(x => x?["TypeName"] is not null && x["ConfigValue"] is JsonObject)
-            .ToDictionary(x => x!["TypeName"]!.GetValue<string>().Split('.')[^1], x => x!["ConfigValue"]!.AsObject(), StringComparer.Ordinal);
+        // A type listed twice (seen in configs edited by hand) keeps its last entry, as MicSwitch read it.
+        var configs = new Dictionary<string, JsonObject>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            if (item?["TypeName"] is JsonValue type && type.TryGetValue<string>(out var name) && item["ConfigValue"] is JsonObject value)
+            {
+                configs[name.Split('.')[^1]] = value;
+            }
+        }
 
         if (configs.TryGetValue("MicSwitchConfig", out var main))
         {

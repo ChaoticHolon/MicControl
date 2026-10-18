@@ -400,6 +400,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (SetAndSave(Settings.Microphone.VolumeControlEnabled, value, v => Settings.Microphone.VolumeControlEnabled = v))
             {
                 Settings.Microphone.Volume = value ? microphone.Volume : null;
+                microphone.Volume = Settings.Microphone.Volume; // kept on devices plugged in later, or forgotten
             }
         }
     }

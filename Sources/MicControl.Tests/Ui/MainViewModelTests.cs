@@ -66,6 +66,59 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public async Task CustomIcon_PickingTheCopyInUse_KeepsIt()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+        var image = Path.Combine(harness.Settings.Directory, "picked.png");
+        using (var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(new Avalonia.PixelSize(4, 4), new Avalonia.Vector(96, 96)))
+        {
+            bitmap.Save(image, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+        }
+
+        harness.Dialogs.PickedFile = image;
+        await vm.SelectMutedIconCommand.ExecuteAsync(null);
+        var copy = vm.Settings.Overlay.MutedIconPath;
+        Assert.Equal(Path.Combine(harness.Settings.Directory, "Icons", "muted.png"), copy);
+
+        // The file dialog opened in the settings folder, on the copy itself: File.Copy onto itself threw.
+        harness.Dialogs.PickedFile = copy;
+        await vm.SelectMutedIconCommand.ExecuteAsync(null);
+        Assert.Equal(copy, vm.Settings.Overlay.MutedIconPath);
+        Assert.True(File.Exists(copy));
+    }
+
+    public static TheoryData<string> UpdateFailures => ["json", "timeout", "network"];
+
+    [AvaloniaTheory]
+    [MemberData(nameof(UpdateFailures))]
+    public async Task Update_FailedCheckOrDownload_IsReported_NotThrown(string kind)
+    {
+        // A captive portal's HTML page, a timeout (HttpClient throws TaskCanceledException) or no network.
+        Exception failure = kind switch
+        {
+            "json" => new System.Text.Json.JsonException("'<' is an invalid start of a value."),
+            "timeout" => new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout."),
+            _ => new HttpRequestException("No such host is known."),
+        };
+        using var harness = new TestHarness();
+        harness.Updates.IsInstalled = true;
+        harness.Updates.Available = "2.1.0";
+        var vm = harness.ViewModel;
+        await vm.CheckUpdatesCommand.ExecuteAsync(null);
+
+        harness.Updates.Failure = failure;
+        await vm.InstallUpdateCommand.ExecuteAsync(null);
+        Assert.StartsWith("Update failed", vm.StatusMessage, StringComparison.Ordinal);
+
+        await vm.CheckUpdatesCommand.ExecuteAsync(null);
+        Assert.StartsWith("Update check failed", vm.UpdateStatus, StringComparison.Ordinal);
+
+        vm.CheckForUpdates = true;
+        await vm.CheckForUpdatesOnStartupAsync();
+    }
+
+    [AvaloniaFact]
     public void PushToTalk_IsDefault_MutesAtStart_AndHotkeyUnmutesWhileHeld()
     {
         using var harness = new TestHarness(s => s.Microphone.Hotkey.Key = HotkeyGesture.Parse("F13"));

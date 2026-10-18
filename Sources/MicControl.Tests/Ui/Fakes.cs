@@ -145,6 +145,12 @@ internal sealed class FakeInstaller : IInstaller
         return AcceptElevation;
     }
 
+    public Task<bool> RunElevatedAsync(Installation.SetupCommand command)
+    {
+        ElevatedRestarts.Add(command);
+        return Task.FromResult(AcceptElevation);
+    }
+
     public Task InstallAsync(Installation.InstallScope scope, IProgress<double> progress, CancellationToken cancellationToken)
     {
         Installs.Add(scope);
@@ -170,12 +176,15 @@ internal sealed class FakeUpdates : IUpdateService
 
     public int Installs { get; private set; }
 
-    public Task<string?> CheckAsync() => Task.FromResult(IsInstalled ? Available : null);
+    /// <summary>Thrown by both calls when set, like a network or feed failure.</summary>
+    public Exception? Failure { get; set; }
+
+    public Task<string?> CheckAsync() => Failure is { } failure ? Task.FromException<string?>(failure) : Task.FromResult(IsInstalled ? Available : null);
 
     public Task<bool> InstallAsync()
     {
         Installs++;
-        return Task.FromResult(InstallerStarts);
+        return Failure is { } failure ? Task.FromException<bool>(failure) : Task.FromResult(InstallerStarts);
     }
 }
 
@@ -183,7 +192,10 @@ internal sealed class FakeDialogs : IDialogService
 {
     public List<string> Opened { get; } = [];
 
-    public Task<string?> PickFileAsync(string title, string filterName, IReadOnlyList<string> patterns) => Task.FromResult<string?>(null);
+    /// <summary>What the next file picker returns (<c>null</c>: cancelled).</summary>
+    public string? PickedFile { get; set; }
+
+    public Task<string?> PickFileAsync(string title, string filterName, IReadOnlyList<string> patterns) => Task.FromResult(PickedFile);
 
     public Task OpenAsync(string target)
     {

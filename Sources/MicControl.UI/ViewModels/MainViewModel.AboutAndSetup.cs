@@ -74,7 +74,7 @@ public sealed partial class MainViewModel
             LogUpdateCheck(UpdateVersion ?? "none");
             UpdateStatus = UpdateVersion is null ? "You're up to date." : $"Version {UpdateVersion} is available.";
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        catch (Exception ex) when (IsUpdateFailure(ex))
         {
             LogUpdateCheckFailed(ex);
             UpdateStatus = $"Update check failed: {ex.Message}";
@@ -97,9 +97,8 @@ public sealed partial class MainViewModel
                 ExitRequested?.Invoke(this, EventArgs.Empty);
             }
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        catch (Exception ex) when (IsUpdateFailure(ex))
         {
-            // Win32Exception includes declining the admin prompt for an all-users update.
             LogUpdateFailed(ex);
             UpdateStatus = $"Version {UpdateVersion} is available.";
             StatusMessage = $"Update failed: {ex.Message}";
@@ -136,11 +135,20 @@ public sealed partial class MainViewModel
                 UpdateStatus = $"Version {UpdateVersion} is available.";
             }
         }
-        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException)
+        catch (Exception ex) when (IsUpdateFailure(ex))
         {
             LogUpdateCheckFailed(ex);
         }
     }
+
+    /// <summary>
+    /// What a check or update can fail with: no network, a timeout (HttpClient reports it as a cancellation), a reply
+    /// that isn't the feed (a captive portal's page), a file that can't be written or run, or a declined admin prompt
+    /// for an all-users update (Win32Exception).
+    /// </summary>
+    private static bool IsUpdateFailure(Exception ex) => ex is HttpRequestException or OperationCanceledException
+        or System.Text.Json.JsonException or IOException or UnauthorizedAccessException or InvalidOperationException
+        or System.ComponentModel.Win32Exception;
 
     // ---------------------------------------------------------------- First-run setup
 

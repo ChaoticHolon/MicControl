@@ -56,6 +56,47 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
+    public void Load_NullsFromAHandEditedFile_BecomeDefaults()
+    {
+        File.WriteAllText(
+            Path.Combine(directory, SettingsStore.FileName),
+            """
+            { "version": 1, "setupCompleted": true, "microphone": { "deviceId": null, "hotkey": { "key": null, "alternativeKey": 5 } },
+              "customHotkeys": [ null, { "action": "Mute", "hotkey": null } ], "speakerDeviceId": null,
+              "notifications": null, "overlay": null, "window": null }
+            """);
+
+        var settings = new SettingsStore(directory).Load();
+
+        Assert.True(settings.SetupCompleted); // the rest of the file is kept
+        Assert.Equal(AppSettings.AllDevices, settings.Microphone.DeviceId);
+        Assert.True(settings.Microphone.Hotkey.IsEmpty);
+        var row = Assert.Single(settings.CustomHotkeys);
+        Assert.Equal(HotkeyAction.Mute, row.Action);
+        Assert.True(row.Hotkey.IsEmpty);
+        Assert.Equal(AppSettings.AllDevices, settings.SpeakerDeviceId);
+        Assert.NotNull(settings.Notifications);
+        Assert.NotNull(settings.Overlay);
+        Assert.NotNull(settings.Window);
+        Assert.False(File.Exists(Path.Combine(directory, SettingsStore.FileName + ".corrupt")));
+    }
+
+    [Fact]
+    public void Migrate_TypeListedTwice_KeepsTheLastEntry()
+    {
+        var settings = LegacyConfigMigrator.Migrate(
+            """
+            { "Items": [
+              { "TypeName": "MicSwitch.MicSwitchHotkeyConfig", "ConfigValue": { "Hotkey": { "Key": "F1" } } },
+              { "TypeName": 7, "ConfigValue": {} },
+              { "TypeName": "MicSwitch.MicSwitchHotkeyConfig", "ConfigValue": { "Hotkey": { "Key": "F2" } } } ] }
+            """,
+            iconDirectory: null);
+
+        Assert.Equal(HotkeyGesture.Parse("F2"), settings.Microphone.Hotkey.Key);
+    }
+
+    [Fact]
     public void NoneSound_SurvivesSaveAndLoad()
     {
         var store = new SettingsStore(directory);

@@ -236,7 +236,11 @@ public partial class App : Application
             watchdogTimer?.Dispose();
             guard.Dispose();
             trayIcon.Dispose();
-            settings.Flush();
+            if (!settings.Flush())
+            {
+                LogSettingsNotSaved(logger, settings.LastSaveError);
+            }
+
             host.Dispose();
         };
         desktop.Exit += (_, _) =>
@@ -393,6 +397,9 @@ public partial class App : Application
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "UI loop ended without an exit request (exit code {ExitCode}); cleaned up and ending the process")]
     private static partial void LogMainLoopEndedUnexpectedly(ILogger logger, int exitCode);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Couldn't save the settings on exit; the last changes are lost")]
+    private static partial void LogSettingsNotSaved(ILogger logger, Exception? exception);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "Unhandled exception (terminating: {IsTerminating})")]
     private static partial void LogCrash(ILogger logger, Exception? exception, bool isTerminating);

@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 
 namespace MicControl.Services;
@@ -30,6 +32,10 @@ public sealed class FileLoggerProvider : ILoggerProvider
     private readonly Func<DateTime> now;
     private readonly string directory;
     private readonly Thread writer;
+
+    // Every process logging to this folder (a running copy and its setup) appends under this lock, so their lines
+    // never land on top of each other.
+    private readonly Mutex appendLock;
     private volatile string filePath;
     private long queued;
     private long written;
@@ -40,9 +46,10 @@ public sealed class FileLoggerProvider : ILoggerProvider
         this.directory = directory;
         now = clock ?? (() => DateTime.Now);
         Directory.CreateDirectory(directory);
+        appendLock = new Mutex(false, LockName(directory));
         var start = now();
         filePath = PathFor(start);
-        Prune();
+        TryPrune();
         writer = new Thread(() => Write(start)) { IsBackground = true, Name = "Log writer" };
         writer.Start();
     }
@@ -91,10 +98,12 @@ public sealed class FileLoggerProvider : ILoggerProvider
         }
     }
 
+    // Runs on its own thread, where an exception would end the process: a log that can't be written (disk full, a
+    // file locked by something else) drops lines, it never takes the app down.
     private void Write(DateTime start)
     {
         var day = start.Date;
-        var stream = new StreamWriter(filePath, append: true) { AutoFlush = true };
+        var stream = Open(filePath);
         try
         {
             foreach (var (time, line) in queue.GetConsumingEnumerable())
@@ -102,19 +111,92 @@ public sealed class FileLoggerProvider : ILoggerProvider
                 if (time.Date > day)
                 {
                     day = time.Date;
-                    stream.Dispose();
+                    stream?.Dispose();
                     filePath = PathFor(day);
-                    stream = new StreamWriter(filePath, append: true) { AutoFlush = true };
-                    Prune();
+                    stream = Open(filePath);
+                    TryPrune();
                 }
 
-                stream.WriteLine(line);
+                stream ??= Open(filePath);
+                try
+                {
+                    if (stream is not null)
+                    {
+                        Append(stream, line);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ObjectDisposedException)
+                {
+                    stream?.Dispose();
+                    stream = null; // reopened for the next line
+                }
+
                 Interlocked.Increment(ref written);
             }
         }
         finally
         {
-            stream.Dispose();
+            stream?.Dispose();
+            appendLock.Dispose();
+        }
+    }
+
+    private void Append(StreamWriter stream, string line)
+    {
+        try
+        {
+            appendLock.WaitOne();
+        }
+        catch (AbandonedMutexException)
+        {
+            // A copy ended while it held the lock; it's ours now.
+        }
+
+        try
+        {
+            // Another process may have appended since our last line: write after its lines.
+            stream.BaseStream.Seek(0, SeekOrigin.End);
+            stream.WriteLine(line);
+        }
+        finally
+        {
+            appendLock.ReleaseMutex();
+        }
+    }
+
+    /// <summary>One name per log folder (a path can't be a mutex name: '\' means a namespace).</summary>
+    private static string LockName(string directory)
+    {
+        var path = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
+        return "MicControl-log-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path)), 0, 16);
+    }
+
+    /// <summary>
+    /// Opens the day's file for appending. Other processes may write it too: the setup and a running copy share one log
+    /// folder, and a write-exclusive open made the second one fail.
+    /// </summary>
+    private static StreamWriter? Open(string path)
+    {
+        try
+        {
+            var file = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            return new StreamWriter(file) { AutoFlush = true };
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private void TryPrune()
+    {
+        try
+        {
+            Prune();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The folder can't be listed right now; the next new day prunes again.
         }
     }
 
