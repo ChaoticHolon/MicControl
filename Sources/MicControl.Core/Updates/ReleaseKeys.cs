@@ -10,5 +10,6 @@ public static class ReleaseKeys
 {
     public static IReadOnlyList<string> Trusted { get; } =
     [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHC0MKnhahW8Q7x0I7c668eNRXgz7uRR/BO1oUVpHzzr MicControl release key 2026-10",
     ];
 }

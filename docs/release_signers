@@ -3,3 +3,4 @@
 #   ssh-keygen -Y verify -f release_signers -I release@miccontrol -n miccontrol-release -s SHA512SUMS.sig < SHA512SUMS
 #   sha512sum -c SHA512SUMS
 # The same keys are built into the app (Sources/MicControl.Core/Updates/ReleaseKeys.cs); a test keeps them equal.
+release@miccontrol namespaces="miccontrol-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHC0MKnhahW8Q7x0I7c668eNRXgz7uRR/BO1oUVpHzzr MicControl release key 2026-10
