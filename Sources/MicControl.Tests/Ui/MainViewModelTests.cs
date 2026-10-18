@@ -380,4 +380,19 @@ public sealed class MainViewModelTests
         vm.MainHotkey.Key = HotkeyGesture.Empty;
         Assert.Equal("No hotkey set", vm.MainHotkeySummary);
     }
+
+    [AvaloniaFact]
+    public void RunInTheTraySwitch_SetsTheAppMode()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+        Assert.True(vm.IsTrayMode); // Tray is the default
+
+        vm.IsTrayMode = false;
+        Assert.Equal(AppMode.Window, vm.Settings.Window.AppMode);
+        Assert.Contains("Closing the window exits", vm.AppModeDescription, StringComparison.Ordinal);
+
+        vm.IsTrayMode = true;
+        Assert.Equal(AppMode.Tray, vm.Settings.Window.AppMode);
+    }
 }

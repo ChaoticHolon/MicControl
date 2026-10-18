@@ -450,7 +450,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    public bool IsTrayMode => AppMode == AppMode.Tray;
+    /// <summary>Home's "Run in the tray" switch: on is Tray mode, off is Window mode.</summary>
+    public bool IsTrayMode
+    {
+        get => AppMode == AppMode.Tray;
+        set => AppMode = value ? AppMode.Tray : AppMode.Window;
+    }
 
     /// <summary>
     /// A new user's first run of an installed copy starts with Windows by default (they can turn it off in setup).

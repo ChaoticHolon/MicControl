@@ -20,7 +20,7 @@
                         <TextBlock Text="{Binding MicrophoneStatus}" FontSize="22" FontWeight="SemiBold" />
                         <TextBlock Classes="secondary" FontSize="13" Text="{Binding MicrophoneStatusDetail}" />
                     </StackPanel>
-                    <Button Grid.Column="2" Classes="accent" MinWidth="130" Padding="20,10" FontSize="15"
+                    <Button Grid.Column="2" Classes="accent" MinWidth="130" Padding="20,10" FontSize="15" HorizontalContentAlignment="Center"
                             Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}"
                             IsEnabled="{Binding IsMicrophoneConnected}" ToolTip.Tip="Mute or unmute now (the hotkey does the same)" />
                 </Grid>
@@ -76,10 +76,8 @@
         <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows">
             <ToggleSwitch IsChecked="{Binding RunAtStartup}" AutomationProperties.Name="Start with Windows" />
         </c:SettingRow>
-        <c:SettingRow Glyph="&#xE73F;" Header="App mode" Description="{Binding AppModeDescription}">
-            <ComboBox MinWidth="200" ItemsSource="{Binding AppModes}" SelectedValue="{Binding AppMode}"
-                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}"
-                      AutomationProperties.Name="App mode" />
+        <c:SettingRow Glyph="&#xE73F;" Header="Run in the tray" Description="{Binding AppModeDescription}">
+            <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Run in the tray" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE790;" Header="Theme">
             <ComboBox MinWidth="200" ItemsSource="{Binding Themes}" SelectedValue="{Binding Theme}"
