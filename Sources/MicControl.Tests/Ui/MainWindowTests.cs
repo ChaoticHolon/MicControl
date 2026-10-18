@@ -85,14 +85,14 @@ public sealed class MainWindowTests
         window.Show();
 
         var nav = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Classes.Contains("tabs"));
-        Assert.Equal(["Home", "Overlay", "About", "Hotkeys", "Sounds"], harness.ViewModel.NavItems.Select(n => n.Title));
+        Assert.Equal(["MicControl", "Overlay", "About", "Hotkeys", "Sounds"], harness.ViewModel.NavItems.Select(n => n.Title));
 
         foreach (var item in harness.ViewModel.NavItems)
         {
             nav.SelectedItem = item;
             window.UpdateLayout();
             var title = window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.Classes.Contains("pageTitle") && t.IsEffectivelyVisible);
-            Assert.Equal(item.Title, Assert.Single(title).Text, ignoreCase: true);
+            Assert.Equal(item.IsBrand ? "Home" : item.Title, Assert.Single(title).Text, ignoreCase: true); // the name tab leads Home
         }
     }
 

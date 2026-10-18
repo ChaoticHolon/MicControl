@@ -21,7 +21,11 @@ public enum Page
     Sounds,
 }
 
-public sealed record NavItem(Page Page, string Title, string Glyph);
+public sealed record NavItem(Page Page, string Title, string Glyph)
+{
+    /// <summary>The first tab is the app's icon and name, and leads Home (like a browser's logo).</summary>
+    public bool IsBrand => Page == Page.Home;
+}
 
 /// <summary>
 /// The app's single view model. Split into partial files per page: Home (this file), CustomHotkeys, Sounds,
@@ -122,7 +126,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>Every page, in tab order (the optional pages last, in the order of their switches); <see cref="NavItems"/> holds the ones currently shown.</summary>
     private static readonly NavItem[] AllNavItems =
     [
-        new(Page.Home, "Home", ""),
+        new(Page.Home, AppName, string.Empty),
         new(Page.Overlay, "Overlay", ""),
         new(Page.About, "About", ""),
         new(Page.Hotkeys, "Hotkeys", ""),

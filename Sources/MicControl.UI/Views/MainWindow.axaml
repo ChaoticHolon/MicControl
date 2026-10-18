@@ -26,17 +26,14 @@
     </Window.Resources>
     <Panel>
         <DockPanel>
-            <!-- Header, drawn in the title bar like a browser: icon and name, page tabs, (away from Home, which shows it
+            <!-- Header, drawn in the title bar like a browser: page tabs (the first, Home, is the icon and name), (away from Home, which shows it
                  already) the microphone state, then room for the system's minimize, maximize and close buttons.
                  Empty space drags the window; the tabs and buttons are marked User so they get clicks. -->
-            <Border DockPanel.Dock="Top" Height="52" Padding="16,0,0,0" Background="Transparent"
+            <Border DockPanel.Dock="Top" Height="52" Padding="8,0,0,0" Background="Transparent"
                     BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1"
                     chrome:WindowDecorationProperties.ElementRole="TitleBar">
-                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
-                    <Image Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center" Source="{Binding CurrentIcon}"
-                           RenderOptions.BitmapInterpolationMode="HighQuality" />
-                    <TextBlock Grid.Column="1" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" Text="{Binding Title}" />
-                    <ListBox Grid.Column="2" Classes="tabs" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <ListBox Classes="tabs" VerticalAlignment="Bottom" HorizontalAlignment="Left"
                              ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}"
                              chrome:WindowDecorationProperties.ElementRole="User">
                         <ListBox.ItemsPanel>
@@ -48,8 +45,12 @@
                             <DataTemplate x:DataType="vm:NavItem">
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
-                                        <TextBlock Classes="glyph" FontSize="17" VerticalAlignment="Center" Text="{Binding Glyph}" />
-                                        <TextBlock FontSize="15" VerticalAlignment="Center" Text="{Binding Title}" />
+                                        <!-- Home's tab is the app icon (live/muted) and name -->
+                                        <Image Width="20" Height="20" VerticalAlignment="Center" IsVisible="{Binding IsBrand}"
+                                               Source="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).CurrentIcon}"
+                                               RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                        <TextBlock Classes="glyph" FontSize="17" VerticalAlignment="Center" IsVisible="{Binding !IsBrand}" Text="{Binding Glyph}" />
+                                        <TextBlock FontSize="15" VerticalAlignment="Center" Classes.brand="{Binding IsBrand}" Text="{Binding Title}" />
                                     </StackPanel>
                                     <Border Classes="tabLine" Margin="0,10,0,0" />
                                 </StackPanel>
@@ -58,7 +59,7 @@
                     </ListBox>
                     <!-- Status chip, on every page: the state at a glance, and one click to switch. Smaller and quieter than
                          Home's status card, which stays the main control. -->
-                    <Button Grid.Column="3" Classes="statusChip" Margin="12,0,16,0" VerticalAlignment="Center"
+                    <Button Grid.Column="1" Classes="statusChip" Margin="12,0,16,0" VerticalAlignment="Center"
                             Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}"
                             ToolTip.Tip="{Binding MainHotkeySummary}" AutomationProperties.Name="Microphone state"
                             chrome:WindowDecorationProperties.ElementRole="User">
@@ -72,7 +73,7 @@
                         </StackPanel>
                     </Button>
                     <!-- The system's caption buttons (3 x 46 px) sit over this column while the title bar is ours -->
-                    <Border Grid.Column="4" Width="138" IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}" />
+                    <Border Grid.Column="2" Width="138" IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}" />
                 </Grid>
             </Border>
 
