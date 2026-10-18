@@ -238,4 +238,22 @@ public sealed class MainWindowTests
         Assert.False(parts.OfType<Button>().Single(b => b.Name == "PART_FullScreenButton").IsVisible);
         Assert.True(parts.OfType<Button>().Single(b => b.Name == "PART_CloseButton").IsVisible);
     }
+
+    [AvaloniaFact]
+    public void StatusChip_KeepsItsSizeAndPlace_WhenTheStateChanges()
+    {
+        using var harness = new TestHarness();
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+        var chip = window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("statusChip"));
+        var dot = chip.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("micDot"));
+
+        window.UpdateLayout();
+        var before = (chip.Bounds, Avalonia.VisualExtensions.TranslatePoint(dot, default, window));
+        harness.ViewModel.ToggleMuteCommand.Execute(null);
+        window.UpdateLayout();
+        var after = (chip.Bounds, Avalonia.VisualExtensions.TranslatePoint(dot, default, window));
+
+        Assert.Equal(before, after);
+    }
 }

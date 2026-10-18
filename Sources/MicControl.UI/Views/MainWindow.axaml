@@ -68,9 +68,17 @@
                             <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="20" Height="20" CornerRadius="10">
                                 <TextBlock Classes="glyph" FontSize="11" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
                             </Border>
-                            <TextBlock VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Text="{Binding StateLabel}" />
-                            <Border Width="1" Height="14" VerticalAlignment="Center" Background="{DynamicResource CardBorderBrush}" />
-                            <TextBlock Classes="secondary" VerticalAlignment="Center" FontSize="13" Text="{Binding ToggleMuteText}" />
+                            <!-- Each text sits over an invisible copy of its longest word, so switching between Live and Muted
+                                 never changes the chip's width (right-aligned, it would otherwise shift the whole chip) -->
+                            <Grid VerticalAlignment="Center">
+                                <TextBlock Classes="chipSizer" FontSize="13" FontWeight="SemiBold" Text="Muted" />
+                                <TextBlock FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding StateLabel}" />
+                            </Grid>
+                            <Border Width="1" Height="14" VerticalAlignment="Center" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+                            <Grid VerticalAlignment="Center">
+                                <TextBlock Classes="chipSizer" FontSize="13" Text="Unmute" />
+                                <TextBlock Classes="secondary" FontSize="13" HorizontalAlignment="Center" Text="{Binding ToggleMuteText}" />
+                            </Grid>
                         </StackPanel>
                     </Button>
                     <!-- The system's caption buttons (3 x 46 px) sit over this column while the title bar is ours -->
