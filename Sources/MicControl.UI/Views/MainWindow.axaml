@@ -16,7 +16,8 @@
              its title text (the header shows the name) and its full-screen button (MicControl has no full-screen mode). -->
         <ControlTheme x:Key="HeaderDecorations" TargetType="chrome:WindowDrawnDecorations"
                       BasedOn="{StaticResource {x:Type chrome:WindowDrawnDecorations}}">
-            <Style Selector="^ /template/ Panel#PART_TitleTextPanel">
+            <!-- The panel's own IsVisible is a template binding, which outranks a style, so hide the text inside it -->
+            <Style Selector="^ /template/ Panel#PART_TitleTextPanel > TextBlock">
                 <Setter Property="IsVisible" Value="False" />
             </Style>
             <Style Selector="^ /template/ Button#PART_FullScreenButton">

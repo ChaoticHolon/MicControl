@@ -239,14 +239,6 @@ internal sealed class FakeWindowInterop : IWindowInterop
 
     public IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows() => HelperWindows;
 
-    public List<nint> TitleBarTextHidden { get; } = [];
-
-    public bool HideTitleBarText(nint handle)
-    {
-        TitleBarTextHidden.Add(handle);
-        return true;
-    }
-
     private sealed class Watch(Action dispose) : IDisposable
     {
         public void Dispose() => dispose();

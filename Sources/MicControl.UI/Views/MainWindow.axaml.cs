@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using MicControl.Platform;
 using MicControl.Services;
 using MicControl.Settings;
 using MicControl.ViewModels;
@@ -16,13 +15,10 @@ public partial class MainWindow : Window
     private readonly SettingsService settings;
     private readonly ILogger logger;
     private readonly AppShutdown shutdown;
-    private readonly IWindowInterop? interop;
     private bool isExiting;
 
-    public MainWindow(MainViewModel viewModel, SettingsService settings, ILogger<MainWindow>? logger = null, AppShutdown? shutdown = null,
-        IWindowInterop? interop = null)
+    public MainWindow(MainViewModel viewModel, SettingsService settings, ILogger<MainWindow>? logger = null, AppShutdown? shutdown = null)
     {
-        this.interop = interop;
         this.viewModel = viewModel;
         this.settings = settings;
         this.shutdown = shutdown ?? new AppShutdown();
@@ -31,7 +27,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         UpdateIcon();
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        Opened += (_, _) => HideSystemTitle();
 
         if (settings.Current.Window.Bounds is { } b)
         {
@@ -46,16 +41,6 @@ public partial class MainWindow : Window
                     Position = WindowPlacement.CenterOfPrimary(this, Bounds.Size);
                 }
             };
-        }
-    }
-
-    /// <summary>The header draws the name, so the OS must not draw its own title and icon underneath it.</summary>
-    private void HideSystemTitle()
-    {
-        if (interop is not null && IsExtendedIntoWindowDecorations)
-        {
-            var hidden = interop.HideTitleBarText(TryGetPlatformHandle()?.Handle ?? 0);
-            LogSystemTitleHidden(logger, hidden);
         }
     }
 
@@ -156,9 +141,6 @@ public partial class MainWindow : Window
     }
 
     private void UpdateIcon() => Icon = viewModel.CurrentWindowIcon;
-
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Main window: system title text hidden under the header: {Hidden}")]
-    private static partial void LogSystemTitleHidden(ILogger logger, bool hidden);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Main window visible: {Visible}")]
     private static partial void LogVisible(ILogger logger, bool visible);

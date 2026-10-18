@@ -212,21 +212,30 @@ public sealed class MainWindowTests
         Assert.NotNull(decorations);
         Assert.NotNull(decorations.BasedOn);
         var hidden = decorations.Children.OfType<Avalonia.Styling.Style>().Select(s => s.Selector?.ToString() ?? "").ToList();
-        Assert.Contains(hidden, s => s.Contains("PART_TitleTextPanel", StringComparison.Ordinal));
+        Assert.Contains(hidden, s => s.Contains("PART_TitleTextPanel", StringComparison.Ordinal) && s.Contains("TextBlock", StringComparison.Ordinal));
         Assert.Contains(hidden, s => s.Contains("PART_FullScreenButton", StringComparison.Ordinal));
     }
 
     [AvaloniaFact]
-    public void SystemTitleText_IsHiddenOnlyWhenTheHeaderReplacesTheTitleBar()
+    public void HeaderDecorations_HideTheDrawnTitleAndFullScreenButton()
     {
+        // Avalonia draws the title bar itself once the header replaces it; build those decorations with our theme, as
+        // the window does, and check what would be on screen.
         using var harness = new TestHarness();
-        var interop = new FakeWindowInterop();
-        var window = new MainWindow(harness.ViewModel, harness.Settings, interop: interop);
-
+        var window = new MainWindow(harness.ViewModel, harness.Settings) { Title = "MicControl" };
         window.Show();
+        // Headless windows never ask for drawn decorations, so make the window's host create them the way Windows does.
+        const System.Reflection.BindingFlags Internal = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var host = typeof(TopLevel).GetProperty("TopLevelHost", Internal)!.GetValue(window)!;
+        var partsType = typeof(Avalonia.Controls.Chrome.WindowDrawnDecorations).Assembly.GetType("Avalonia.Controls.Chrome.DrawnWindowDecorationParts")!;
+        host.GetType().GetMethod("UpdateDrawnDecorations", Internal)!.Invoke(host, [Enum.Parse(partsType, "All"), WindowState.Normal, window.WindowDecorationsTheme]);
+        var decorations = (Avalonia.Controls.Chrome.WindowDrawnDecorations)host.GetType().GetProperty("Decorations", Internal)!.GetValue(host)!;
+        var overlay = Assert.IsAssignableFrom<Control>(decorations.Content!.Overlay);
+        var parts = overlay.GetVisualDescendants().OfType<Control>().Prepend(overlay).ToList();
 
-        // Where the header really is the title bar (Windows), the OS must not draw its title and icon under it; where
-        // the platform keeps its own title bar (as here), that title is the only one and must stay.
-        Assert.Equal(window.IsExtendedIntoWindowDecorations ? 1 : 0, interop.TitleBarTextHidden.Count);
+        var title = parts.OfType<Panel>().Single(p => p.Name == "PART_TitleTextPanel").Children.OfType<TextBlock>().Single();
+        Assert.False(title.IsVisible);
+        Assert.False(parts.OfType<Button>().Single(b => b.Name == "PART_FullScreenButton").IsVisible);
+        Assert.True(parts.OfType<Button>().Single(b => b.Name == "PART_CloseButton").IsVisible);
     }
 }

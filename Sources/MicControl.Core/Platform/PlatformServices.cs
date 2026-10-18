@@ -174,12 +174,6 @@ public interface IWindowInterop
     /// input method windows.
     /// </summary>
     IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows();
-
-    /// <summary>
-    /// For a window whose own header replaces the title bar: stops the OS drawing the window's title text and icon
-    /// there (the title still names the window on the taskbar and in Alt+Tab). Returns <c>false</c> if it couldn't.
-    /// </summary>
-    bool HideTitleBarText(nint handle);
 }
 
 /// <summary>A hidden helper window, with a name for the log (e.g. "UI message window").</summary>

@@ -63,20 +63,6 @@ internal static partial class NativeMethods
         public int ptY;
     }
 
-    public const int WTA_NONCLIENT = 1;
-    public const uint WTNCA_NODRAWCAPTION = 0x1;
-    public const uint WTNCA_NODRAWICON = 0x2;
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct WTA_OPTIONS
-    {
-        public uint Flags;
-        public uint Mask;
-    }
-
-    [LibraryImport("uxtheme.dll")]
-    public static partial int SetWindowThemeAttribute(nint hwnd, int eAttribute, ref WTA_OPTIONS pvAttribute, uint cbAttribute);
-
     [LibraryImport("user32.dll", EntryPoint = "SetWindowsHookExW", SetLastError = true)]
     public static partial nint SetWindowsHookEx(int idHook, HookProc lpfn, nint hMod, uint dwThreadId);
 
