@@ -54,33 +54,35 @@
         <Setter Property="Margin" Value="4,0,0,12" />
     </Style>
 
-    <!-- Sidebar navigation (Windows 11 Settings style) -->
-    <Style Selector="ListBox.nav">
+    <!-- Page tabs in the header: an accent underline marks the open page -->
+    <Style Selector="ListBox.tabs">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
-    <Style Selector="ListBox.nav ListBoxItem">
-        <Setter Property="Padding" Value="14,13" />
-        <Setter Property="Margin" Value="0,3" />
-        <Setter Property="CornerRadius" Value="6" />
+    <Style Selector="ListBox.tabs ListBoxItem">
+        <Setter Property="Padding" Value="12,6,12,0" />
+        <Setter Property="CornerRadius" Value="6,6,0,0" />
     </Style>
-    <Style Selector="ListBox.nav ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="ListBox.tabs ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="6,6,0,0" />
     </Style>
-    <Style Selector="ListBox.nav ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="ListBox.tabs ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource NavHoverBrush}" />
     </Style>
-    <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource NavSelectedBrush}" />
+    <Style Selector="ListBox.tabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="ListBox.nav ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource NavSelectedBrush}" />
+    <Style Selector="ListBox.tabs ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavHoverBrush}" />
     </Style>
-    <Style Selector="Border.navPill">
-        <Setter Property="Width" Value="3" />
-        <Setter Property="Height" Value="20" />
+    <Style Selector="Border.tabLine">
+        <Setter Property="Height" Value="3" />
         <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.tabs ListBoxItem:selected Border.tabLine">
         <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
     </Style>
 

@@ -74,7 +74,7 @@ public sealed class MainWindowTests
     }
 
     [AvaloniaFact]
-    public void Sidebar_NavigatesBetweenPages()
+    public void Tabs_NavigateBetweenPages()
     {
         using var harness = new TestHarness(s =>
         {
@@ -84,7 +84,7 @@ public sealed class MainWindowTests
         var window = new MainWindow(harness.ViewModel, harness.Settings);
         window.Show();
 
-        var nav = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Classes.Contains("nav"));
+        var nav = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Classes.Contains("tabs"));
         Assert.Equal(["Home", "Sounds", "Overlay", "Custom hotkeys", "About"], harness.ViewModel.NavItems.Select(n => n.Title));
 
         foreach (var item in harness.ViewModel.NavItems)
