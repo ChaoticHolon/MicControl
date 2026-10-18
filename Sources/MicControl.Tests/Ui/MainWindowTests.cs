@@ -185,4 +185,19 @@ public sealed class MainWindowTests
         window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => Avalonia.Automation.AutomationProperties.GetName(t) == "Custom hotkeys").IsChecked = true;
         Assert.Contains(harness.ViewModel.NavItems, n => n.Page == ViewModels.Page.Hotkeys && n.Title == "Hotkeys");
     }
+
+    [AvaloniaFact]
+    public void Header_ReplacesTheTitleBar_AndKeepsItsControlsClickable()
+    {
+        using var harness = new TestHarness();
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+
+        Assert.True(window.ExtendClientAreaToDecorationsHint);
+        var tabs = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Classes.Contains("tabs"));
+        Assert.Equal(Avalonia.Input.WindowDecorationsElementRole.User, Avalonia.Controls.Chrome.WindowDecorationProperties.GetElementRole(tabs));
+        var header = tabs.GetVisualAncestors().OfType<Border>()
+            .First(b => Avalonia.Controls.Chrome.WindowDecorationProperties.GetElementRole(b) == Avalonia.Input.WindowDecorationsElementRole.TitleBar);
+        Assert.Equal(window.ExtendClientAreaTitleBarHeightHint, header.Height);
+    }
 }

@@ -2,19 +2,29 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:MicControl.ViewModels"
         xmlns:pages="using:MicControl.Views.Pages"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
         x:Class="MicControl.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="{Binding Title}"
         Width="1000" Height="720" MinWidth="780" MinHeight="520"
         Background="{DynamicResource PageBackgroundBrush}"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="52">
     <Panel>
         <DockPanel>
-            <!-- Header: the app name, page tabs and (away from Home, which shows it already) the microphone state -->
-            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="24,8,24,0">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                    <TextBlock FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,28,6" Text="{Binding Title}" />
-                    <ListBox Grid.Column="1" Classes="tabs" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}">
+            <!-- Header, drawn in the title bar like a browser: icon and name, page tabs, (away from Home, which shows it
+                 already) the microphone state, then room for the system's minimize, maximize and close buttons.
+                 Empty space drags the window; the tabs and buttons are marked User so they get clicks. -->
+            <Border DockPanel.Dock="Top" Height="52" Padding="16,0,0,0" Background="Transparent"
+                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1"
+                    chrome:WindowDecorationProperties.ElementRole="TitleBar">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                    <Image Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center" Source="{Binding CurrentIcon}"
+                           RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <TextBlock Grid.Column="1" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" Text="{Binding Title}" />
+                    <ListBox Grid.Column="2" Classes="tabs" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                             ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}"
+                             chrome:WindowDecorationProperties.ElementRole="User">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="4" />
@@ -32,8 +42,9 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="12,0,0,6"
-                                IsVisible="{Binding !IsHomePage}" ToolTip.Tip="{Binding MainHotkeySummary}">
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="12,0,12,0"
+                                IsVisible="{Binding !IsHomePage}" ToolTip.Tip="{Binding MainHotkeySummary}"
+                                chrome:WindowDecorationProperties.ElementRole="User">
                         <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="26" Height="26" CornerRadius="13">
                             <TextBlock Classes="glyph" FontSize="13" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
                         </Border>
@@ -41,6 +52,8 @@
                         <Button Classes="accent" MinWidth="96" HorizontalContentAlignment="Center" Padding="14,6"
                                 Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}" />
                     </StackPanel>
+                    <!-- The system's caption buttons (3 x 46 px) sit over this column while the title bar is ours -->
+                    <Border Grid.Column="4" Width="138" IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}" />
                 </Grid>
             </Border>
 
@@ -74,5 +87,8 @@
         </DockPanel>
 
         <pages:SetupView IsVisible="{Binding IsSetupVisible}" />
+        <!-- Setup covers the header, so it gets its own strip to drag the window by -->
+        <Border Height="52" VerticalAlignment="Top" Background="Transparent" IsVisible="{Binding IsSetupVisible}"
+                chrome:WindowDecorationProperties.ElementRole="TitleBar" />
     </Panel>
 </Window>
