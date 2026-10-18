@@ -256,4 +256,22 @@ public sealed class MainWindowTests
 
         Assert.Equal(before, after);
     }
+
+    [AvaloniaFact]
+    public void HomeSegments_ShowTheCurrentModeAndTheme()
+    {
+        // Setup's mode radio buttons live in the same window; a shared group name made them uncheck Home's.
+        using var harness = new TestHarness();
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+
+        string[] Checked() => window.GetVisualDescendants().OfType<RadioButton>()
+            .Where(r => r.Classes.Contains("segment") && r.IsChecked == true).Select(r => (string)r.Content!).ToArray();
+
+        Assert.Equal(["Push-to-talk", "System"], Checked());
+        harness.ViewModel.MuteMode = MuteMode.ToggleMute;
+        harness.ViewModel.Theme = AppTheme.Dark;
+        Assert.Equal(["Toggle", "Dark"], Checked());
+        harness.ViewModel.Theme = AppTheme.System;
+    }
 }

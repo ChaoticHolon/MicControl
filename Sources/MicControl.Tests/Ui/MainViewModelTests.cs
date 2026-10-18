@@ -434,4 +434,23 @@ public sealed class MainViewModelTests
         vm.IsSystemTheme = true;
         Assert.Equal(AppTheme.System, vm.Settings.Window.Theme);
     }
+
+    [AvaloniaFact]
+    public void ModeSegments_PickOneMode_AndIgnoreUnchecking()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+        Assert.True(vm.IsPushToTalkMode);
+
+        vm.IsPushToMuteMode = true;
+        Assert.Equal(MuteMode.PushToMute, vm.Settings.Microphone.MuteMode);
+        Assert.Equal((false, false, true), (vm.IsPushToTalkMode, vm.IsToggleMode, vm.IsPushToMuteMode));
+
+        vm.IsPushToTalkMode = false; // unchecked as another one is picked: no change
+        Assert.Equal(MuteMode.PushToMute, vm.Settings.Microphone.MuteMode);
+
+        vm.IsToggleMode = true;
+        Assert.Equal(MuteMode.ToggleMute, vm.Settings.Microphone.MuteMode);
+        Assert.Contains("switch between muted and live", vm.MainHotkeyDescription, StringComparison.Ordinal);
+    }
 }

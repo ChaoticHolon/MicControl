@@ -49,8 +49,13 @@
                       DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE8AB;" Header="Mode" Description="{Binding ModeDescription}">
-            <ComboBox MinWidth="200" ItemsSource="{Binding MuteModes}" SelectedValue="{Binding MuteMode}"
-                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
+            <Border Classes="segmented">
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <RadioButton Classes="segment" GroupName="homeMode" Content="Push-to-talk" IsChecked="{Binding IsPushToTalkMode}" />
+                    <RadioButton Classes="segment" GroupName="homeMode" Content="Toggle" IsChecked="{Binding IsToggleMode}" />
+                    <RadioButton Classes="segment" GroupName="homeMode" Content="Push-to-mute" IsChecked="{Binding IsPushToMuteMode}" />
+                </StackPanel>
+            </Border>
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE765;" Header="{Binding MainHotkeyLabel}" Description="{Binding MainHotkeyDescription}"
                       Content="{Binding MainHotkey}" ContentTemplate="{StaticResource HotkeyEditorTemplate}" />
@@ -84,9 +89,9 @@
             <!-- Segmented control: three peers with no order between them, so not a slider -->
             <Border Classes="segmented">
                 <StackPanel Orientation="Horizontal" Spacing="2">
-                    <RadioButton Classes="segment" GroupName="theme" Content="System" IsChecked="{Binding IsSystemTheme}" />
-                    <RadioButton Classes="segment" GroupName="theme" Content="Light" IsChecked="{Binding IsLightTheme}" />
-                    <RadioButton Classes="segment" GroupName="theme" Content="Dark" IsChecked="{Binding IsDarkTheme}" />
+                    <RadioButton Classes="segment" GroupName="homeTheme" Content="System" IsChecked="{Binding IsSystemTheme}" />
+                    <RadioButton Classes="segment" GroupName="homeTheme" Content="Light" IsChecked="{Binding IsLightTheme}" />
+                    <RadioButton Classes="segment" GroupName="homeTheme" Content="Dark" IsChecked="{Binding IsDarkTheme}" />
                 </StackPanel>
             </Border>
         </c:SettingRow>

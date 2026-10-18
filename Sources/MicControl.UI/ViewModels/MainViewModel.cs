@@ -286,7 +286,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            OnPropertyChanged(nameof(IsPushToTalkMode));
             OnPropertyChanged(nameof(IsToggleMode));
+            OnPropertyChanged(nameof(IsPushToMuteMode));
             OnPropertyChanged(nameof(MicrophoneStatusDetail));
             OnPropertyChanged(nameof(MainHotkeyLabel));
             OnPropertyChanged(nameof(MainHotkeyDescription));
@@ -307,7 +309,32 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public string ModeDescription => MuteModes.First(m => Equals(m.Value, MuteMode)).Description ?? string.Empty;
 
-    public bool IsToggleMode => MuteMode == MuteMode.ToggleMute;
+    // Home's segmented Mode control (like Theme): choosing one sets MuteMode; unchecking is ignored.
+    public bool IsPushToTalkMode
+    {
+        get => MuteMode == MuteMode.PushToTalk;
+        set => SelectMode(value, MuteMode.PushToTalk);
+    }
+
+    public bool IsToggleMode
+    {
+        get => MuteMode == MuteMode.ToggleMute;
+        set => SelectMode(value, MuteMode.ToggleMute);
+    }
+
+    public bool IsPushToMuteMode
+    {
+        get => MuteMode == MuteMode.PushToMute;
+        set => SelectMode(value, MuteMode.PushToMute);
+    }
+
+    private void SelectMode(bool selected, MuteMode mode)
+    {
+        if (selected)
+        {
+            MuteMode = mode;
+        }
+    }
 
     public HotkeyEditorViewModel MainHotkey { get; }
 
