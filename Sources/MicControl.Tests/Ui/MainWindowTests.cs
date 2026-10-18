@@ -199,5 +199,20 @@ public sealed class MainWindowTests
         var header = tabs.GetVisualAncestors().OfType<Border>()
             .First(b => Avalonia.Controls.Chrome.WindowDecorationProperties.GetElementRole(b) == Avalonia.Input.WindowDecorationsElementRole.TitleBar);
         Assert.Equal(window.ExtendClientAreaTitleBarHeightHint, header.Height);
+
+        // The status chip shows on every page, Home included, and switches the microphone.
+        var chip = window.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("statusChip"));
+        Assert.True(chip.IsEffectivelyVisible);
+        var muted = harness.ViewModel.IsMuted;
+        chip.Command!.Execute(null);
+        Assert.NotEqual(muted, harness.ViewModel.IsMuted);
+
+        // Avalonia's own title text and full-screen button would overlap the header; our decorations theme hides them.
+        var decorations = window.WindowDecorationsTheme;
+        Assert.NotNull(decorations);
+        Assert.NotNull(decorations.BasedOn);
+        var hidden = decorations.Children.OfType<Avalonia.Styling.Style>().Select(s => s.Selector?.ToString() ?? "").ToList();
+        Assert.Contains(hidden, s => s.Contains("PART_TitleTextPanel", StringComparison.Ordinal));
+        Assert.Contains(hidden, s => s.Contains("PART_FullScreenButton", StringComparison.Ordinal));
     }
 }

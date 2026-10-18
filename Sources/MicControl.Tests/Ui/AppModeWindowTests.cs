@@ -57,57 +57,18 @@ public sealed class AppModeWindowTests
     }
 
     [AvaloniaFact]
-    public void TrayPopup_ShowsQuickControls_AndOpensFullWindow()
-    {
-        using var harness = new TestHarness(s =>
-        {
-            s.Microphone.MuteMode = MuteMode.ToggleMute;
-            s.Microphone.InitialState = MicrophoneState.Unmute;
-        });
-        var opened = false;
-        var popup = new TrayPopupWindow(harness.ViewModel, () => opened = true);
-
-        popup.Toggle();
-        Assert.True(popup.IsVisible);
-        Assert.True(harness.ViewModel.IsPopupVisible);
-        Assert.Equal(1, harness.LevelMonitor.ActiveSessions);
-        Assert.Equal(2, popup.GetVisualDescendants().OfType<ComboBox>().Count());
-        Assert.NotNull(popup.GetVisualDescendants().OfType<ProgressBar>().SingleOrDefault());
-
-        var buttons = popup.GetVisualDescendants().OfType<Button>().ToList();
-        var mute = buttons.Single(b => Equals(b.Content, "Mute"));
-        mute.Command!.Execute(null);
-        Assert.True(harness.ViewModel.IsMuted);
-        Assert.Equal("Unmute", mute.Content);
-
-        buttons.Single(b => Equals(b.Content, "Open full window")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Assert.True(opened);
-        Assert.False(popup.IsVisible);
-        Assert.False(harness.ViewModel.IsPopupVisible);
-        Assert.Equal(0, harness.LevelMonitor.ActiveSessions);
-    }
-
-    [AvaloniaFact]
-    public void TrayPopup_ToggleClosesWhenOpen()
+    public void TrayIconClick_OpensTheFullWindow_WithoutChangingTheMuteState()
     {
         using var harness = new TestHarness();
-        var popup = new TrayPopupWindow(harness.ViewModel, () => { });
+        var opened = 0;
+        using var tray = new MicControl.Views.TrayIcon(Avalonia.Application.Current!, harness.ViewModel, () => opened++, () => { },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<MicControl.Views.TrayIcon>.Instance);
+        var muted = harness.ViewModel.IsMuted;
 
-        popup.Toggle();
-        popup.Toggle();
+        tray.ClickCommand!.Execute(null);
+        tray.ClickCommand.Execute(null); // a double-click arrives as two clicks; showing an open window again is harmless
 
-        Assert.False(popup.IsVisible);
-    }
-
-    [Theory]
-    [InlineData(0, 0, 1920, 1040, 1920 - 300, 1040 - 200)] // taskbar at the bottom
-    [InlineData(0, 40, 1920, 1040, 1920 - 300, 40)] // taskbar at the top
-    [InlineData(60, 0, 1860, 1080, 60, 1080 - 200)] // taskbar on the left
-    [InlineData(0, 0, 1860, 1080, 1860 - 300, 1080 - 200)] // taskbar on the right
-    public void PopupPlacement_SitsNextToTheTaskbar(int x, int y, int width, int height, int expectedX, int expectedY)
-    {
-        var point = PopupPlacement.Compute(new PixelRect(0, 0, 1920, 1080), new PixelRect(x, y, width, height), new PixelSize(300, 200), 0);
-
-        Assert.Equal(new PixelPoint(expectedX, expectedY), point);
+        Assert.Equal(2, opened);
+        Assert.Equal(muted, harness.ViewModel.IsMuted);
     }
 }

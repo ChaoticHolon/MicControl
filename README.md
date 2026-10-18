@@ -10,9 +10,9 @@ Built on .NET 10 and Avalonia, with Linux (KDE Plasma 6 on Wayland) planned next
 | ![Home, light](docs/screenshots/home-light.png) | ![Home, dark](docs/screenshots/home-dark.png) |
 | ![Hotkeys, light](docs/screenshots/hotkeys-light.png) | ![Overlay settings, dark](docs/screenshots/overlay-dark.png) |
 
-| Quick controls from the tray | The overlay | Setup |
-| --- | --- | --- |
-| ![Tray popup](docs/screenshots/tray-popup-dark.png) | ![Overlay, live](docs/screenshots/overlay-live.png) ![Overlay, muted](docs/screenshots/overlay-muted.png) | ![Setup](docs/screenshots/installer-light.png) |
+| The overlay | Setup |
+| --- | --- |
+| ![Overlay, live](docs/screenshots/overlay-live.png) ![Overlay, muted](docs/screenshots/overlay-muted.png) | ![Setup](docs/screenshots/installer-light.png) |
 
 ## Features
 - **Three modes:** push-to-talk (the default), toggle, and push-to-mute
@@ -21,7 +21,7 @@ Built on .NET 10 and Avalonia, with Linux (KDE Plasma 6 on Wayland) planned next
 - **One microphone or all of them** at once, handy for streamers with several inputs
 - **Overlay:** a small always-on-top badge that shows Live or Muted, even over games. Snap it to any corner of any monitor or drag it anywhere; show it always, only when muted or only when live; adjust size and opacity; optional speaking indicator; your own icons
 - **Sounds** when the microphone switches on and off: subtle built-in cues, or (with Custom sounds under About → Advanced) your own audio files, volume and playback device
-- **Lives in the tray:** starts with Windows, stays out of the way, and a click on the tray icon opens quick controls
+- **Lives in the tray:** starts with Windows, stays out of the way, a click on the tray icon opens the window, and right-click has quick controls
 - **Light and dark,** following Windows and its accent colour
 - **Installs for everyone or just you** (no admin needed for just you), and **updates itself** from GitHub Releases, verified before it runs
 - **MicSwitch 1.x settings are imported** automatically on first start

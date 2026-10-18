@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace MicControl.Views;
 
-/// <summary>Notification-area icon, always shown. Left-click opens the quick popup; right-click shows the full menu.</summary>
+/// <summary>Notification-area icon, always shown. Left-click (or double-click) opens the full window; right-click shows the menu.</summary>
 public sealed partial class TrayIcon : IDisposable
 {
     private static readonly HashSet<string> MenuProperties =
@@ -23,8 +23,8 @@ public sealed partial class TrayIcon : IDisposable
     private readonly Action exit;
     private readonly ILogger logger;
 
-    /// <param name="togglePopup">Left-click: never changes state, only opens or closes the quick popup.</param>
-    public TrayIcon(Application application, MainViewModel viewModel, Action togglePopup, Action showWindow, Action exit, ILogger<TrayIcon> logger)
+    /// <param name="showWindow">Left-click: never changes state, only opens the full window.</param>
+    public TrayIcon(Application application, MainViewModel viewModel, Action showWindow, Action exit, ILogger<TrayIcon> logger)
     {
         this.viewModel = viewModel;
         this.showWindow = showWindow;
@@ -35,7 +35,7 @@ public sealed partial class TrayIcon : IDisposable
             Command = new RelayCommand(() =>
             {
                 LogClicked(logger);
-                togglePopup();
+                showWindow();
             }),
             IsVisible = true,
         };
@@ -45,6 +45,9 @@ public sealed partial class TrayIcon : IDisposable
         viewModel.Microphones.CollectionChanged += (_, _) => RebuildMenu();
         Avalonia.Controls.TrayIcon.SetIcons(application, [icon]);
     }
+
+    /// <summary>What a left-click on the icon runs (for tests).</summary>
+    internal System.Windows.Input.ICommand? ClickCommand => icon.Command;
 
     public void Dispose()
     {

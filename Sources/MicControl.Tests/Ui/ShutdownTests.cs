@@ -29,26 +29,21 @@ public sealed class ShutdownTests
     }
 
     [AvaloniaFact]
-    public void OverlayAndPopup_RefuseCloses_UntilTheAppExits()
+    public void Overlay_RefusesCloses_UntilTheAppExits()
     {
         using var harness = new TestHarness();
         var shutdown = new AppShutdown();
         var overlay = new OverlayWindow(harness.ViewModel, harness.Settings, new FakeWindowInterop(), shutdown: shutdown);
-        var popup = new TrayPopupWindow(harness.ViewModel, () => { }, shutdown: shutdown);
         var closed = 0;
         overlay.Closed += (_, _) => closed++;
-        popup.Closed += (_, _) => closed++;
         overlay.Show();
-        popup.Show();
 
         overlay.Close();
-        popup.Close();
         Assert.Equal(0, closed);
 
         shutdown.BeginExit("test");
         overlay.Close();
-        popup.Close();
-        Assert.Equal(2, closed);
+        Assert.Equal(1, closed);
     }
 
     [Fact]
@@ -66,27 +61,22 @@ public sealed class ShutdownTests
     }
 
     [AvaloniaFact]
-    public void ClosedOverlayAndPopup_IgnoreLaterChanges_InsteadOfCrashing()
+    public void ClosedOverlay_IgnoresLaterChanges_InsteadOfCrashing()
     {
         using var harness = new TestHarness();
         var shutdown = new AppShutdown();
         var overlay = new OverlayWindow(harness.ViewModel, harness.Settings, new FakeWindowInterop(), shutdown: shutdown);
-        var popup = new TrayPopupWindow(harness.ViewModel, () => { }, shutdown: shutdown);
         overlay.SyncVisibility();
-        popup.Show();
 
-        // As when Windows destroys them with their hidden owner: the windows are gone without being asked.
+        // As when Windows destroys it with its hidden owner: the window is gone without being asked.
         shutdown.BeginExit("test");
         overlay.Close();
-        popup.Close();
 
         // Used to throw "Cannot re-show a closed window" on the next mute change.
         harness.ViewModel.OverlayVisibility = OverlayVisibilityMode.Never;
         harness.ViewModel.OverlayVisibility = OverlayVisibilityMode.Always;
         overlay.SyncVisibility();
-        popup.Toggle();
         Assert.False(overlay.IsVisible);
-        Assert.False(popup.IsVisible);
     }
 
     [AvaloniaFact]

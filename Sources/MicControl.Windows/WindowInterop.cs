@@ -49,7 +49,7 @@ public sealed class WindowInterop : IWindowInterop
         // "AvaloniaMessageWindow <guid>": dispatcher wake-ups, dispatcher timers and tray icon messages.
         className.StartsWith("AvaloniaMessageWindow", StringComparison.Ordinal) ? "UI message window"
         // "AvaloniaSimpleWindow-<guid>": Avalonia's other hidden windows. On the UI thread, among others the owner of
-        // windows kept off the taskbar (overlay, tray popup): Windows destroys owned windows with their owner.
+        // windows kept off the taskbar (the overlay): Windows destroys owned windows with their owner.
         : className.StartsWith("AvaloniaSimpleWindow", StringComparison.Ordinal) ? "hidden Avalonia window"
         // Each thread's default input method (IME) windows, created by Windows for text input.
         : className is "IME" or "MSCTFIME UI" ? "input method window"

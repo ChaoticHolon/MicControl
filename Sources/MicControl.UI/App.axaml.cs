@@ -183,7 +183,7 @@ public partial class App : Application
         });
         guard.Watch(mainWindow, "main window");
 
-        // The overlay and tray popup refuse to close, but a window can still be destroyed without being asked (e.g.
+        // The overlay refuses to close, but a window can still be destroyed without being asked (e.g.
         // with its owner). A destroyed window can't be shown again, so a new one replaces it.
         OverlayWindow CreateOverlay()
         {
@@ -191,15 +191,6 @@ public partial class App : Application
             overlay.Closed += (_, _) => ReplaceWhenDestroyed("overlay", () => CreateOverlay().SyncVisibility());
             guard.Watch(overlay, "overlay");
             return overlay;
-        }
-
-        TrayPopupWindow? popup = null;
-        TrayPopupWindow CreatePopup()
-        {
-            var created = new TrayPopupWindow(viewModel, ShowMainWindow, services.GetRequiredService<ILogger<TrayPopupWindow>>(), shutdown);
-            created.Closed += (_, _) => ReplaceWhenDestroyed("tray popup", () => popup = CreatePopup());
-            guard.Watch(created, "tray popup");
-            return created;
         }
 
         void ReplaceWhenDestroyed(string window, Action replace)
@@ -217,9 +208,8 @@ public partial class App : Application
             }
         }
 
-        popup = CreatePopup();
         trayIcon = new TrayIcon(
-            this, viewModel, () => popup.Toggle(), ShowMainWindow, () => Exit(desktop, mainWindow, logger, "tray menu"),
+            this, viewModel, ShowMainWindow, () => Exit(desktop, mainWindow, logger, "tray menu"),
             services.GetRequiredService<ILogger<TrayIcon>>());
         CreateOverlay().SyncVisibility();
         guard.ProtectHelperWindows();

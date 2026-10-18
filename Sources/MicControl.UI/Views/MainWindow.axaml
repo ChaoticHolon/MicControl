@@ -9,7 +9,21 @@
         Width="1000" Height="720" MinWidth="780" MinHeight="520"
         Background="{DynamicResource PageBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
-        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="52">
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="52"
+        WindowDecorationsTheme="{DynamicResource HeaderDecorations}">
+    <Window.Resources>
+        <!-- Avalonia draws the title bar's parts over the window: keep its minimize, maximize and close buttons, but drop
+             its title text (the header shows the name) and its full-screen button (MicControl has no full-screen mode). -->
+        <ControlTheme x:Key="HeaderDecorations" TargetType="chrome:WindowDrawnDecorations"
+                      BasedOn="{StaticResource {x:Type chrome:WindowDrawnDecorations}}">
+            <Style Selector="^ /template/ Panel#PART_TitleTextPanel">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="^ /template/ Button#PART_FullScreenButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </ControlTheme>
+    </Window.Resources>
     <Panel>
         <DockPanel>
             <!-- Header, drawn in the title bar like a browser: icon and name, page tabs, (away from Home, which shows it
@@ -42,16 +56,21 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="12,0,12,0"
-                                IsVisible="{Binding !IsHomePage}" ToolTip.Tip="{Binding MainHotkeySummary}"
-                                chrome:WindowDecorationProperties.ElementRole="User">
-                        <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="26" Height="26" CornerRadius="13">
-                            <TextBlock Classes="glyph" FontSize="13" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
-                        </Border>
-                        <TextBlock VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Text="{Binding StateLabel}" />
-                        <Button Classes="accent" MinWidth="96" HorizontalContentAlignment="Center" Padding="14,6"
-                                Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}" />
-                    </StackPanel>
+                    <!-- Status chip, on every page: the state at a glance, and one click to switch. Smaller and quieter than
+                         Home's status card, which stays the main control. -->
+                    <Button Grid.Column="3" Classes="statusChip" Margin="12,0,16,0" VerticalAlignment="Center"
+                            Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}"
+                            ToolTip.Tip="{Binding MainHotkeySummary}" AutomationProperties.Name="Microphone state"
+                            chrome:WindowDecorationProperties.ElementRole="User">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="20" Height="20" CornerRadius="10">
+                                <TextBlock Classes="glyph" FontSize="11" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                            </Border>
+                            <TextBlock VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Text="{Binding StateLabel}" />
+                            <Border Width="1" Height="14" VerticalAlignment="Center" Background="{DynamicResource CardBorderBrush}" />
+                            <TextBlock Classes="secondary" VerticalAlignment="Center" FontSize="13" Text="{Binding ToggleMuteText}" />
+                        </StackPanel>
+                    </Button>
                     <!-- The system's caption buttons (3 x 46 px) sit over this column while the title bar is ours -->
                     <Border Grid.Column="4" Width="138" IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}" />
                 </Grid>

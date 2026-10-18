@@ -170,7 +170,7 @@ public interface IWindowInterop
     /// <summary>
     /// Hidden helper windows of this process, on any thread, that the app needs but didn't create itself: Avalonia's
     /// dispatcher and tray icon window (if it's closed, the UI stops processing work while the process stays alive),
-    /// the hidden owner of windows kept off the taskbar (closing it destroys the overlay and tray popup), and the
+    /// the hidden owner of windows kept off the taskbar (closing it destroys the overlay), and the
     /// input method windows.
     /// </summary>
     IReadOnlyList<ToolkitHelperWindow> FindToolkitHelperWindows();

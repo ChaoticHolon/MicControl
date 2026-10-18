@@ -52,22 +52,6 @@ public sealed class ScreenshotTests
         window.Close();
     }
 
-    [AvaloniaTheory]
-    [InlineData("light")]
-    [InlineData("dark")]
-    public void TrayPopup(string theme)
-    {
-        Assert.SkipUnless(Enabled, "Set MICCONTROL_SCREENSHOTS=1 to render screenshots.");
-        UseTheme(theme);
-        using var harness = SampleHarness();
-        var popup = new TrayPopupWindow(harness.ViewModel, () => { });
-        popup.Show();
-        harness.ViewModel.IsPopupVisible = true;
-        Speak(harness);
-        Save(popup, $"tray-popup-{theme}");
-        popup.Close();
-    }
-
     [AvaloniaFact]
     public void OverlayBadges()
     {

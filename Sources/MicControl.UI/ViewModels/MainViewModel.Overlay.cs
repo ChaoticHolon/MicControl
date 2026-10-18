@@ -19,7 +19,6 @@ public sealed partial class MainViewModel
     private IDisposable? levelSession;
     private float latestPeak;
     private bool isWindowVisible;
-    private bool isPopupVisible;
 
     /// <summary>Raised when the overlay should move to its configured corner.</summary>
     public event EventHandler? OverlayPlacementRequested;
@@ -128,19 +127,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>Set by the tray popup; the level meter runs while it is open.</summary>
-    public bool IsPopupVisible
-    {
-        get => isPopupVisible;
-        set
-        {
-            if (SetProperty(ref isPopupVisible, value))
-            {
-                UpdateLevelMonitoring();
-            }
-        }
-    }
-
     [RelayCommand]
     private void PlaceOverlay(OverlayCorner corner)
     {
@@ -208,13 +194,13 @@ public sealed partial class MainViewModel
 
     private void UpdateLevelMonitoring()
     {
-        var wanted = (IsWindowVisible && (IsHomePage || !SetupCompleted)) || IsPopupVisible || (ShowSpeakingIndicator && IsOverlayVisible);
+        var wanted = (IsWindowVisible && (IsHomePage || !SetupCompleted)) || (ShowSpeakingIndicator && IsOverlayVisible);
         if (wanted == (levelSession is not null))
         {
             return;
         }
 
-        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, IsPopupVisible, ShowSpeakingIndicator && IsOverlayVisible);
+        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, ShowSpeakingIndicator && IsOverlayVisible);
         if (wanted)
         {
             levelSession = levelMonitor.Start(SelectedMicrophoneId, peak => Volatile.Write(ref latestPeak, peak));
@@ -290,6 +276,6 @@ public sealed partial class MainViewModel
     [LoggerMessage(Level = LogLevel.Information, Message = "Overlay edit position {Editing}")]
     private partial void LogOverlayEditing(bool editing);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, tray popup: {Popup}, speaking indicator: {Speaking})")]
-    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool popup, bool speaking);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, speaking indicator: {Speaking})")]
+    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool speaking);
 }

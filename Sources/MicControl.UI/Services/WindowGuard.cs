@@ -9,7 +9,7 @@ namespace MicControl.Services;
 /// <list type="bullet">
 /// <item>Logs who asks a window to close, for our windows and helpers alike. Our windows' Closing handlers decide.</item>
 /// <item>Helper windows refuse every close: closing Avalonia's message window leaves a "zombie" (no tray icon, dead
-/// hotkeys and timers, process alive), and closing the hidden owner window destroys the overlay and tray popup.</item>
+/// hotkeys and timers, process alive), and closing the hidden owner window destroys the overlay.</item>
 /// <item>A session end exits the app only once the OS confirms it (WM_ENDSESSION). The helpers answer the query
 /// themselves, so the toolkit doesn't start exiting on the question and stay closed if another app vetoes it.</item>
 /// </list>
