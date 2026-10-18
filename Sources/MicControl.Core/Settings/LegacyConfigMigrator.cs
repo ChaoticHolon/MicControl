@@ -37,9 +37,9 @@ public static class LegacyConfigMigrator
 
     public static AppSettings Migrate(string legacyJson, string? iconDirectory)
     {
-        // 1.x defaults: toggle mode and exclusive hotkeys; setup is considered done for existing users.
-        var settings = new AppSettings { SetupCompleted = true };
-        settings.Microphone.MuteMode = MuteMode.ToggleMute;
+        // The mode and startup state stay MicControl's defaults (push-to-talk, muted), and setup still runs so the
+        // imported hotkeys, sounds and overlay can be reviewed.
+        var settings = new AppSettings();
         var items = JsonNode.Parse(legacyJson, documentOptions: DocumentOptions)?["Items"]?.AsArray() ?? [];
         var configs = items
             .Where(x => x?["TypeName"] is not null && x["ConfigValue"] is JsonObject)
@@ -54,8 +54,6 @@ public static class LegacyConfigMigrator
         {
             var mic = settings.Microphone;
             mic.Hotkey = Hotkey(hotkeys["Hotkey"]) ?? mic.Hotkey;
-            mic.MuteMode = Enum<MuteMode>(hotkeys["MuteMode"]) ?? mic.MuteMode;
-            mic.InitialState = Enum<MicrophoneState>(hotkeys["InitialMicrophoneState"]) ?? mic.InitialState;
             var enabled = Bool(hotkeys["EnableAdvancedHotkeys"]) ?? false;
             AddExtra(settings, HotkeyAction.ToggleMute, hotkeys["HotkeyForToggle"], enabled);
             AddExtra(settings, HotkeyAction.Mute, hotkeys["HotkeyForMute"], enabled);
@@ -100,8 +98,6 @@ public static class LegacyConfigMigrator
                 Suppress = Bool(main["SuppressHotkey"]) ?? true,
             };
         }
-
-        mic.MuteMode = Enum<MuteMode>(main["MuteMode"]) ?? mic.MuteMode;
 
         var n = settings.Notifications;
         if (main["Notifications"] is JsonObject notifications)

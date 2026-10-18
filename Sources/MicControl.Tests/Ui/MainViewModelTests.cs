@@ -81,7 +81,7 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
-    public void Toggle_FlipsOnPressOnly()
+    public void Toggle_StartsMuted_AndFlipsOnPressOnly()
     {
         using var harness = new TestHarness(s =>
         {
@@ -89,13 +89,14 @@ public sealed class MainViewModelTests
             s.Microphone.Hotkey.Key = HotkeyGesture.Parse("F13");
         });
         var hotkey = harness.ViewModel.Settings.Microphone.Hotkey;
+        Assert.True(harness.ViewModel.IsMuted); // the default startup state
 
         harness.Hotkeys.Trigger(hotkey, pressed: true);
         harness.Hotkeys.Trigger(hotkey, pressed: false);
-        Assert.True(harness.ViewModel.IsMuted);
+        Assert.False(harness.ViewModel.IsMuted);
 
         harness.Hotkeys.Trigger(hotkey, pressed: true);
-        Assert.False(harness.ViewModel.IsMuted);
+        Assert.True(harness.ViewModel.IsMuted);
     }
 
     [AvaloniaFact]

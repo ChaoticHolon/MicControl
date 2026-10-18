@@ -51,7 +51,8 @@ System-wide microphone mute/unmute with hotkeys, an always-on-top overlay, sound
 | `MicControl.Tests` | xUnit v3: core tests plus headless Avalonia UI tests (`Ui/`, with fakes in `Ui/Fakes.cs`) | |
 
 ## Product decisions (from the developer)
-- Default mode is Push-to-talk; Toggle and Push-to-mute are alternatives. "Exclusive hotkey" (suppress) is off by default.
+- Default mode is Push-to-talk; Toggle and Push-to-mute are alternatives. State at startup (Toggle only) defaults to Muted. "Exclusive hotkey" (suppress) is off by default.
+- A MicSwitch 1.x import brings hotkeys, microphone, sounds, overlay and window settings, but never MicSwitch's mode or startup state (new users always get Push-to-talk and Muted), and setup still runs so the imported values can be reviewed.
 - App mode (`window.appMode`): **Tray** (default) starts hidden, including at sign-in; Close and Minimize hide to the tray, with a once-per-session notice that has "Don't show again". **Window** is a normal app: Close exits, Minimize goes to the taskbar. First run always shows the window, for setup.
 - Shutdown and resilience (`App.axaml.cs`, `AppShutdown`):
   - A session end (shutdown, restart, sign-out, Restart Manager) always exits cleanly, in both modes, once Windows confirms it (WM_ENDSESSION): `WindowGuard` answers the WM_QUERYENDSESSION for Avalonia's message window, so the app keeps running if another app vetoes the shutdown. The log is flushed (`FileLoggerProvider.Flush`) before WM_ENDSESSION returns and keeps logging. It never hides to the tray, which would veto the restart. Avalonia's `ShutdownRequested` still exits on platforms without the guard.

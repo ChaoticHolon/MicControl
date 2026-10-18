@@ -59,7 +59,11 @@ public sealed class AppModeWindowTests
     [AvaloniaFact]
     public void TrayPopup_ShowsQuickControls_AndOpensFullWindow()
     {
-        using var harness = new TestHarness(s => s.Microphone.MuteMode = MuteMode.ToggleMute);
+        using var harness = new TestHarness(s =>
+        {
+            s.Microphone.MuteMode = MuteMode.ToggleMute;
+            s.Microphone.InitialState = MicrophoneState.Unmute;
+        });
         var opened = false;
         var popup = new TrayPopupWindow(harness.ViewModel, () => opened = true);
 

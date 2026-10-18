@@ -17,7 +17,11 @@ public sealed class MainWindowTests
     [AvaloniaFact]
     public void Window_ShowsStatus_AndMuteButtonToggles()
     {
-        using var harness = new TestHarness(s => s.Microphone.MuteMode = MuteMode.ToggleMute);
+        using var harness = new TestHarness(s =>
+        {
+            s.Microphone.MuteMode = MuteMode.ToggleMute;
+            s.Microphone.InitialState = MicrophoneState.Unmute;
+        });
         var window = new MainWindow(harness.ViewModel, harness.Settings);
         window.Show();
 

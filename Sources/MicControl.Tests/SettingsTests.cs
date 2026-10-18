@@ -30,11 +30,12 @@ public sealed class SettingsTests : IDisposable
     }
 
     [Fact]
-    public void Defaults_ArePushToTalk_NonExclusive_AndNeedSetup()
+    public void Defaults_ArePushToTalk_Muted_NonExclusive_AndNeedSetup()
     {
         var settings = new SettingsStore(directory).Load();
 
         Assert.Equal(MuteMode.PushToTalk, settings.Microphone.MuteMode);
+        Assert.Equal(MicrophoneState.Mute, settings.Microphone.InitialState);
         Assert.False(settings.Microphone.Hotkey.Suppress);
         Assert.False(settings.SetupCompleted);
         Assert.Equal(0.85, settings.Overlay.Opacity);
@@ -152,7 +153,7 @@ public sealed class SettingsTests : IDisposable
             { "AssemblyName": "MicSwitch", "TypeName": "MicSwitch.Modularity.MicSwitchHotkeyConfig", "Version": 1,
               "ConfigValue": {
                 "Hotkey": { "Key": "CONTROL+F1", "AlternativeKey": "MouseXButton1", "Suppress": false, "IgnoreModifiers": false },
-                "MuteMode": "PushToTalk", "EnableAdvancedHotkeys": true, "InitialMicrophoneState": "Mute",
+                "MuteMode": "ToggleMute", "EnableAdvancedHotkeys": true, "InitialMicrophoneState": "Unmute",
                 "HotkeyForToggle": { "Key": "F9", "Suppress": true } } },
             { "AssemblyName": "MicSwitch", "TypeName": "MicSwitch.Modularity.MicSwitchOverlayConfig", "Version": 1,
               "ConfigValue": {
@@ -169,12 +170,12 @@ public sealed class SettingsTests : IDisposable
         var settings = new SettingsStore(directory).Load();
 
         Assert.Equal("{0.0.1.00000000}.{abc}", settings.Microphone.DeviceId);
-        Assert.Equal(MuteMode.PushToTalk, settings.Microphone.MuteMode);
+        Assert.Equal(MuteMode.PushToTalk, settings.Microphone.MuteMode); // MicControl's defaults, not MicSwitch's
         Assert.Equal(MicrophoneState.Mute, settings.Microphone.InitialState);
         Assert.Equal(HotkeyGesture.Parse("Ctrl+F1"), settings.Microphone.Hotkey.Key);
         Assert.Equal(MouseHotkey.XButton1, settings.Microphone.Hotkey.AlternativeKey.Mouse);
         Assert.False(settings.Microphone.Hotkey.Suppress);
-        Assert.True(settings.SetupCompleted);
+        Assert.False(settings.SetupCompleted); // setup still runs, to review what was imported
         var toggle = Assert.Single(settings.ExtraHotkeys, e => e.Action == HotkeyAction.ToggleMute);
         Assert.True(toggle.IsEnabled);
         Assert.Equal("F9", toggle.Hotkey.Key.Key);

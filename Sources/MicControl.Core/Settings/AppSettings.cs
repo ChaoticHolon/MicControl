@@ -92,7 +92,7 @@ public sealed class MicrophoneSettings
     public MuteMode MuteMode { get; set; } = MuteMode.PushToTalk;
 
     /// <summary>Only used in <see cref="MuteMode.ToggleMute"/>.</summary>
-    public MicrophoneState InitialState { get; set; } = MicrophoneState.Any;
+    public MicrophoneState InitialState { get; set; } = MicrophoneState.Mute;
 
     public HotkeySettings Hotkey { get; set; } = new();
 
