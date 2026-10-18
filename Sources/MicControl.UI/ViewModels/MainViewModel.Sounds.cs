@@ -16,6 +16,24 @@ public sealed partial class MainViewModel
         set => SetAndSave(Settings.Notifications.Enabled, value, v => Settings.Notifications.Enabled = v);
     }
 
+    /// <summary>"Custom sounds" (Home → Advanced): shows the Sounds page and plays its choices instead of the built-in cues.</summary>
+    public bool CustomSoundsEnabled
+    {
+        get => Settings.Notifications.CustomSoundsEnabled;
+        set
+        {
+            if (SetAndSave(Settings.Notifications.CustomSoundsEnabled, value, v => Settings.Notifications.CustomSoundsEnabled = v))
+            {
+                UpdateNavItems();
+                OnPropertyChanged(nameof(SoundsDescription));
+            }
+        }
+    }
+
+    public string SoundsDescription => CustomSoundsEnabled
+        ? "A short sound when you mute or unmute. Choose sounds on the Sounds page."
+        : "A short sound when you mute or unmute.";
+
     // Dropdown values use "" for "None"/"Default device": a null SelectedValue would show an empty selection.
     // So null is never a choice; it's a ComboBox clearing its selection while it builds, and is ignored.
     public string SoundWhenMuted
@@ -94,8 +112,9 @@ public sealed partial class MainViewModel
 
     private Task PlayNotification(string? name)
     {
-        LogPlayingSound(name ?? "(none)", Settings.Notifications.Volume * 100, Settings.Notifications.OutputDeviceId ?? "default");
-        return sounds.PlayAsync(name, Settings.Notifications.Volume, Settings.Notifications.OutputDeviceId);
+        var n = Settings.Notifications;
+        LogPlayingSound(name ?? "(none)", n.PlayedVolume * 100, n.PlayedOutputDeviceId ?? "default");
+        return sounds.PlayAsync(name, n.PlayedVolume, n.PlayedOutputDeviceId);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Sound \"{Name}\" added from {File}")]

@@ -231,4 +231,42 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(MuteMode.PushToTalk, settings.Microphone.MuteMode);
         Assert.Equal(1, settings.Version);
     }
+
+    [Fact]
+    public void CustomSounds_AreOffByDefault_AndOnlyTheirChoicesPlayWhenOn()
+    {
+        var n = new AppSettings().Notifications;
+        Assert.False(n.CustomSoundsEnabled);
+        Assert.False(n.HasCustomChoices);
+
+        (n.WhenMuted, n.WhenUnmuted, n.Volume, n.OutputDeviceId) = ("mine", null, 0.4f, "speaker-1");
+        Assert.True(n.HasCustomChoices);
+        Assert.Equal((NotificationSettings.DefaultMutedSound, NotificationSettings.DefaultUnmutedSound, 1f, (string?)null),
+            (n.PlayedWhenMuted, n.PlayedWhenUnmuted, n.PlayedVolume, n.PlayedOutputDeviceId));
+
+        n.CustomSoundsEnabled = true;
+        Assert.Equal(("mine", (string?)null, 0.4f, "speaker-1"), (n.PlayedWhenMuted, n.PlayedWhenUnmuted, n.PlayedVolume, n.PlayedOutputDeviceId));
+    }
+
+    [Fact]
+    public void Load_MicSwitchImport_KeepsCustomHotkeysAndSoundsSwitchedOff()
+    {
+        // Setup asks whether to use them; until then they are stored but inactive.
+        var legacy = """
+        { "Version": 1, "Items": [
+            { "AssemblyName": "MicSwitch", "TypeName": "MicSwitch.Modularity.MicSwitchConfig", "Version": 1,
+              "ConfigValue": { "Notifications": { "On": "mine", "Off": "Beep750" } } },
+            { "AssemblyName": "MicSwitch", "TypeName": "MicSwitch.Modularity.MicSwitchHotkeyConfig", "Version": 1,
+              "ConfigValue": { "EnableAdvancedHotkeys": true, "HotkeyForToggle": { "Key": "F9" } } } ] }
+        """;
+        Directory.CreateDirectory(Path.Combine(directory, "release"));
+        File.WriteAllText(Path.Combine(directory, "release", "config.cfg"), legacy, System.Text.Encoding.Unicode);
+
+        var settings = new SettingsStore(directory).Load();
+
+        Assert.Single(settings.CustomHotkeys);
+        Assert.False(settings.CustomHotkeysEnabled);
+        Assert.True(settings.Notifications.HasCustomChoices);
+        Assert.False(settings.Notifications.CustomSoundsEnabled);
+    }
 }

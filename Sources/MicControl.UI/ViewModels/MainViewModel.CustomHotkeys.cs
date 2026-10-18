@@ -34,6 +34,31 @@ public sealed partial class MainViewModel
 
     public ObservableCollection<CustomHotkeyViewModel> CustomHotkeys { get; } = [];
 
+    /// <summary>"Custom hotkeys" (Home → Advanced): shows their page and makes them work; off pauses them.</summary>
+    public bool CustomHotkeysEnabled
+    {
+        get => Settings.CustomHotkeysEnabled;
+        set
+        {
+            if (SetAndSave(Settings.CustomHotkeysEnabled, value, v => Settings.CustomHotkeysEnabled = v))
+            {
+                ApplyHotkeys();
+                UpdateNavItems();
+            }
+        }
+    }
+
+    /// <summary>Whether Home's Advanced section starts open: when something in it is on.</summary>
+    public bool HasAdvancedEnabled => CustomHotkeysEnabled || CustomSoundsEnabled;
+
+    /// <summary>Setup offers a MicSwitch import's custom hotkeys; they stay off until the user says yes.</summary>
+    public bool OffersImportedCustomHotkeys => settingsService.MigratedFromLegacy && Settings.CustomHotkeys.Count > 0;
+
+    /// <summary>Setup offers a MicSwitch import's sounds, volume and device when they differ from the defaults.</summary>
+    public bool OffersImportedSounds => settingsService.MigratedFromLegacy && Settings.Notifications.HasCustomChoices;
+
+    public bool OffersImports => OffersImportedCustomHotkeys || OffersImportedSounds;
+
     public bool HasCustomHotkeys => CustomHotkeys.Count > 0;
 
     public bool HasSpeakerActions => Settings.CustomHotkeys.Any(e => MuteRules.IsSpeakerAction(e.Action));

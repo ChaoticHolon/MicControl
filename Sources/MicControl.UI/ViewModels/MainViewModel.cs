@@ -83,6 +83,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         microphone = deviceService.CreateGroup(AudioFlow.Capture);
         speakers = deviceService.CreateGroup(AudioFlow.Render);
         // After the groups exist: the setter updates level monitoring, which reads the microphone state.
+        UpdateNavItems();
         SelectedNav = NavItems[0];
         microphone.StateChanged += (_, _) => OnMicrophoneStateChanged();
         speakers.StateChanged += (_, _) => OnSpeakerStateChanged();
@@ -118,7 +119,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     // ---------------------------------------------------------------- Navigation
 
-    public IReadOnlyList<NavItem> NavItems { get; } =
+    /// <summary>Every page, in sidebar order; <see cref="NavItems"/> holds the ones currently shown.</summary>
+    private static readonly NavItem[] AllNavItems =
     [
         new(Page.Home, "Home", ""),
         new(Page.Sounds, "Sounds", ""),
@@ -126,6 +128,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         new(Page.CustomHotkeys, "Custom hotkeys", ""),
         new(Page.About, "About", ""),
     ];
+
+    /// <summary>The sidebar: Sounds and Custom hotkeys only appear while their switch (Home → Advanced) is on.</summary>
+    public ObservableCollection<NavItem> NavItems { get; } = [];
 
     [ObservableProperty]
     public partial NavItem SelectedNav { get; set; }
@@ -142,7 +147,41 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsAboutPage => CurrentPage == Page.About;
 
-    public void Navigate(Page page) => SelectedNav = NavItems.First(n => n.Page == page);
+    /// <summary>Opens <paramref name="page"/>, or Home if that page is switched off.</summary>
+    public void Navigate(Page page) => SelectedNav = NavItems.FirstOrDefault(n => n.Page == page) ?? NavItems[0];
+
+    private bool IsPageShown(Page page) => page switch
+    {
+        Page.Sounds => Settings.Notifications.CustomSoundsEnabled,
+        Page.CustomHotkeys => Settings.CustomHotkeysEnabled,
+        _ => true,
+    };
+
+    /// <summary>Adds or removes the optional pages, leaving the rest (and the selection) alone.</summary>
+    private void UpdateNavItems()
+    {
+        if (SelectedNav is not null && !IsPageShown(SelectedNav.Page))
+        {
+            Navigate(Page.Home);
+        }
+
+        var shown = AllNavItems.Where(n => IsPageShown(n.Page)).ToList();
+        for (var i = NavItems.Count - 1; i >= 0; i--)
+        {
+            if (!shown.Contains(NavItems[i]))
+            {
+                NavItems.RemoveAt(i);
+            }
+        }
+
+        for (var i = 0; i < shown.Count; i++)
+        {
+            if (i >= NavItems.Count || NavItems[i] != shown[i])
+            {
+                NavItems.Insert(i, shown[i]);
+            }
+        }
+    }
 
     [RelayCommand]
     private void GoToCustomHotkeys() => Navigate(Page.CustomHotkeys);
@@ -463,7 +502,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         hotkeyRegistrations.Clear();
         var mic = Settings.Microphone;
         Register(mic.Hotkey, "main", pressed => SetMute(MuteRules.OnMainHotkey(mic.MuteMode, pressed, microphone.Mute)));
-        foreach (var custom in Settings.CustomHotkeys.Where(e => e.IsEnabled))
+        foreach (var custom in Settings.CustomHotkeys.Where(e => e.IsEnabled && Settings.CustomHotkeysEnabled))
         {
             var action = custom.Action;
             Register(custom.Hotkey, action.ToString(), pressed => RunAction(action, pressed));
@@ -529,7 +568,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         if (!isRebinding && lastMute is not null && mute is not null && mute != lastMute && Settings.Notifications.Enabled)
         {
-            _ = PlayNotification(mute.Value ? Settings.Notifications.WhenMuted : Settings.Notifications.WhenUnmuted);
+            _ = PlayNotification(mute.Value ? Settings.Notifications.PlayedWhenMuted : Settings.Notifications.PlayedWhenUnmuted);
         }
 
         lastMute = mute ?? lastMute;

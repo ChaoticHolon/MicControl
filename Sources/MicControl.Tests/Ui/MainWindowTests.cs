@@ -76,7 +76,11 @@ public sealed class MainWindowTests
     [AvaloniaFact]
     public void Sidebar_NavigatesBetweenPages()
     {
-        using var harness = new TestHarness();
+        using var harness = new TestHarness(s =>
+        {
+            s.CustomHotkeysEnabled = true;
+            s.Notifications.CustomSoundsEnabled = true;
+        });
         var window = new MainWindow(harness.ViewModel, harness.Settings);
         window.Show();
 

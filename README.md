@@ -17,10 +17,10 @@ Built on .NET 10 and Avalonia, with Linux (KDE Plasma 6 on Wayland) planned next
 ## Features
 - **Three modes:** push-to-talk (the default), toggle, and push-to-mute
 - **Hotkeys that work everywhere,** including in elevated games: keyboard keys, combinations and mouse side buttons, with an optional alternative key and an "exclusive" option that hides the key from other apps
-- **Custom hotkeys** for mute, unmute, toggle, push-to-talk, speaker mute and volume, and showing or hiding the overlay
+- **Custom hotkeys** (optional, under Home → Advanced) for mute, unmute, toggle, push-to-talk, speaker mute and volume, and showing or hiding the overlay
 - **One microphone or all of them** at once, handy for streamers with several inputs
 - **Overlay:** a small always-on-top badge that shows Live or Muted, even over games. Snap it to any corner of any monitor or drag it anywhere; show it always, only when muted or only when live; adjust size and opacity; optional speaking indicator; your own icons
-- **Sounds** when the microphone switches on and off: subtle built-in cues, or your own audio files
+- **Sounds** when the microphone switches on and off: subtle built-in cues, or (with Custom sounds under Home → Advanced) your own audio files, volume and playback device
 - **Lives in the tray:** starts with Windows, stays out of the way, and a click on the tray icon opens quick controls
 - **Light and dark,** following Windows and its accent colour
 - **Installs for everyone or just you** (no admin needed for just you), and **updates itself** from GitHub Releases, verified before it runs

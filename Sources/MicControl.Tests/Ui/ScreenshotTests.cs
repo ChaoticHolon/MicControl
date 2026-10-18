@@ -105,6 +105,8 @@ public sealed class ScreenshotTests
             s.Microphone.Hotkey.AlternativeKey = HotkeyGesture.Parse("XButton2");
             s.Microphone.DeviceId = "mic-1";
             s.Overlay.ShowSpeakingIndicator = true;
+            s.CustomHotkeysEnabled = true;
+            s.Notifications.CustomSoundsEnabled = true;
             s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.ToggleMute, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("Ctrl+F13") } });
             s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.SpeakerVolumeUp, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("Ctrl+Up") } });
         });

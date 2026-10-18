@@ -102,7 +102,7 @@ public sealed class MainViewModelTests
     [AvaloniaFact]
     public void CustomHotkeys_AddRunAndRemove()
     {
-        using var harness = new TestHarness();
+        using var harness = new TestHarness(s => s.CustomHotkeysEnabled = true);
         var vm = harness.ViewModel;
 
         vm.AddCustomHotkeyCommand.Execute(null);
@@ -144,11 +144,15 @@ public sealed class MainViewModelTests
     [AvaloniaFact]
     public void SpeakerAction_ChangesSpeakers_AndShowsOverlayIndicator()
     {
-        using var harness = new TestHarness(s => s.CustomHotkeys.Add(new CustomHotkey
+        using var harness = new TestHarness(s =>
         {
-            Action = HotkeyAction.SpeakerMute,
-            Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("F15") },
-        }));
+            s.CustomHotkeysEnabled = true;
+            s.CustomHotkeys.Add(new CustomHotkey
+            {
+                Action = HotkeyAction.SpeakerMute,
+                Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("F15") },
+            });
+        });
 
         Assert.True(harness.ViewModel.HasSpeakerActions);
         harness.Hotkeys.Trigger(harness.ViewModel.Settings.CustomHotkeys[0].Hotkey, pressed: true);
@@ -178,7 +182,7 @@ public sealed class MainViewModelTests
     [AvaloniaFact]
     public void LevelMeter_RunsOnlyWhileHomeIsVisible()
     {
-        using var harness = new TestHarness();
+        using var harness = new TestHarness(s => s.Notifications.CustomSoundsEnabled = true);
         var vm = harness.ViewModel;
 
         Assert.Equal(0, harness.LevelMonitor.ActiveSessions);
@@ -299,5 +303,68 @@ public sealed class MainViewModelTests
 
         vm.ToggleMuteCommand.Execute(null);
         Assert.Same(before, vm.CurrentWindowIcon); // the built-in icons are loaded once
+    }
+
+    [AvaloniaFact]
+    public void AdvancedFeatures_AreOffByDefault_AndHideTheirPages()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+
+        Assert.False(vm.CustomHotkeysEnabled);
+        Assert.False(vm.CustomSoundsEnabled);
+        Assert.Equal([Page.Home, Page.Overlay, Page.About], vm.NavItems.Select(n => n.Page));
+
+        vm.CustomSoundsEnabled = true;
+        vm.CustomHotkeysEnabled = true;
+        Assert.Equal([Page.Home, Page.Sounds, Page.Overlay, Page.CustomHotkeys, Page.About], vm.NavItems.Select(n => n.Page));
+
+        vm.Navigate(Page.Sounds);
+        vm.CustomSoundsEnabled = false;
+        Assert.Equal(Page.Home, vm.CurrentPage); // its page went away
+        vm.Navigate(Page.Sounds);
+        Assert.Equal(Page.Home, vm.CurrentPage);
+    }
+
+    [AvaloniaFact]
+    public void CustomHotkeys_ArePausedWhileSwitchedOff()
+    {
+        using var harness = new TestHarness(s => s.CustomHotkeys.Add(new CustomHotkey
+        {
+            Action = HotkeyAction.Unmute,
+            Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("F14") },
+        }));
+        var vm = harness.ViewModel;
+        var hotkey = vm.Settings.CustomHotkeys[0].Hotkey;
+        Assert.True(vm.IsMuted); // push-to-talk starts muted
+
+        harness.Hotkeys.Trigger(hotkey, pressed: true);
+        Assert.True(vm.IsMuted); // not registered
+        Assert.Single(vm.CustomHotkeys); // but kept
+
+        vm.CustomHotkeysEnabled = true;
+        harness.Hotkeys.Trigger(hotkey, pressed: true);
+        Assert.False(vm.IsMuted);
+    }
+
+    [AvaloniaFact]
+    public void CustomSounds_Off_PlaysTheBuiltInCues_AndKeepsTheChoices()
+    {
+        using var harness = new TestHarness(s =>
+        {
+            s.Microphone.MuteMode = MuteMode.ToggleMute;
+            s.Microphone.InitialState = MicrophoneState.Unmute;
+            s.Notifications.WhenMuted = null; // "None" on the Sounds page
+        });
+        var vm = harness.ViewModel;
+
+        vm.ToggleMuteCommand.Execute(null);
+        Assert.Equal([NotificationSettings.DefaultMutedSound], harness.Sounds.Played);
+        Assert.Null(vm.Settings.Notifications.WhenMuted);
+
+        vm.CustomSoundsEnabled = true;
+        vm.ToggleMuteCommand.Execute(null);
+        vm.ToggleMuteCommand.Execute(null);
+        Assert.Equal([NotificationSettings.DefaultMutedSound, NotificationSettings.DefaultUnmutedSound], harness.Sounds.Played);
     }
 }
