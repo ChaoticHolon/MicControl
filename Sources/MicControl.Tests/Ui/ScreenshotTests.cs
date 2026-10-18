@@ -137,7 +137,8 @@ public sealed class ScreenshotTests
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
-            if (Directory.Exists(Path.Combine(dir.FullName, ".git")))
+            // A worktree has a .git file instead of a folder.
+            if (Path.Exists(Path.Combine(dir.FullName, ".git")))
             {
                 return dir.FullName;
             }
