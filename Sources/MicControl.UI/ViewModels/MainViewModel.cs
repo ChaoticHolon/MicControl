@@ -286,6 +286,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(MicrophoneStatusDetail));
             OnPropertyChanged(nameof(MainHotkeyLabel));
             OnPropertyChanged(nameof(MainHotkeyDescription));
+            OnPropertyChanged(nameof(MainHotkeySummary));
             OnPropertyChanged(nameof(ModeDescription));
             OnPropertyChanged(nameof(GetStartedText));
             foreach (var custom in CustomHotkeys)
@@ -321,6 +322,27 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         MuteMode.PushToMute => "Hold to mute yourself",
         _ => "Press to switch between muted and live",
     };
+
+    /// <summary>What the main key does, for the sidebar's status card, e.g. "Hold F13 to talk".</summary>
+    public string MainHotkeySummary
+    {
+        get
+        {
+            var keys = MainHotkey.Settings;
+            if (keys.IsEmpty)
+            {
+                return "No hotkey set";
+            }
+
+            var key = keys.Key.IsEmpty ? keys.AlternativeKey : keys.Key;
+            return MuteMode switch
+            {
+                MuteMode.PushToTalk => $"Hold {key} to talk",
+                MuteMode.PushToMute => $"Hold {key} to mute",
+                _ => $"Press {key} to switch",
+            };
+        }
+    }
 
     public string GetStartedText => $"Choose a {MainHotkeyLabel.ToLowerInvariant()} to get started. Click the box below, then press the key or mouse button you want to use.";
 
@@ -490,6 +512,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         () =>
         {
             OnPropertyChanged(nameof(HasMainHotkey));
+            OnPropertyChanged(nameof(MainHotkeySummary));
             ApplyHotkeys();
             Save();
         },

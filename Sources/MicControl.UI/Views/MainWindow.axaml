@@ -9,30 +9,36 @@
         Background="{DynamicResource PageBackgroundBrush}"
         WindowStartupLocation="CenterScreen">
     <Panel>
-        <Grid ColumnDefinitions="248,*">
-            <!-- Sidebar -->
-            <DockPanel Margin="12,16,4,12">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,4,8,20">
-                    <Image Width="24" Height="24" Source="{Binding CurrentIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
-                    <TextBlock FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Title}" />
+        <Grid ColumnDefinitions="264,*">
+            <!-- Sidebar: few pages, so large rows and a large status card fill it instead of empty space -->
+            <DockPanel Margin="14,18,6,14">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8,4,8,28">
+                    <Image Width="36" Height="36" Source="{Binding CurrentIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    <TextBlock FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Title}" />
                 </StackPanel>
                 <!-- Status summary, always visible -->
-                <Border DockPanel.Dock="Bottom" Classes="card" Padding="12,10" Margin="0,8,0,0">
-                    <DockPanel>
-                        <Border DockPanel.Dock="Left" Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="22" Height="22" CornerRadius="11" Margin="0,0,10,0">
-                            <TextBlock Classes="glyph" FontSize="12" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
-                        </Border>
-                        <Button DockPanel.Dock="Right" Padding="10,4" Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}" />
-                        <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding StateLabel}" />
-                    </DockPanel>
+                <Border DockPanel.Dock="Bottom" Classes="card" Padding="16,16" Margin="0,12,0,0">
+                    <StackPanel Spacing="14">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Left" Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="40" Height="40" CornerRadius="20" Margin="0,0,12,0">
+                                <TextBlock Classes="glyph" FontSize="20" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock FontSize="17" FontWeight="SemiBold" Text="{Binding StateLabel}" />
+                                <TextBlock Classes="secondary" FontSize="12" TextTrimming="CharacterEllipsis" Text="{Binding MainHotkeySummary}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <Button Classes="accent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,9" FontSize="15"
+                                Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}" />
+                    </StackPanel>
                 </Border>
                 <ListBox Classes="nav" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:NavItem">
                             <Grid ColumnDefinitions="Auto,Auto,*">
                                 <Border Classes="navPill" Margin="-8,0,8,0" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
-                                <TextBlock Grid.Column="1" Classes="glyph" Margin="0,0,14,0" Text="{Binding Glyph}" />
-                                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{Binding Title}" />
+                                <TextBlock Grid.Column="1" Classes="glyph" FontSize="20" Margin="0,0,16,0" VerticalAlignment="Center" Text="{Binding Glyph}" />
+                                <TextBlock Grid.Column="2" FontSize="16" VerticalAlignment="Center" Text="{Binding Title}" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

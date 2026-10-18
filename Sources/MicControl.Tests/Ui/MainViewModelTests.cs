@@ -367,4 +367,17 @@ public sealed class MainViewModelTests
         vm.ToggleMuteCommand.Execute(null);
         Assert.Equal([NotificationSettings.DefaultMutedSound, NotificationSettings.DefaultUnmutedSound], harness.Sounds.Played);
     }
+
+    [AvaloniaFact]
+    public void MainHotkeySummary_SaysWhatTheKeyDoes()
+    {
+        using var harness = new TestHarness(s => s.Microphone.Hotkey.Key = HotkeyGesture.Parse("F13"));
+        var vm = harness.ViewModel;
+
+        Assert.Equal("Hold F13 to talk", vm.MainHotkeySummary);
+        vm.MuteMode = MuteMode.ToggleMute;
+        Assert.Equal("Press F13 to switch", vm.MainHotkeySummary);
+        vm.MainHotkey.Key = HotkeyGesture.Empty;
+        Assert.Equal("No hotkey set", vm.MainHotkeySummary);
+    }
 }
