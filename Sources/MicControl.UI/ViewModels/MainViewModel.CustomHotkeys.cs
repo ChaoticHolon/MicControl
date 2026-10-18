@@ -34,7 +34,7 @@ public sealed partial class MainViewModel
 
     public ObservableCollection<CustomHotkeyViewModel> CustomHotkeys { get; } = [];
 
-    /// <summary>"Custom hotkeys" (Home → Advanced): shows their page and makes them work; off pauses them.</summary>
+    /// <summary>"Custom hotkeys" (About → Advanced): shows the Hotkeys page and makes them work; off pauses them.</summary>
     public bool CustomHotkeysEnabled
     {
         get => Settings.CustomHotkeysEnabled;
@@ -47,9 +47,6 @@ public sealed partial class MainViewModel
             }
         }
     }
-
-    /// <summary>Whether Home's Advanced section starts open: when something in it is on.</summary>
-    public bool HasAdvancedEnabled => CustomHotkeysEnabled || CustomSoundsEnabled;
 
     /// <summary>Setup offers a MicSwitch import's custom hotkeys; they stay off until the user says yes.</summary>
     public bool OffersImportedCustomHotkeys => settingsService.MigratedFromLegacy && Settings.CustomHotkeys.Count > 0;
@@ -207,7 +204,7 @@ public sealed partial class MainViewModel
     private partial void LogSpeakerState(bool? muted, float? volume);
 }
 
-/// <summary>One row on the Custom hotkeys page.</summary>
+/// <summary>One row on the Hotkeys page.</summary>
 public sealed partial class CustomHotkeyViewModel : ObservableObject
 {
     private readonly MainViewModel owner;

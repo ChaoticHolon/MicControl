@@ -33,6 +33,17 @@
             <ToggleSwitch IsChecked="{Binding CheckForUpdates}" AutomationProperties.Name="Check for updates at startup" />
         </c:SettingRow>
 
+        <!-- Optional features, with the other settings and before the read-only details: each adds its page tab while on -->
+        <TextBlock Classes="section" Text="Advanced" />
+        <c:SettingRow Glyph="&#xE765;" Header="Custom hotkeys"
+                      Description="Bind more keys to actions like mute, unmute or speaker volume. Adds the Hotkeys page.">
+            <ToggleSwitch IsChecked="{Binding CustomHotkeysEnabled}" AutomationProperties.Name="Custom hotkeys" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE995;" Header="Custom sounds"
+                      Description="Choose your own sounds, volume and playback device. Adds the Sounds page. When off, the built-in cues play.">
+            <ToggleSwitch IsChecked="{Binding CustomSoundsEnabled}" AutomationProperties.Name="Custom sounds" />
+        </c:SettingRow>
+
         <TextBlock Classes="section" Text="System" />
         <c:SettingRow Glyph="&#xE7F8;" Header="Operating system" Description="{Binding OsText}" />
         <c:SettingRow Glyph="&#xE943;" Header="Runtime" Description="{Binding RuntimeText}" />

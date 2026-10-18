@@ -38,7 +38,7 @@ public sealed class ScreenshotTests
         window.Show();
         harness.ViewModel.IsWindowVisible = true;
 
-        foreach (var (page, name) in new[] { (Page.Home, "home"), (Page.Sounds, "sounds"), (Page.Overlay, "overlay"), (Page.CustomHotkeys, "custom-hotkeys"), (Page.About, "about") })
+        foreach (var (page, name) in new[] { (Page.Home, "home"), (Page.Sounds, "sounds"), (Page.Overlay, "overlay"), (Page.Hotkeys, "hotkeys"), (Page.About, "about") })
         {
             harness.ViewModel.Navigate(page);
             if (page == Page.Home)

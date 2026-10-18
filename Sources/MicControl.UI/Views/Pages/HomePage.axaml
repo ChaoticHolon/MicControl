@@ -85,22 +85,5 @@
             <ComboBox MinWidth="200" ItemsSource="{Binding Themes}" SelectedValue="{Binding Theme}"
                       DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}" />
         </c:SettingRow>
-
-        <!-- Optional features: each adds its own page to the sidebar while on -->
-        <Expander Margin="0,16,0,0" HorizontalAlignment="Stretch" IsExpanded="{Binding HasAdvancedEnabled, Mode=OneTime}">
-            <Expander.Header>
-                <TextBlock FontWeight="SemiBold" Text="Advanced" />
-            </Expander.Header>
-            <StackPanel Spacing="4">
-                <c:SettingRow Glyph="&#xE765;" Header="Custom hotkeys"
-                              Description="Bind more keys to actions like mute, unmute or speaker volume. Adds the Custom hotkeys page.">
-                    <ToggleSwitch IsChecked="{Binding CustomHotkeysEnabled}" AutomationProperties.Name="Custom hotkeys" />
-                </c:SettingRow>
-                <c:SettingRow Glyph="&#xE995;" Header="Custom sounds"
-                              Description="Choose your own sounds, volume and playback device. Adds the Sounds page. When off, the built-in cues play.">
-                    <ToggleSwitch IsChecked="{Binding CustomSoundsEnabled}" AutomationProperties.Name="Custom sounds" />
-                </c:SettingRow>
-            </StackPanel>
-        </Expander>
     </StackPanel>
 </UserControl>

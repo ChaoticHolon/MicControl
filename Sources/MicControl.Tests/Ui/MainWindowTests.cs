@@ -85,7 +85,7 @@ public sealed class MainWindowTests
         window.Show();
 
         var nav = window.GetVisualDescendants().OfType<ListBox>().Single(l => l.Classes.Contains("tabs"));
-        Assert.Equal(["Home", "Sounds", "Overlay", "Custom hotkeys", "About"], harness.ViewModel.NavItems.Select(n => n.Title));
+        Assert.Equal(["Home", "Sounds", "Overlay", "Hotkeys", "About"], harness.ViewModel.NavItems.Select(n => n.Title));
 
         foreach (var item in harness.ViewModel.NavItems)
         {
@@ -165,5 +165,24 @@ public sealed class MainWindowTests
         Assert.NotNull(overlay.GetVisualDescendants().OfType<OverlayBadge>().SingleOrDefault());
         harness.ViewModel.OverlayVisibility = OverlayVisibilityMode.Never;
         Assert.False(overlay.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void AdvancedSwitches_AreOnAbout_NotOnHome()
+    {
+        using var harness = new TestHarness();
+        var window = new MainWindow(harness.ViewModel, harness.Settings);
+        window.Show();
+
+        string[] VisibleSwitches() => window.GetVisualDescendants().OfType<ToggleSwitch>()
+            .Where(t => t.IsEffectivelyVisible).Select(t => Avalonia.Automation.AutomationProperties.GetName(t) ?? "").ToArray();
+
+        Assert.DoesNotContain("Custom hotkeys", VisibleSwitches());
+        harness.ViewModel.Navigate(ViewModels.Page.About);
+        window.UpdateLayout();
+        Assert.Equal(["Custom hotkeys", "Custom sounds"], VisibleSwitches()[^2..]);
+
+        window.GetVisualDescendants().OfType<ToggleSwitch>().Single(t => Avalonia.Automation.AutomationProperties.GetName(t) == "Custom hotkeys").IsChecked = true;
+        Assert.Contains(harness.ViewModel.NavItems, n => n.Page == ViewModels.Page.Hotkeys && n.Title == "Hotkeys");
     }
 }

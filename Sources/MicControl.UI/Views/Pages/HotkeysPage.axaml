@@ -4,10 +4,10 @@
              xmlns:vm="using:MicControl.ViewModels"
              xmlns:s="using:MicControl.Settings"
              xmlns:p="using:MicControl.Platform"
-             x:Class="MicControl.Views.Pages.CustomHotkeysPage"
+             x:Class="MicControl.Views.Pages.HotkeysPage"
              x:DataType="vm:MainViewModel">
     <StackPanel Classes="page">
-        <TextBlock Classes="pageTitle" Text="Custom hotkeys" />
+        <TextBlock Classes="pageTitle" Text="Hotkeys" />
         <TextBlock Classes="pageSubtitle" Text="Bind more keys, each to one action: mute, unmute, toggle, speaker volume, overlay and more. Your main key is set on Home." />
 
         <TextBlock Classes="secondary" Margin="4,8,0,12" FontSize="14" Text="No custom hotkeys yet." IsVisible="{Binding !HasCustomHotkeys}" />

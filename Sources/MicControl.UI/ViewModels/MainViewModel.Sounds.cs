@@ -16,7 +16,7 @@ public sealed partial class MainViewModel
         set => SetAndSave(Settings.Notifications.Enabled, value, v => Settings.Notifications.Enabled = v);
     }
 
-    /// <summary>"Custom sounds" (Home → Advanced): shows the Sounds page and plays its choices instead of the built-in cues.</summary>
+    /// <summary>"Custom sounds" (About → Advanced): shows the Sounds page and plays its choices instead of the built-in cues.</summary>
     public bool CustomSoundsEnabled
     {
         get => Settings.Notifications.CustomSoundsEnabled;

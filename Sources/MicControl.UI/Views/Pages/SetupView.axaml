@@ -73,7 +73,7 @@
                         <StackPanel Spacing="4" IsVisible="{Binding OffersImports}">
                             <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold" Text="Bring over more from MicSwitch?" />
                             <TextBlock Classes="secondary" FontSize="14" Margin="0,0,0,4" TextWrapping="Wrap"
-                                       Text="These were found in your MicSwitch settings. You can turn them on or off later under Home → Advanced." />
+                                       Text="These were found in your MicSwitch settings. You can turn them on or off later under About → Advanced." />
                             <c:SettingRow Glyph="&#xE765;" Header="Your custom hotkeys" Description="Extra keys bound to actions, e.g. toggle or speaker volume"
                                           IsVisible="{Binding OffersImportedCustomHotkeys}">
                                 <ToggleSwitch IsChecked="{Binding CustomHotkeysEnabled}" AutomationProperties.Name="Import custom hotkeys" />

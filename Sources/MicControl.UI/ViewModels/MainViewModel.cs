@@ -17,7 +17,7 @@ public enum Page
     Home,
     Sounds,
     Overlay,
-    CustomHotkeys,
+    Hotkeys,
     About,
 }
 
@@ -125,11 +125,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         new(Page.Home, "Home", ""),
         new(Page.Sounds, "Sounds", ""),
         new(Page.Overlay, "Overlay", ""),
-        new(Page.CustomHotkeys, "Custom hotkeys", ""),
+        new(Page.Hotkeys, "Hotkeys", ""),
         new(Page.About, "About", ""),
     ];
 
-    /// <summary>The sidebar: Sounds and Custom hotkeys only appear while their switch (Home → Advanced) is on.</summary>
+    /// <summary>The page tabs: Sounds and Hotkeys only appear while their switch (About → Advanced) is on.</summary>
     public ObservableCollection<NavItem> NavItems { get; } = [];
 
     [ObservableProperty]
@@ -139,7 +139,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsHomePage => CurrentPage == Page.Home;
 
-    public bool IsCustomHotkeysPage => CurrentPage == Page.CustomHotkeys;
+    public bool IsHotkeysPage => CurrentPage == Page.Hotkeys;
 
     public bool IsSoundsPage => CurrentPage == Page.Sounds;
 
@@ -153,7 +153,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private bool IsPageShown(Page page) => page switch
     {
         Page.Sounds => Settings.Notifications.CustomSoundsEnabled,
-        Page.CustomHotkeys => Settings.CustomHotkeysEnabled,
+        Page.Hotkeys => Settings.CustomHotkeysEnabled,
         _ => true,
     };
 
@@ -184,14 +184,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void GoToCustomHotkeys() => Navigate(Page.CustomHotkeys);
+    private void GoToHotkeys() => Navigate(Page.Hotkeys);
 
     partial void OnSelectedNavChanged(NavItem value)
     {
         LogNavigated(value.Page);
         OnPropertyChanged(nameof(CurrentPage));
         OnPropertyChanged(nameof(IsHomePage));
-        OnPropertyChanged(nameof(IsCustomHotkeysPage));
+        OnPropertyChanged(nameof(IsHotkeysPage));
         OnPropertyChanged(nameof(IsSoundsPage));
         OnPropertyChanged(nameof(IsOverlayPage));
         OnPropertyChanged(nameof(IsAboutPage));

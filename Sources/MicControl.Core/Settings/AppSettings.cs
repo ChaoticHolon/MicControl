@@ -19,7 +19,7 @@ public sealed class AppSettings
     public MicrophoneSettings Microphone { get; set; } = new();
 
     /// <summary>
-    /// The "Custom hotkeys" switch (Home → Advanced). Off by default: <see cref="CustomHotkeys"/> are kept but paused,
+    /// The "Custom hotkeys" switch (About → Advanced). Off by default: <see cref="CustomHotkeys"/> are kept but paused,
     /// and their page is hidden.
     /// </summary>
     public bool CustomHotkeysEnabled { get; set; }
@@ -112,7 +112,7 @@ public sealed class NotificationSettings
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// The "Custom sounds" switch (Home → Advanced). Off by default: the built-in cues play at full volume on the default
+    /// The "Custom sounds" switch (About → Advanced). Off by default: the built-in cues play at full volume on the default
     /// device, and the sound, volume and device choices below are kept for when it's turned on.
     /// </summary>
     public bool CustomSoundsEnabled { get; set; }

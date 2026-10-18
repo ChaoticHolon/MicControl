@@ -317,7 +317,7 @@ public sealed class MainViewModelTests
 
         vm.CustomSoundsEnabled = true;
         vm.CustomHotkeysEnabled = true;
-        Assert.Equal([Page.Home, Page.Sounds, Page.Overlay, Page.CustomHotkeys, Page.About], vm.NavItems.Select(n => n.Page));
+        Assert.Equal([Page.Home, Page.Sounds, Page.Overlay, Page.Hotkeys, Page.About], vm.NavItems.Select(n => n.Page));
 
         vm.Navigate(Page.Sounds);
         vm.CustomSoundsEnabled = false;
