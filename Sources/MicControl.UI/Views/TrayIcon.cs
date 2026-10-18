@@ -92,7 +92,7 @@ public sealed partial class TrayIcon : IDisposable
             ]),
             Check("Play sounds", vm.SoundsEnabled, () => vm.SoundsEnabled = !vm.SoundsEnabled),
             new NativeMenuItemSeparator(),
-            Check("Run in the tray", vm.IsTrayMode, () => vm.IsTrayMode = !vm.IsTrayMode),
+            Check("Close to the tray", vm.IsTrayMode, () => vm.IsTrayMode = !vm.IsTrayMode),
             Check("Start with Windows", vm.RunAtStartup, () => vm.RunAtStartup = !vm.RunAtStartup),
             new NativeMenuItemSeparator(),
             Item("Exit", exit),

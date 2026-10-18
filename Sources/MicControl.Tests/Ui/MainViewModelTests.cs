@@ -382,7 +382,7 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
-    public void RunInTheTraySwitch_SetsTheAppMode()
+    public void CloseToTheTraySwitch_SetsTheAppMode()
     {
         using var harness = new TestHarness();
         var vm = harness.ViewModel;

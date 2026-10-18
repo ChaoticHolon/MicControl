@@ -76,8 +76,8 @@
         <c:SettingRow Glyph="&#xE7E8;" Header="Start with Windows">
             <ToggleSwitch IsChecked="{Binding RunAtStartup}" AutomationProperties.Name="Start with Windows" />
         </c:SettingRow>
-        <c:SettingRow Glyph="&#xE73F;" Header="Run in the tray" Description="{Binding AppModeDescription}">
-            <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Run in the tray" />
+        <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding AppModeDescription}">
+            <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE790;" Header="Theme">
             <ComboBox MinWidth="200" ItemsSource="{Binding Themes}" SelectedValue="{Binding Theme}"

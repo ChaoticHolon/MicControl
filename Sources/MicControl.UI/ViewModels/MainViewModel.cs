@@ -450,7 +450,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    /// <summary>Home's "Run in the tray" switch: on is Tray mode, off is Window mode.</summary>
+    /// <summary>Home's "Close to the tray" switch: on is Tray mode, off is Window mode.</summary>
     public bool IsTrayMode
     {
         get => AppMode == AppMode.Tray;
