@@ -286,4 +286,18 @@ public sealed class MainViewModelTests
         harness.ViewModel.SoundWhenUnmuted = string.Empty;
         Assert.Null(harness.ViewModel.Settings.Notifications.WhenUnmuted);
     }
+
+    [AvaloniaFact]
+    public void WindowIcon_FollowsTheMuteState()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+        var before = vm.CurrentWindowIcon;
+
+        vm.ToggleMuteCommand.Execute(null);
+        Assert.NotSame(before, vm.CurrentWindowIcon);
+
+        vm.ToggleMuteCommand.Execute(null);
+        Assert.Same(before, vm.CurrentWindowIcon); // the built-in icons are loaded once
+    }
 }

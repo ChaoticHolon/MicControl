@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -211,6 +212,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public string ToggleMuteText => IsMuted == true ? "Unmute" : "Mute";
 
     public Bitmap CurrentIcon => IsMuted == true ? MutedIcon : UnmutedIcon;
+
+    /// <summary>
+    /// The window and tray icon for <see cref="CurrentIcon"/>: the built-in .ico, which has a drawing for each small
+    /// size so the tray stays sharp, or the user's own overlay icon.
+    /// </summary>
+    public WindowIcon CurrentWindowIcon => IsMuted == true
+        ? ReferenceEquals(MutedIcon, DefaultMutedIcon) ? DefaultMutedWindowIcon.Value : new WindowIcon(MutedIcon)
+        : ReferenceEquals(UnmutedIcon, DefaultUnmutedIcon) ? DefaultUnmutedWindowIcon.Value : new WindowIcon(UnmutedIcon);
 
     [RelayCommand]
     private void ToggleMute() => SetMute(!(microphone.Mute ?? false));
@@ -576,6 +585,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         using var stream = AssetLoader.Open(new Uri($"avares://MicControl.UI/Assets/{name}"));
         return new Bitmap(stream);
+    }
+
+    private static WindowIcon LoadWindowIcon(string name)
+    {
+        using var stream = AssetLoader.Open(new Uri($"avares://MicControl.UI/Assets/{name}"));
+        return new WindowIcon(stream);
     }
 
     private static Bitmap? LoadImage(string? path)

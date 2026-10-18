@@ -140,7 +140,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateIcon() => Icon = new WindowIcon(viewModel.CurrentIcon);
+    private void UpdateIcon() => Icon = viewModel.CurrentWindowIcon;
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Main window visible: {Visible}")]
     private static partial void LogVisible(ILogger logger, bool visible);

@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,6 +13,8 @@ public sealed partial class MainViewModel
     private const double SpeakingThreshold = 0.06;
     private static readonly Bitmap DefaultMutedIcon = LoadAsset("microphoneDisabled.png");
     private static readonly Bitmap DefaultUnmutedIcon = LoadAsset("microphoneEnabled.png");
+    private static readonly Lazy<WindowIcon> DefaultMutedWindowIcon = new(() => LoadWindowIcon("microphoneDisabled.ico"));
+    private static readonly Lazy<WindowIcon> DefaultUnmutedWindowIcon = new(() => LoadWindowIcon("microphoneEnabled.ico"));
     private readonly DispatcherTimer levelTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private IDisposable? levelSession;
     private float latestPeak;

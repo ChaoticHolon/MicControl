@@ -67,7 +67,7 @@ public sealed partial class TrayIcon : IDisposable
 
     private void UpdateIcon()
     {
-        icon.Icon = new WindowIcon(viewModel.CurrentIcon);
+        icon.Icon = viewModel.CurrentWindowIcon;
         icon.ToolTipText = $"{MainViewModel.AppName}: {viewModel.MicrophoneStatus}";
     }
 
