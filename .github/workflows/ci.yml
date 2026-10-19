@@ -6,6 +6,10 @@ on:
     branches: [master, dev]
   pull_request:
 
+# CI only reads the code (checkout; artifacts use their own token), so its GITHUB_TOKEN is read-only.
+permissions:
+  contents: read
+
 # No telemetry from the build tools (developer's choice): the .NET SDK, Microsoft.Testing.Platform and Avalonia's
 # build telemetry (also disabled for every machine in Sources/Directory.Build.targets).
 env:
