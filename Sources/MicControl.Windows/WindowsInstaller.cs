@@ -18,6 +18,7 @@ public sealed partial class WindowsInstaller(ILogger<WindowsInstaller> logger) :
 {
     /// <summary>Built-in sounds are embedded in the executable under this prefix (see MicControl.csproj).</summary>
     public const string SoundResourcePrefix = "Sounds/";
+    public const string LegalResourcePrefix = "Legal/";
 
     private static readonly string ProgramFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
     private static readonly string LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -115,6 +116,7 @@ public sealed partial class WindowsInstaller(ILogger<WindowsInstaller> logger) :
         }
 
         WriteSounds(directory);
+        WriteResources(LegalResourcePrefix, directory);
         progress.Report(0.9);
 
         Register(scope, directory);
@@ -283,19 +285,22 @@ public sealed partial class WindowsInstaller(ILogger<WindowsInstaller> logger) :
         }
     }
 
-    private static void WriteSounds(string directory)
+    private static void WriteSounds(string directory) =>
+        WriteResources(SoundResourcePrefix, Directory.CreateDirectory(Path.Combine(directory, InstallLayout.SoundsFolder)).FullName);
+
+    /// <summary>Writes the exe's embedded files named <paramref name="prefix"/>… into <paramref name="folder"/>.</summary>
+    private static void WriteResources(string prefix, string folder)
     {
         var assembly = Assembly.GetEntryAssembly();
-        var folder = Directory.CreateDirectory(Path.Combine(directory, InstallLayout.SoundsFolder)).FullName;
         foreach (var name in assembly?.GetManifestResourceNames() ?? [])
         {
-            if (!name.StartsWith(SoundResourcePrefix, StringComparison.Ordinal))
+            if (!name.StartsWith(prefix, StringComparison.Ordinal))
             {
                 continue;
             }
 
             using var resource = assembly!.GetManifestResourceStream(name)!;
-            using var file = File.Create(Path.Combine(folder, name[SoundResourcePrefix.Length..]));
+            using var file = File.Create(Path.Combine(folder, name[prefix.Length..]));
             resource.CopyTo(file);
         }
     }

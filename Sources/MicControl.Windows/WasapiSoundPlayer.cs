@@ -3,6 +3,7 @@ using MicControl.Platform;
 using Microsoft.Extensions.Logging;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 
 namespace MicControl.Windows;
 
@@ -32,11 +33,15 @@ public sealed partial class WasapiSoundPlayer(ILogger<WasapiSoundPlayer> logger)
             using var device = outputDeviceId is null
                 ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
                 : enumerator.GetDevice(outputDeviceId);
-            using var reader = new AudioFileReader(file) { Volume = Math.Clamp(volume, 0, 1) };
+            // WAV directly, anything else (e.g. an MP3 in the library) through Media Foundation.
+            using WaveStream reader = string.Equals(Path.GetExtension(file), ".wav", StringComparison.OrdinalIgnoreCase)
+                ? new WaveFileReader(file)
+                : new MediaFoundationReader(file);
+            var samples = new SampleChannel(reader) { Volume = Math.Clamp(volume, 0, 1) };
             using var output = new WasapiOut(device, AudioClientShareMode.Shared, useEventSync: true, latency: 100);
             var stopped = new TaskCompletionSource();
             output.PlaybackStopped += (_, _) => stopped.TrySetResult();
-            output.Init(reader);
+            output.Init(samples);
             output.Play();
             await using (token.Register(output.Stop))
             {

@@ -72,4 +72,9 @@ The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux s
 Settings are stored in `%APPDATA%\MicControl\settings.json`, logs in `%APPDATA%\MicControl\logs`. On first start, MicControl imports a MicSwitch 1.x `%APPDATA%\MicSwitch\release\config.cfg`, with its custom icon and sounds (MicSwitch's beeps become MicControl's own cues). The mode and startup state start from MicControl's defaults (push-to-talk, muted), and setup still runs so you can review what was imported. A MicSwitch autostart entry is taken over by MicControl only when the MicSwitch program it starts has been removed; an installed MicSwitch keeps its own.
 
 ### Credits
+## License
+MicControl is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License](LICENSE), version 3 or (at your option) any later version. It comes with no warranty.
+
+It bundles open-source components under their own licenses (MIT, BSD and others), listed with their full texts in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). The setup installs both files next to `MicControl.exe`, and About → License opens them. After changing packages, regenerate the notices with `dotnet run tools/GenerateThirdPartyNotices.cs` from the repository root; CI fails while they're out of date.
+
 Inspired by [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r. Icons from Microsoft's [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT licence, bundled in `Sources/MicControl.UI/Assets/Fonts`).

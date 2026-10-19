@@ -24,6 +24,9 @@
   <ItemGroup>
     <!-- The built-in sounds travel inside the executable; installing writes them next to it (WindowsInstaller). -->
     <EmbeddedResource Include="..\MicControl.UI\Assets\Notifications\*.wav" LogicalName="Sounds/%(Filename)%(Extension)" />
+    <!-- The licence and third-party notices travel with the exe; installing writes them next to it. -->
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="Legal/LICENSE.txt" />
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.txt" LogicalName="Legal/THIRD-PARTY-NOTICES.txt" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" />

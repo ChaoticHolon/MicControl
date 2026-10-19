@@ -88,6 +88,20 @@ public sealed class MainViewModelTests
         Assert.True(File.Exists(copy));
     }
 
+    [AvaloniaFact]
+    public async Task About_OpensTheLicenseAndNotices_FromGitHubWhenNotInstalled()
+    {
+        using var harness = new TestHarness();
+
+        await harness.ViewModel.OpenLicenseCommand.ExecuteAsync(null);
+        await harness.ViewModel.OpenThirdPartyNoticesCommand.ExecuteAsync(null);
+
+        // A test run isn't an installed copy, so there are no files next to the exe to open.
+        Assert.Equal(
+            [MainViewModel.RepositoryUrl + "/blob/master/LICENSE", MainViewModel.RepositoryUrl + "/blob/master/THIRD-PARTY-NOTICES.txt"],
+            harness.Dialogs.Opened);
+    }
+
     public static TheoryData<string> UpdateFailures => ["json", "timeout", "network"];
 
     [AvaloniaTheory]

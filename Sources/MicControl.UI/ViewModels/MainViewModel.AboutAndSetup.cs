@@ -118,6 +118,19 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private Task OpenProjectPage() => dialogs.OpenAsync(RepositoryUrl);
 
+    [RelayCommand]
+    private Task OpenLicense() => dialogs.OpenAsync(LegalFile(Installation.InstallLayout.LicenseFile, "LICENSE"));
+
+    [RelayCommand]
+    private Task OpenThirdPartyNotices() => dialogs.OpenAsync(LegalFile(Installation.InstallLayout.NoticesFile, Installation.InstallLayout.NoticesFile));
+
+    /// <summary>The copy installed next to the exe, or the repository's when running a build that wasn't installed.</summary>
+    private static string LegalFile(string installedName, string repositoryName)
+    {
+        var installed = Path.Combine(AppContext.BaseDirectory, installedName);
+        return File.Exists(installed) ? installed : $"{RepositoryUrl}/blob/master/{repositoryName}";
+    }
+
     /// <summary>Runs an update check on startup when enabled; failures are logged only.</summary>
     public async Task CheckForUpdatesOnStartupAsync()
     {

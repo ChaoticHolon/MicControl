@@ -7,9 +7,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <Authors>Xab3r and contributors</Authors>
+    <Authors>Chaotic Holon</Authors>
     <Product>MicControl</Product>
-    <Copyright>Copyright © Xab3r and contributors</Copyright>
+    <Copyright>Copyright © 2026 Chaotic Holon. Licensed under GPL-3.0-or-later.</Copyright>
     <Version>1.0.0</Version>
     <RepositoryUrl>https://github.com/ChaoticHolon/MicControl</RepositoryUrl>
   </PropertyGroup>

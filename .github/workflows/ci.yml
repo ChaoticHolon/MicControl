@@ -18,6 +18,9 @@ jobs:
         run: dotnet build Sources/MicControl.slnx -c Release
       - name: Test
         run: dotnet test --project Sources/MicControl.Tests -c Release --no-build
+      # Every bundled package must have its licence in THIRD-PARTY-NOTICES.txt, which ships with the exe.
+      - name: Third-party notices
+        run: dotnet run tools/GenerateThirdPartyNotices.cs -- --check
       # The setup is the app published as one file; keep it building and keep it as an artifact for manual testing.
       - name: Build setup
         shell: pwsh

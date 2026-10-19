@@ -66,6 +66,12 @@
         <c:SettingRow Glyph="&#xE7BE;" Header="Setup guide" Description="Walk through the first-run setup again">
             <Button Content="Run setup" Command="{Binding RunSetupAgainCommand}" />
         </c:SettingRow>
+        <c:SettingRow Glyph="&#xE9F9;" Header="License" Description="MicControl is free software under the GNU GPL, version 3 or later. It includes open-source components under their own licenses.">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="License" Command="{Binding OpenLicenseCommand}" />
+                <Button Content="Third-party notices" Command="{Binding OpenThirdPartyNoticesCommand}" />
+            </StackPanel>
+        </c:SettingRow>
         <TextBlock Classes="secondary" Margin="4,16,0,0" Text="Inspired by MicSwitch by Xab3r." />
     </StackPanel>
 </UserControl>

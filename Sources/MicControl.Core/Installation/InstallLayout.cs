@@ -24,6 +24,12 @@ public static class InstallLayout
     /// <summary>The built-in notification sounds, next to the executable (<see cref="NotificationSounds"/> reads them there).</summary>
     public static readonly string SoundsFolder = Path.Combine("Resources", "Notifications");
 
+    /// <summary>MicControl's licence (GPL-3.0-or-later), installed next to the exe.</summary>
+    public const string LicenseFile = "LICENSE.txt";
+
+    /// <summary>The licences of everything bundled into the exe (tools/GenerateThirdPartyNotices.cs), installed next to it.</summary>
+    public const string NoticesFile = "THIRD-PARTY-NOTICES.txt";
+
     /// <param name="programFiles">Program Files (64-bit).</param>
     /// <param name="localAppData">The user's local application data folder.</param>
     public static string DirectoryFor(InstallScope scope, string programFiles, string localAppData) =>
