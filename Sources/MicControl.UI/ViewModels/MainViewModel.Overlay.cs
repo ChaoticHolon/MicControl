@@ -78,7 +78,7 @@ public sealed partial class MainViewModel
     [ObservableProperty]
     public partial bool IsOverlayEditing { get; set; }
 
-    public bool IsOverlayVisible => OverlayEnabled && (IsOverlayEditing || MuteRules.IsOverlayVisible(OverlayVisibility, IsMuted == true));
+    public bool IsOverlayVisible => OverlayEnabled && (IsOverlayEditing || MuteRules.IsOverlayVisible(OverlayVisibility, IsMutedState));
 
     public double OverlayOpacity
     {
@@ -188,7 +188,7 @@ public sealed partial class MainViewModel
             outputIndicatorTimer.Stop();
             ShowOutputIndicator = false;
         };
-        volumeRepeatTimer.Tick += (_, _) => speakers.Volume = (speakers.Volume ?? 0) + volumeRepeatStep;
+        volumeRepeatTimer.Tick += (_, _) => speakers.ChangeVolume(volumeRepeatStep);
     }
 
     private void OnOverlayVisibilityInputsChanged()

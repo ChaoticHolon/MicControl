@@ -21,6 +21,7 @@ public partial class OverlayWindow : Window
     private readonly ILogger logger;
     private readonly bool isConstructed;
     private bool isClosed;
+    private IDisposable? keepOnTop;
 
     public OverlayWindow(MainViewModel viewModel, SettingsService settings, IWindowInterop interop, ILogger<OverlayWindow>? logger = null, AppShutdown? shutdown = null)
     {
@@ -61,6 +62,7 @@ public partial class OverlayWindow : Window
         Closed += (_, _) =>
         {
             isClosed = true;
+            keepOnTop?.Dispose();
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             viewModel.OverlayPlacementRequested -= OnPlacementRequested;
         };
@@ -69,6 +71,8 @@ public partial class OverlayWindow : Window
             LogMonitors(changed: false);
             Place("opened");
             ApplyEditState();
+            keepOnTop ??= interop.KeepOnTop(TryGetPlatformHandle()?.Handle ?? 0);
+            LogKeepOnTop(this.logger, keepOnTop is not null);
         };
         isConstructed = true;
     }
@@ -238,6 +242,9 @@ public partial class OverlayWindow : Window
         LogDragged(logger, Position);
         settings.ScheduleSave();
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Overlay kept on top when other windows come to the front: {Watching}")]
+    private static partial void LogKeepOnTop(ILogger logger, bool watching);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Monitors: {Screens}")]
     private static partial void LogScreens(ILogger logger, string screens);

@@ -229,11 +229,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsMicrophoneConnected => microphone.IsConnected;
 
-    public bool IsMutedState => IsMuted == true;
+    /// <summary>Muted, or no microphone connected: anything but live looks muted (red), never live.</summary>
+    public bool IsMutedState => IsMuted != false;
 
     public bool IsLiveState => IsMuted == false;
 
-    public string StatusGlyph => IsMuted == true ? "" : "";
+    public string StatusGlyph => IsMutedState ? "" : "";
 
     public string StateLabel => IsMuted switch
     {
@@ -254,13 +255,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public string ToggleMuteText => IsMuted == true ? "Unmute" : "Mute";
 
-    public Bitmap CurrentIcon => IsMuted == true ? MutedIcon : UnmutedIcon;
+    public Bitmap CurrentIcon => IsMutedState ? MutedIcon : UnmutedIcon;
 
     /// <summary>
     /// The window and tray icon for <see cref="CurrentIcon"/>: the built-in .ico, which has a drawing for each small
     /// size so the tray stays sharp, or the user's own overlay icon.
     /// </summary>
-    public WindowIcon CurrentWindowIcon => IsMuted == true
+    public WindowIcon CurrentWindowIcon => IsMutedState
         ? ReferenceEquals(MutedIcon, DefaultMutedIcon) ? DefaultMutedWindowIcon.Value : new WindowIcon(MutedIcon)
         : ReferenceEquals(UnmutedIcon, DefaultUnmutedIcon) ? DefaultUnmutedWindowIcon.Value : new WindowIcon(UnmutedIcon);
 

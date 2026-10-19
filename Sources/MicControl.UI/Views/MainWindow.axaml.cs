@@ -42,6 +42,15 @@ public partial class MainWindow : Window
                 }
             };
         }
+
+        // After the handler above, so a window moved back from a disconnected monitor is fitted to its new one.
+        Opened += (_, _) =>
+        {
+            if (WindowPlacement.FitToWorkingArea(this))
+            {
+                LogFitted(this.logger, Width, Height, Position);
+            }
+        };
     }
 
     /// <summary>Set while the app is shutting down (or the session is ending) so closing isn't turned into hiding.</summary>
@@ -153,6 +162,9 @@ public partial class MainWindow : Window
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a request to close the hidden main window while the app is running")]
     private static partial void LogHiddenCloseRefused(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Main window didn't fit its monitor; now {Width:0}x{Height:0} at {Position}")]
+    private static partial void LogFitted(ILogger logger, double width, double height, PixelPoint position);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Main window's saved position {Position} is off every monitor; centring it on the primary one")]
     private static partial void LogOffScreen(ILogger logger, PixelPoint position);

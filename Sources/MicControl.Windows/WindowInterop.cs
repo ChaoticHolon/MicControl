@@ -17,6 +17,8 @@ public sealed class WindowInterop : IWindowInterop
         SetWindowLongPtr(handle, GWL_EXSTYLE, style);
     }
 
+    public IDisposable? KeepOnTop(nint handle) => handle == 0 ? null : TopmostKeeper.TryStart(handle);
+
     public IDisposable? WatchLifecycle(nint handle, string window, Func<WindowLifecycleMessage, bool> handler) =>
         WindowLifecycleWatcher.TryStart(handle, window, handler);
 
@@ -54,4 +56,40 @@ public sealed class WindowInterop : IWindowInterop
         // Each thread's default input method (IME) windows, created by Windows for text input.
         : className is "IME" or "MSCTFIME UI" ? "input method window"
         : null;
+
+    /// <summary>
+    /// Re-asserts HWND_TOPMOST each time the foreground window changes. The hook is out of context, so its callback
+    /// runs on this (the UI) thread's message loop; no window is shown or activated by it.
+    /// </summary>
+    private sealed class TopmostKeeper : IDisposable
+    {
+        private readonly nint handle;
+        private readonly WinEventProc callback; // must stay referenced while the hook is installed
+        private nint hook;
+
+        private TopmostKeeper(nint handle)
+        {
+            this.handle = handle;
+            callback = OnForegroundChanged;
+        }
+
+        public static TopmostKeeper? TryStart(nint handle)
+        {
+            var keeper = new TopmostKeeper(handle);
+            keeper.hook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, 0, keeper.callback, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+            return keeper.hook == 0 ? null : keeper;
+        }
+
+        public void Dispose()
+        {
+            if (hook != 0)
+            {
+                UnhookWinEvent(hook);
+                hook = 0;
+            }
+        }
+
+        private void OnForegroundChanged(nint hWinEventHook, uint eventType, nint hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime) =>
+            SetWindowPos(handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+    }
 }

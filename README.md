@@ -29,6 +29,9 @@ MicControl is the successor to and inspired by [MicSwitch](https://github.com/iX
 ## Install
 Download `MicControl-Setup-<version>.exe` from [Releases](https://github.com/ChaoticHolon/MicControl/releases) and choose **Everyone on this PC** (Program Files, needs admin) or **Just me** (your own Programs folder, no admin). Settings stay in your own `%APPDATA%\MicControl` either way. Windows SmartScreen may warn because the setup isn't code-signed (yet): choose **More info → Run anyway**. For unattended installs: `MicControl-Setup-<version>.exe --install --silent --scope=all` (or `--scope=user`); uninstall with `MicControl.exe --uninstall --silent`.
 
+### Using it with Discord, Zoom and other voice apps
+MicControl mutes the microphone itself, for every app at once, so let it be the only thing that switches your microphone. In each voice app, use voice activity or an open microphone instead of that app's own push-to-talk, and turn off the app's "automatically adjust microphone volume" if you keep the input volume in MicControl. If you do want an app's own push-to-talk on the same key, leave **Exclusive** off: an exclusive key is hidden from every other app.
+
 ## How to build
 
 Requirements: Windows 10 (version 2004 or later) and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (included with Visual Studio 2026's ".NET desktop development" workload).

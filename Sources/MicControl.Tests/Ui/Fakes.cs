@@ -47,17 +47,27 @@ internal sealed class FakeEndpointGroup : IAudioEndpointGroup
         }
     }
 
+    /// <summary>The volume the app last asked to keep (set through <see cref="Volume"/>), like the real group.</summary>
+    public float? KeptVolume { get; private set; }
+
     public float? Volume
     {
         get => IsConnected ? volume : null;
         set
         {
+            KeptVolume = value;
             if (value is { } v)
             {
                 volume = Math.Clamp(v, 0, 1);
                 StateChanged?.Invoke(this, EventArgs.Empty);
             }
         }
+    }
+
+    public void ChangeVolume(float delta)
+    {
+        volume = Math.Clamp(volume + delta, 0, 1);
+        StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Rebind() => StateChanged?.Invoke(this, EventArgs.Empty);
@@ -230,6 +240,8 @@ internal sealed class FakeWindowInterop : IWindowInterop
     public void ConfigureOverlay(nint handle, bool clickThrough)
     {
     }
+
+    public IDisposable? KeepOnTop(nint handle) => null;
 
     public List<(string Window, Func<WindowLifecycleMessage, bool> Handler)> Watched { get; } = [];
 
