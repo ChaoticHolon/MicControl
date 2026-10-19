@@ -87,13 +87,20 @@ text.Append(new string('=', 120)).Append('\n');
 text.Append("Fluent UI System Icons (the bundled icon font)\nhttps://github.com/microsoft/fluentui-system-icons\n\n");
 text.Append(Normalize(File.ReadAllText("Sources/MicControl.UI/Assets/Fonts/LICENSE.txt"))).Append('\n');
 
-var result = text.ToString();
+// Line endings follow the checkout (this file's own text is CRLF on Windows), so the result is always LF.
+var result = Normalize(text.ToString()) + "\n";
 if (check)
 {
     var current = File.Exists(Output) ? Normalize(File.ReadAllText(Output)) + "\n" : "";
     if (current != result)
     {
-        Console.Error.WriteLine($"{Output} is out of date: run  dotnet run tools/GenerateThirdPartyNotices.cs  and commit it.");
+        var expected = result.Split('\n');
+        var actual = current.Split('\n');
+        var line = Enumerable.Range(0, Math.Max(expected.Length, actual.Length))
+            .First(i => i >= expected.Length || i >= actual.Length || expected[i] != actual[i]);
+        Console.Error.WriteLine($"{Output} is out of date (first difference at line {line + 1}): run  dotnet run tools/GenerateThirdPartyNotices.cs  and commit it.");
+        Console.Error.WriteLine($"  file:      {(line < actual.Length ? actual[line] : "<end>")}");
+        Console.Error.WriteLine($"  generated: {(line < expected.Length ? expected[line] : "<end>")}");
         return 1;
     }
 
