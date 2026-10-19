@@ -274,10 +274,10 @@ public sealed partial class MainViewModel
 
         // Copy so the icon keeps working if the original file is moved.
         var directory = Path.Combine(settingsService.Directory, "Icons");
-        Directory.CreateDirectory(directory);
         var target = Path.Combine(directory, name + Path.GetExtension(file));
         try
         {
+            Directory.CreateDirectory(directory);
             // Picking the copy that's already in use (it's in the settings folder) needs no copy.
             if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
             {

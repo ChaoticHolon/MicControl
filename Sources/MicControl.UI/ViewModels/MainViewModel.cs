@@ -600,11 +600,47 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var customCount = hotkeyRegistrations.Count - 1;
         LogHotkeysApplied(mic.MuteMode, mic.Hotkey.Key, mic.Hotkey.AlternativeKey, customCount);
 
-        void Register(HotkeySettings settings, string name, Action<bool> handler) => hotkeyRegistrations.Add(hotkeys.Register(settings, pressed =>
+        void Register(HotkeySettings settings, string name, Action<bool> handler)
         {
-            LogHotkeyEvent(name, pressed ? "pressed" : "released");
+            var registration = new HotkeyRegistration(handler, () => LogHeldHotkeyReleased(name));
+            registration.Inner = hotkeys.Register(settings, pressed =>
+            {
+                LogHotkeyEvent(name, pressed ? "pressed" : "released");
+                registration.OnEvent(pressed);
+            });
+            hotkeyRegistrations.Add(registration);
+        }
+    }
+
+    /// <summary>
+    /// A registered hotkey that remembers whether it's held. Re-applying the hotkeys (a setting changed while a key
+    /// was down) ends the hold: the new registration never saw the press, so it ignores the release, and a mouse
+    /// button doesn't repeat its press. Without this, push-to-talk held on a mouse button stayed live after letting
+    /// go, and a held volume key kept changing the volume.
+    /// </summary>
+    private sealed class HotkeyRegistration(Action<bool> handler, Action onReleasedByDispose) : IDisposable
+    {
+        private bool isHeld;
+
+        public IDisposable? Inner { get; set; }
+
+        public void OnEvent(bool pressed)
+        {
+            isHeld = pressed;
             handler(pressed);
-        }));
+        }
+
+        public void Dispose()
+        {
+            Inner?.Dispose();
+            Inner = null;
+            if (isHeld)
+            {
+                isHeld = false;
+                onReleasedByDispose();
+                handler(false);
+            }
+        }
     }
 
     private void SetMute(bool? mute)
@@ -803,6 +839,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Hotkey {Name} {Event}")]
     private partial void LogHotkeyEvent(string name, string @event);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Hotkey {Name} released: the hotkeys changed while it was held")]
+    private partial void LogHeldHotkeyReleased(string name);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Custom hotkey {Key} / {AlternativeKey} -> {Action} (exclusive: {Suppress})")]
     private partial void LogCustomHotkey(Hotkeys.HotkeyGesture key, Hotkeys.HotkeyGesture alternativeKey, HotkeyAction action, bool suppress);

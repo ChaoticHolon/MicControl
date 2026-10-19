@@ -111,7 +111,17 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private Task OpenLogsFolder()
     {
-        Directory.CreateDirectory(LogsFolder);
+        try
+        {
+            Directory.CreateDirectory(LogsFolder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogLogsFolderUnavailable(LogsFolder, ex);
+            StatusMessage = $"Couldn't open the logs folder: {ex.Message}";
+            return Task.CompletedTask;
+        }
+
         return dialogs.OpenAsync(LogsFolder);
     }
 
@@ -271,6 +281,9 @@ public sealed partial class MainViewModel
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Update failed")]
     private partial void LogUpdateFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Couldn't create the logs folder {Folder}")]
+    private partial void LogLogsFolderUnavailable(string folder, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Setup step {Step}")]
     private partial void LogSetupStep(int step);

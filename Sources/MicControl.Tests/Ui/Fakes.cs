@@ -79,20 +79,39 @@ internal sealed class FakeEndpointGroup : IAudioEndpointGroup
 
 internal sealed class FakeHotkeys : IGlobalHotkeys
 {
-    private readonly List<(HotkeySettings Settings, Action<bool> Handler)> registrations = [];
+    private readonly List<Registration> registrations = [];
 
     public bool IsPaused { get; set; }
 
     public IDisposable Register(HotkeySettings settings, Action<bool> handler)
     {
-        var entry = (settings, handler);
+        var entry = new Registration(settings, handler);
         registrations.Add(entry);
         return new Unregister(() => registrations.Remove(entry));
     }
 
-    /// <summary>Simulates pressing or releasing every registered hotkey bound to these settings.</summary>
-    public void Trigger(HotkeySettings settings, bool pressed) =>
-        registrations.Where(r => ReferenceEquals(r.Settings, settings)).ToList().ForEach(r => r.Handler(pressed));
+    /// <summary>
+    /// Simulates pressing or releasing every registered hotkey bound to these settings. Like GlobalHotkeyService, a
+    /// repeated press is ignored and a release only reaches a registration that saw the press.
+    /// </summary>
+    public void Trigger(HotkeySettings settings, bool pressed)
+    {
+        foreach (var r in registrations.Where(r => ReferenceEquals(r.Settings, settings)).ToList())
+        {
+            if (r.IsPressed != pressed)
+            {
+                r.IsPressed = pressed;
+                r.Handler(pressed);
+            }
+        }
+    }
+
+    private sealed class Registration(HotkeySettings settings, Action<bool> handler)
+    {
+        public HotkeySettings Settings { get; } = settings;
+        public Action<bool> Handler { get; } = handler;
+        public bool IsPressed { get; set; }
+    }
 
     private sealed class Unregister(Action action) : IDisposable
     {

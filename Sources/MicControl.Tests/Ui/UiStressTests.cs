@@ -277,4 +277,71 @@ public sealed class UiStressTests
 
         Assert.Empty(errors.Select(e => e.ToString()));
     }
+
+    [AvaloniaFact]
+    public void PushToTalk_HeldOnAMouseButton_WhileHotkeysChange_EndsMuted()
+    {
+        // The new registration never saw the press, so it ignored the release, and a mouse button doesn't repeat its
+        // press: push-to-talk stayed live after letting go.
+        using var harness = new TestHarness(s =>
+        {
+            s.Microphone.Hotkey.Key = HotkeyGesture.Parse("MouseXButton1");
+            s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.PushToTalk, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("MouseXButton2") } });
+        });
+        var vm = harness.ViewModel;
+        var main = harness.Settings.Current.Microphone.Hotkey;
+        harness.Hotkeys.Trigger(main, true);
+        Assert.False(harness.Devices.Microphone.Mute);
+        vm.CustomHotkeysEnabled = true; // About → Advanced clicked while holding the button
+        Assert.True(harness.Devices.Microphone.Mute);
+        harness.Hotkeys.Trigger(main, false);
+        Assert.True(harness.Devices.Microphone.Mute);
+
+        var custom = harness.Settings.Current.CustomHotkeys[0].Hotkey;
+        harness.Hotkeys.Trigger(custom, true);
+        Assert.False(harness.Devices.Microphone.Mute);
+        vm.CustomHotkeys[0].IsEnabled = false; // the row switched off while held
+        harness.Hotkeys.Trigger(custom, false);
+        Assert.True(harness.Devices.Microphone.Mute);
+    }
+
+    [AvaloniaFact]
+    public void SettingsFolderCantBeWritten_PickIconAndOpenLogs_ShowAMessage()
+    {
+        var errors = new List<Exception>();
+        void OnUnhandled(object? sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            errors.Add(e.Exception);
+            e.Handled = true;
+        }
+
+        Dispatcher.UIThread.UnhandledException += OnUnhandled;
+        try
+        {
+            using var harness = new TestHarness();
+            var vm = harness.ViewModel;
+            var folder = Path.GetDirectoryName(harness.SettingsFile)!;
+            File.WriteAllText(Path.Combine(folder, "Icons"), "a file where the folder goes");
+            File.WriteAllText(Path.Combine(folder, "logs"), "a file where the folder goes");
+            var icon = Path.Combine(folder, "picked.png");
+            File.WriteAllBytes(icon, ImageSizeTests.OnePixelPng);
+            harness.Dialogs.PickedFile = icon;
+
+            vm.SelectMutedIconCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.StartsWith("Couldn't use that image:", vm.StatusMessage, StringComparison.Ordinal);
+            Assert.Null(harness.Settings.Current.Overlay.MutedIconPath);
+
+            vm.OpenLogsFolderCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.StartsWith("Couldn't open the logs folder:", vm.StatusMessage, StringComparison.Ordinal);
+            Assert.Empty(harness.Dialogs.Opened);
+        }
+        finally
+        {
+            Dispatcher.UIThread.UnhandledException -= OnUnhandled;
+        }
+
+        Assert.Empty(errors.Select(e => e.ToString()));
+    }
 }
