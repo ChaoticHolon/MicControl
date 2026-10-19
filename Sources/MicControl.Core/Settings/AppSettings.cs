@@ -56,7 +56,36 @@ public sealed class AppSettings
         Notifications ??= new();
         Overlay ??= new();
         Window ??= new();
+
+        // Out-of-range numbers (hand edits, or a float too large such as 1e39, which reads as infinity and then can't be
+        // saved) get the nearest value the UI allows, and unknown enum values their defaults.
+        var defaults = new AppSettings();
+        Microphone.MuteMode = Defined(Microphone.MuteMode, defaults.Microphone.MuteMode);
+        Microphone.InitialState = Defined(Microphone.InitialState, defaults.Microphone.InitialState);
+        Microphone.Volume = Microphone.Volume is { } volume && !float.IsNaN(volume) ? Math.Clamp(volume, 0, 1) : null;
+        CustomHotkeys.RemoveAll(h => !System.Enum.IsDefined(h.Action));
+        Notifications.Volume = float.IsNaN(Notifications.Volume) ? defaults.Notifications.Volume : Math.Clamp(Notifications.Volume, 0, 1);
+        Overlay.Visibility = Defined(Overlay.Visibility, defaults.Overlay.Visibility);
+        Overlay.LastVisibleMode = Defined(Overlay.LastVisibleMode, defaults.Overlay.LastVisibleMode);
+        Overlay.Corner = Defined(Overlay.Corner, defaults.Overlay.Corner);
+        Overlay.Opacity = Clamp(Overlay.Opacity, OverlaySettings.MinOpacity, OverlaySettings.MaxOpacity, defaults.Overlay.Opacity);
+        Overlay.Scale = Clamp(Overlay.Scale, OverlaySettings.MinScale, OverlaySettings.MaxScale, defaults.Overlay.Scale);
+        Overlay.Bounds = Valid(Overlay.Bounds);
+        Overlay.Monitor = Valid(Overlay.Monitor);
+        Window.Bounds = Valid(Window.Bounds);
+        Window.AppMode = Defined(Window.AppMode, defaults.Window.AppMode);
+        Window.Theme = Defined(Window.Theme, defaults.Window.Theme);
+        LogLevel = Defined(LogLevel, defaults.LogLevel);
         return this;
+
+        static T Defined<T>(T value, T fallback) where T : struct, System.Enum => System.Enum.IsDefined(value) ? value : fallback;
+
+        static double Clamp(double value, double min, double max, double fallback) => double.IsNaN(value) ? fallback : Math.Clamp(value, min, max);
+
+        // A window can't have a negative size (Avalonia throws), and infinity can't be saved.
+        static WindowBounds? Valid(WindowBounds? b) =>
+            b is not null && double.IsFinite(b.Left) && double.IsFinite(b.Top) && double.IsFinite(b.Width) && double.IsFinite(b.Height)
+            && b.Width > 0 && b.Height > 0 ? b : null;
     }
 
     private static HotkeySettings Normalize(HotkeySettings? hotkey)
@@ -190,6 +219,9 @@ public enum OverlayCorner
 
 public sealed class OverlaySettings
 {
+    /// <summary>The range the Overlay page's sliders offer.</summary>
+    public const double MinOpacity = 0.2, MaxOpacity = 1, MinScale = 0.6, MaxScale = 2.5;
+
     public OverlayVisibilityMode Visibility { get; set; } = OverlayVisibilityMode.Always;
 
     /// <summary>Visibility to restore when the overlay is switched back on from a quick toggle.</summary>

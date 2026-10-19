@@ -83,13 +83,13 @@ public sealed partial class MainViewModel
     public double OverlayOpacity
     {
         get => Settings.Overlay.Opacity;
-        set => SetAndSave(Settings.Overlay.Opacity, Math.Clamp(value, 0.2, 1), v => Settings.Overlay.Opacity = v, isSlider: true);
+        set => SetAndSave(Settings.Overlay.Opacity, Math.Clamp(value, OverlaySettings.MinOpacity, OverlaySettings.MaxOpacity), v => Settings.Overlay.Opacity = v, isSlider: true);
     }
 
     public double OverlayScale
     {
         get => Settings.Overlay.Scale;
-        set => SetAndSave(Settings.Overlay.Scale, Math.Clamp(value, 0.6, 2.5), v => Settings.Overlay.Scale = v, isSlider: true);
+        set => SetAndSave(Settings.Overlay.Scale, Math.Clamp(value, OverlaySettings.MinScale, OverlaySettings.MaxScale), v => Settings.Overlay.Scale = v, isSlider: true);
     }
 
     public bool OverlayShowLabel

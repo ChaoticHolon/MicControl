@@ -1,0 +1,194 @@
+using Avalonia.Headless.XUnit;
+using Avalonia.Threading;
+using MicControl.Hotkeys;
+using MicControl.Settings;
+using MicControl.Views;
+
+namespace MicControl.Tests.Ui;
+
+// Rapid hotkeys, mode switches and device changes, posted from many threads the way the Windows hook and Core Audio
+// callbacks reach the UI thread.
+public sealed class UiStressTests
+{
+    private static void Configure(AppSettings s)
+    {
+        s.Microphone.Hotkey.Key = HotkeyGesture.Parse("F13");
+        s.Microphone.Hotkey.AlternativeKey = HotkeyGesture.Parse("MouseXButton1");
+        s.CustomHotkeysEnabled = true;
+        s.Notifications.CustomSoundsEnabled = true;
+        var key = 1;
+        foreach (var action in Enum.GetValues<HotkeyAction>())
+        {
+            s.CustomHotkeys.Add(new CustomHotkey { Action = action, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse($"Ctrl+F{key++}") } });
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task RapidHotkeysModesAndDevices_FromManyThreads_NeverThrow()
+    {
+        const int seed = 1;
+        using var harness = new TestHarness(Configure);
+        var vm = harness.ViewModel;
+        var window = new MainWindow(vm, harness.Settings);
+        var overlay = new OverlayWindow(vm, harness.Settings, new FakeWindowInterop());
+        window.Show();
+        overlay.Show();
+        var errors = new List<Exception>();
+        void OnUnhandled(object? sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            errors.Add(e.Exception);
+            e.Handled = true;
+        }
+
+        Dispatcher.UIThread.UnhandledException += OnUnhandled;
+        try
+        {
+            var settings = harness.Settings.Current;
+            var hotkeys = new[] { settings.Microphone.Hotkey }.Concat(settings.CustomHotkeys.Select(c => c.Hotkey)).ToArray();
+            var modes = Enum.GetValues<MuteMode>();
+            var pages = Enum.GetValues<ViewModels.Page>();
+            var visibility = Enum.GetValues<OverlayVisibilityMode>();
+
+            void Step(Random r)
+            {
+                switch (r.Next(12))
+                {
+                    case < 5:
+                        harness.Hotkeys.Trigger(hotkeys[r.Next(hotkeys.Length)], r.Next(2) == 0);
+                        break;
+                    case 5:
+                        vm.MuteMode = modes[r.Next(modes.Length)];
+                        break;
+                    case 6:
+                        // A device unplugged or plugged back in, and the device list changing under it.
+                        harness.Devices.Microphone.IsConnected = r.Next(3) > 0;
+                        harness.Devices.Microphones.Clear();
+                        for (var i = r.Next(4); i > 0; i--)
+                        {
+                            harness.Devices.Microphones.Add(new($"mic-{i}", $"Mic {i}"));
+                        }
+
+                        harness.Devices.RaiseDevicesChanged();
+                        harness.Devices.Microphone.Rebind();
+                        break;
+                    case 7:
+                        vm.SelectedMicrophoneId = r.Next(3) == 0 ? AppSettings.AllDevices : $"mic-{r.Next(4)}";
+                        break;
+                    case 8:
+                        vm.Navigate(pages[r.Next(pages.Length)]);
+                        break;
+                    case 9:
+                        vm.ToggleMuteCommand.Execute(null);
+                        break;
+                    case 10:
+                        vm.CustomHotkeysEnabled = r.Next(4) > 0;
+                        vm.OverlayVisibilityStep = r.Next(visibility.Length);
+                        break;
+                    default:
+                        vm.MicrophoneVolumeControlEnabled = r.Next(2) == 0;
+                        vm.MicrophoneVolume = r.NextDouble() * 100;
+                        break;
+                }
+            }
+
+            // Many producers, one UI thread: every step is posted, like GlobalHotkeyService and AudioEndpointGroup do.
+            var producers = Enumerable.Range(0, 8).Select(t => Task.Run(() =>
+            {
+                var r = new Random(seed * 100 + t);
+                for (var i = 0; i < 400; i++)
+                {
+                    var stepSeed = r.Next();
+                    Dispatcher.UIThread.Post(() => Step(new Random(stepSeed)));
+                }
+            })).ToArray();
+            while (!producers.All(p => p.IsCompleted))
+            {
+                Dispatcher.UIThread.RunJobs();
+                await Task.Yield();
+            }
+
+            await Task.WhenAll(producers);
+            Dispatcher.UIThread.RunJobs();
+
+            // Settle: push-to-talk with every key released is muted.
+            harness.Devices.Microphone.IsConnected = true;
+            vm.CustomHotkeysEnabled = false;
+            vm.MuteMode = MuteMode.PushToTalk;
+            harness.Hotkeys.Trigger(settings.Microphone.Hotkey, true);
+            harness.Hotkeys.Trigger(settings.Microphone.Hotkey, false);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(harness.Devices.Microphone.Mute);
+            Assert.True(harness.Settings.Flush());
+            SettingsStore.Deserialize(File.ReadAllText(harness.SettingsFile));
+        }
+        finally
+        {
+            Dispatcher.UIThread.UnhandledException -= OnUnhandled;
+            overlay.Close();
+            window.Close();
+        }
+
+        Assert.Empty(errors.Select(e => e.ToString()));
+    }
+
+    public static TheoryData<string> HostileSettings() =>
+    [
+        """{"setupCompleted":true,"notifications":{"volume":1e39}}""",
+        """{"setupCompleted":true,"notifications":{"volume":-5}}""",
+        """{"setupCompleted":true,"microphone":{"volumeControlEnabled":true,"volume":1e39}}""",
+        """{"setupCompleted":true,"microphone":{"volumeControlEnabled":true,"volume":-3}}""",
+        """{"setupCompleted":true,"microphone":{"muteMode":99}}""",
+        """{"setupCompleted":true,"microphone":{"initialState":-1}}""",
+        """{"setupCompleted":true,"overlay":{"visibility":42,"lastVisibleMode":42,"corner":7}}""",
+        """{"setupCompleted":true,"overlay":{"opacity":-1,"scale":0}}""",
+        """{"setupCompleted":true,"overlay":{"scale":1e300,"opacity":1e39}}""",
+        """{"setupCompleted":true,"overlay":{"bounds":{"left":1e300,"top":-1e300,"width":-10,"height":1e300}}}""",
+        """{"setupCompleted":true,"overlay":{"monitor":{"left":0,"top":0,"width":0,"height":0}}}""",
+        """{"setupCompleted":true,"window":{"bounds":{"left":10,"top":10,"width":-800,"height":-600}}}""",
+        """{"setupCompleted":true,"window":{"bounds":{"left":1e300,"top":1e300,"width":1e300,"height":1e300}}}""",
+        """{"setupCompleted":true,"window":{"theme":12,"appMode":"window"}}""",
+        """{"setupCompleted":true,"logLevel":77}""",
+        """{"setupCompleted":true,"customHotkeysEnabled":true,"customHotkeys":[{"action":1234,"hotkey":{"key":"F1"}}]}""",
+    ];
+
+    [AvaloniaTheory]
+    [MemberData(nameof(HostileSettings))]
+    public void HandEditedOutOfRangeSettings_OpenAndSave(string json)
+    {
+        using var harness = new TestHarness(settingsJson: json);
+        var vm = harness.ViewModel;
+        var errors = new List<Exception>();
+        void OnUnhandled(object? sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            errors.Add(e.Exception);
+            e.Handled = true;
+        }
+
+        Dispatcher.UIThread.UnhandledException += OnUnhandled;
+        try
+        {
+            var window = new MainWindow(vm, harness.Settings);
+            var overlay = new OverlayWindow(vm, harness.Settings, new FakeWindowInterop());
+            window.Show();
+            overlay.Show();
+            foreach (var page in Enum.GetValues<ViewModels.Page>())
+            {
+                vm.Navigate(page);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            vm.ToggleMuteCommand.Execute(null);
+            harness.Hotkeys.Trigger(harness.Settings.Current.Microphone.Hotkey, true);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(harness.Settings.Flush(), harness.Settings.LastSaveError?.ToString());
+            overlay.Close();
+            window.Close();
+        }
+        finally
+        {
+            Dispatcher.UIThread.UnhandledException -= OnUnhandled;
+        }
+
+        Assert.Empty(errors.Select(e => e.ToString()));
+    }
+}

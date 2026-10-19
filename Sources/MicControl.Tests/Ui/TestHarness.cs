@@ -18,7 +18,8 @@ internal sealed class TestHarness : IDisposable
 
     /// <param name="configure">Adjusts the initial settings; setup is marked complete unless changed here.</param>
     /// <param name="firstRun">Start with no settings file at all, like a new user (<paramref name="configure"/> is ignored).</param>
-    public TestHarness(Action<AppSettings>? configure = null, bool firstRun = false)
+    /// <param name="settingsJson">The settings file's exact text, e.g. one edited by hand (<paramref name="configure"/> is ignored).</param>
+    public TestHarness(Action<AppSettings>? configure = null, bool firstRun = false, string? settingsJson = null)
     {
         builtInSounds = Path.Combine(directory, "builtin");
         Directory.CreateDirectory(builtInSounds);
@@ -28,7 +29,11 @@ internal sealed class TestHarness : IDisposable
         }
 
         var store = new SettingsStore(directory);
-        if (!firstRun)
+        if (settingsJson is not null)
+        {
+            File.WriteAllText(store.FilePath, settingsJson);
+        }
+        else if (!firstRun)
         {
             var initial = new AppSettings { SetupCompleted = true };
             configure?.Invoke(initial);

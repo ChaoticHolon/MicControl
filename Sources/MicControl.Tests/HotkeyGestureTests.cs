@@ -59,8 +59,18 @@ public sealed class HotkeyGestureTests
     [InlineData("MouseFoo")]
     [InlineData("Ctrl+")]
     [InlineData("Ctrl+Shift+")]
+    [InlineData("+None")] // a key named "None" would print as "None" and load back as no hotkey
+    [InlineData("Ctrl+None")]
+    [InlineData("F\u00011")]
     public void TryParse_RejectsJunk(string text)
     {
         Assert.False(HotkeyGesture.TryParse(text, out var gesture), $"{text} parsed as {gesture}");
+    }
+
+    [Fact]
+    public void TryParse_RejectsHalfASurrogatePair()
+    {
+        // Built here: test data can't carry it. A save would turn it into U+FFFD, a different key.
+        Assert.False(HotkeyGesture.TryParse("Ctrl+" + (char)0xD800, out _));
     }
 }

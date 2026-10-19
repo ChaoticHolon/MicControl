@@ -310,4 +310,103 @@ public sealed class SettingsTests : IDisposable
         Assert.True(settings.Notifications.HasCustomChoices);
         Assert.False(settings.Notifications.CustomSoundsEnabled);
     }
+
+    [Fact]
+    public void Load_LockedFile_LoadsDefaultsAndLeavesTheFileAlone()
+    {
+        var store = new SettingsStore(directory, Path.Combine(directory, "no-legacy"));
+        File.WriteAllText(store.FilePath, """{ "setupCompleted": true, "microphone": { "muteMode": "ToggleMute" } }""");
+
+        AppSettings loaded;
+        using (new FileStream(store.FilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            loaded = store.Load();
+        }
+
+        Assert.NotNull(store.LoadError);
+        Assert.False(store.IsFirstRun);
+        Assert.True(loaded.SetupCompleted); // no setup over settings that are only out of reach for now
+        store.Save(loaded);
+        Assert.Contains("ToggleMute", File.ReadAllText(store.FilePath), StringComparison.Ordinal);
+
+        Assert.Equal(MuteMode.ToggleMute, store.Load().Microphone.MuteMode);
+        Assert.Null(store.LoadError);
+    }
+
+    [Fact]
+    public void Load_FileWithByteOrderMark_Loads()
+    {
+        var store = new SettingsStore(directory);
+        File.WriteAllText(store.FilePath, """{ "microphone": { "muteMode": "ToggleMute" } }""", new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+        Assert.Equal(MuteMode.ToggleMute, store.Load().Microphone.MuteMode);
+        Assert.False(File.Exists(store.FilePath + ".corrupt"));
+    }
+
+    [Fact]
+    public void Load_OutOfRangeValues_AreClampedAndCanBeSaved()
+    {
+        // 1e39 is too large for a float: it reads as infinity, which JSON can't hold, so every save used to throw.
+        var store = new SettingsStore(directory);
+        File.WriteAllText(store.FilePath, """
+            {
+              "microphone": { "muteMode": 99, "initialState": -1, "volume": 1e39 },
+              "customHotkeys": [ { "action": 1234, "hotkey": { "key": "F1" } }, { "action": "Mute", "hotkey": { "key": "F2" } } ],
+              "notifications": { "volume": -5 },
+              "overlay": { "visibility": 42, "corner": 7, "opacity": 1e39, "scale": 0, "bounds": { "left": 1, "top": 2, "width": -10, "height": 50 } },
+              "window": { "theme": 12, "bounds": { "left": 10, "top": 10, "width": -800, "height": -600 } },
+              "logLevel": 77
+            }
+            """);
+
+        var loaded = store.Load();
+        store.Save(loaded);
+
+        Assert.Equal(MuteMode.PushToTalk, loaded.Microphone.MuteMode);
+        Assert.Equal(MicrophoneState.Mute, loaded.Microphone.InitialState);
+        Assert.Equal(1, loaded.Microphone.Volume);
+        Assert.Equal([HotkeyAction.Mute], loaded.CustomHotkeys.Select(h => h.Action));
+        Assert.Equal(0, loaded.Notifications.Volume);
+        Assert.Equal(OverlayVisibilityMode.Always, loaded.Overlay.Visibility);
+        Assert.Equal(OverlayCorner.TopRight, loaded.Overlay.Corner);
+        Assert.Equal(OverlaySettings.MaxOpacity, loaded.Overlay.Opacity);
+        Assert.Equal(OverlaySettings.MinScale, loaded.Overlay.Scale);
+        Assert.Null(loaded.Overlay.Bounds);
+        Assert.Null(loaded.Window.Bounds);
+        Assert.Equal(AppTheme.System, loaded.Window.Theme);
+        Assert.Equal(LogDetail.Debug, loaded.LogLevel);
+    }
+
+    [Fact]
+    public void Load_MicSwitchConfigWithHugeNumbers_ImportsAndSaves()
+    {
+        var legacy = Path.Combine(directory, "MicSwitch");
+        Directory.CreateDirectory(legacy);
+        File.WriteAllText(Path.Combine(legacy, "config.cfg"), """
+            {"Items":[{"TypeName":"MicSwitchConfig","ConfigValue":{"Volume":1e300,"NotificationVolume":-1e300,"OverlayOpacity":1e300,
+              "MainWindowBounds":"Infinity, 0, 800, 600"}}]}
+            """);
+        var store = new SettingsStore(Path.Combine(directory, "MicControl"), legacy);
+
+        var loaded = store.Load();
+
+        Assert.True(store.MigratedFromLegacy);
+        Assert.True(File.Exists(store.FilePath));
+        Assert.Equal(1, loaded.Microphone.Volume);
+        Assert.Equal(0, loaded.Notifications.Volume);
+        Assert.Equal(OverlaySettings.MaxOpacity, loaded.Overlay.Opacity);
+        Assert.Null(loaded.Window.Bounds);
+    }
+
+    [Theory]
+    [InlineData("""{"Items":[1,"x",null,{"TypeName":"MicSwitchHotkeyConfig","ConfigValue":{"Hotkey":{"Key":"F13"}}}]}""")]
+    [InlineData("""{"Items":[{"TypeName":"MicSwitchConfig","ConfigValue":{"MicrophoneLineId":"not an object"}},{"TypeName":"MicSwitchHotkeyConfig","ConfigValue":{"Hotkey":{"Key":"F13"}}}]}""")]
+    [InlineData("""{"Items":[{"TypeName":"MicSwitchConfig","ConfigValue":{"MicrophoneIcon":"!!not base64"}},{"TypeName":"MicSwitchHotkeyConfig","ConfigValue":{"Hotkey":{"Key":"F13"}}}]}""")]
+    [InlineData("""{"Items":[{"TypeName":"MicSwitchVolumeControlConfig","ConfigValue":{"DeviceId":42}},{"TypeName":"MicSwitchHotkeyConfig","ConfigValue":{"Hotkey":{"Key":"F13"}}}]}""")]
+    public void Migrate_OneMalformedEntry_KeepsTheRest(string json)
+    {
+        var settings = LegacyConfigMigrator.Migrate(json, Path.Combine(directory, "Icons"));
+
+        Assert.Equal(HotkeyGesture.Parse("F13"), settings.Microphone.Hotkey.Key);
+    }
 }

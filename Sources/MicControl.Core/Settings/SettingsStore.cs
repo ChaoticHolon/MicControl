@@ -30,29 +30,58 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
     public bool IsFirstRun { get; private set; }
 
     /// <summary>
+    /// The error that kept the last <see cref="Load"/> from reading an existing settings file (locked by another
+    /// program or not readable); <c>null</c> when it was read. While set, <see cref="Save"/> leaves that file alone.
+    /// </summary>
+    public Exception? LoadError { get; private set; }
+
+    /// <summary>
     /// Reads settings, falling back to the MicSwitch 1.x import and then to defaults.
-    /// A corrupt file is preserved as <c>settings.json.corrupt</c> rather than overwritten silently.
+    /// A corrupt file is preserved as <c>settings.json.corrupt</c> rather than overwritten silently. A file that stays
+    /// locked (a backup, sync or antivirus tool) loads defaults for this session and is kept as it is.
     /// </summary>
     public AppSettings Load()
     {
         MigratedFromLegacy = false;
         IsFirstRun = false;
+        LoadError = null;
         if (File.Exists(FilePath))
         {
+            byte[] content;
             try
             {
-                using var stream = File.OpenRead(FilePath);
+                content = ReadWithRetries(FilePath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                LoadError = ex;
+                return new AppSettings { SetupCompleted = true };
+            }
+
+            try
+            {
+                // From a stream, which skips a UTF-8 byte order mark (Notepad's "UTF-8 with BOM").
+                using var stream = new MemoryStream(content, writable: false);
                 return (JsonSerializer.Deserialize(stream, SettingsJsonContext.Readable.AppSettings) ?? new AppSettings()).Normalize();
             }
             catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
             {
-                File.Copy(FilePath, FilePath + ".corrupt", overwrite: true);
+                try
+                {
+                    File.WriteAllBytes(FilePath + ".corrupt", content);
+                }
+                catch (Exception copyError) when (copyError is IOException or UnauthorizedAccessException)
+                {
+                    // No copy, so the original must not be saved over.
+                    LoadError = copyError;
+                }
+
                 return new AppSettings();
             }
         }
 
         var legacy = LegacyDirectory ?? Directory;
-        var migrated = LegacyConfigMigrator.TryMigrate(legacy, Path.Combine(Directory, "Icons"));
+        var migrated = LegacyConfigMigrator.TryMigrate(legacy, Path.Combine(Directory, "Icons"))?.Normalize();
         if (migrated is null)
         {
             IsFirstRun = true;
@@ -62,12 +91,41 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
         // MicSwitch 1.x kept user-added sounds in the same Resources\Notifications layout.
         CopyDirectory(Path.Combine(legacy, "Resources", "Notifications"), Path.Combine(Directory, "Resources", "Notifications"));
         MigratedFromLegacy = true;
-        Save(migrated);
+        try
+        {
+            Save(migrated);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Saved by the next change instead (SettingsService retries failed saves).
+        }
+
         return migrated;
+    }
+
+    // A file another program has open briefly (a backup or sync tool) is usually free again within a second.
+    private static byte[] ReadWithRetries(string path)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return File.ReadAllBytes(path);
+            }
+            catch (IOException) when (attempt < 5)
+            {
+                Thread.Sleep(200);
+            }
+        }
     }
 
     public void Save(AppSettings settings)
     {
+        if (LoadError is not null)
+        {
+            return;
+        }
+
         System.IO.Directory.CreateDirectory(Directory);
         var temp = FilePath + ".tmp";
         using (var stream = File.Create(temp))
