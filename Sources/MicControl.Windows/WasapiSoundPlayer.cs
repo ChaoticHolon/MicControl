@@ -46,11 +46,18 @@ public sealed partial class WasapiSoundPlayer(ILogger<WasapiSoundPlayer> logger)
                 await stopped.Task.ConfigureAwait(false);
             }
         }
-        catch (Exception ex) when (ex is COMException or IOException or InvalidOperationException or FormatException)
+        catch (Exception ex) when (IsUnplayable(ex))
         {
             LogPlaybackFailed(ex, file);
         }
     }
+
+    /// <summary>
+    /// What a sound file NAudio can't play throws: besides device and file errors, a WAV it can't convert (ADPCM,
+    /// µ-law) or a damaged header can raise argument, invalid-data or arithmetic errors (found by fuzzing).
+    /// </summary>
+    internal static bool IsUnplayable(Exception ex) => ex is COMException or IOException or InvalidOperationException or FormatException
+        or InvalidDataException or ArgumentException or ArithmeticException or NotSupportedException;
 
     /// <summary>
     /// The chosen playback device, or <c>null</c> (play on the default one) when it's unplugged or gone, so a

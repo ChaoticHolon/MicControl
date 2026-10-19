@@ -82,7 +82,8 @@ public static class ReleaseFeed
     {
         foreach (var line in sums.Split('\n'))
         {
-            var trimmed = line.Trim();
+            // A byte order mark (from an editor or Windows PowerShell 5.1's UTF-8) isn't part of the hash.
+            var trimmed = line.Trim().TrimStart('\uFEFF');
             var space = trimmed.IndexOf(' ', StringComparison.Ordinal);
             if (space != 128 || !trimmed[..space].All(Uri.IsHexDigit))
             {

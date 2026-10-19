@@ -103,7 +103,8 @@ public sealed partial class MainViewModel
 
             StatusMessage = $"Added sound \"{name}\".";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or InvalidOperationException
+            or InvalidDataException or ArgumentException or ArithmeticException or NotSupportedException or FormatException)
         {
             LogSoundAddFailed(file, ex);
             StatusMessage = $"Could not add sound: {ex.Message}";

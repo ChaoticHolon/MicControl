@@ -147,14 +147,30 @@ public sealed class SettingsStore(string directory, string? legacyDirectory = nu
             return;
         }
 
-        System.IO.Directory.CreateDirectory(target);
-        foreach (var file in System.IO.Directory.EnumerateFiles(source))
+        // Best effort, one file at a time: a sound MicSwitch still has open, or one that can't be read, is left behind
+        // rather than failing the first start (this runs before the imported settings are saved).
+        try
         {
-            var destination = Path.Combine(target, Path.GetFileName(file));
-            if (!File.Exists(destination))
+            System.IO.Directory.CreateDirectory(target);
+            foreach (var file in System.IO.Directory.EnumerateFiles(source))
             {
-                File.Copy(file, destination);
+                var destination = Path.Combine(target, Path.GetFileName(file));
+                try
+                {
+                    if (!File.Exists(destination))
+                    {
+                        File.Copy(file, destination);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Skipped; the user can add it again from the Sounds page.
+                }
             }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The folder itself can't be listed or created.
         }
     }
 }

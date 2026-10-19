@@ -409,4 +409,28 @@ public sealed class SettingsTests : IDisposable
 
         Assert.Equal(HotkeyGesture.Parse("F13"), settings.Microphone.Hotkey.Key);
     }
+
+    [Fact]
+    public void Load_MicSwitchSoundThatCantBeCopied_StillImports()
+    {
+        // A sound MicSwitch still has open used to throw out of the first start, before the import was saved.
+        var legacy = Path.Combine(directory, "MicSwitch");
+        var sounds = Path.Combine(legacy, "Resources", "Notifications");
+        Directory.CreateDirectory(Path.Combine(sounds, "folder.wav"));
+        File.WriteAllBytes(Path.Combine(sounds, "ok.wav"), [1, 2, 3]);
+        File.WriteAllBytes(Path.Combine(sounds, "locked.wav"), [1, 2, 3]);
+        File.WriteAllText(Path.Combine(legacy, "config.cfg"), """{"Items":[{"TypeName":"MicSwitchHotkeyConfig","ConfigValue":{"Hotkey":{"Key":"F13"}}}]}""");
+        var store = new SettingsStore(Path.Combine(directory, "MicControl"), legacy);
+
+        AppSettings loaded;
+        using (new FileStream(Path.Combine(sounds, "locked.wav"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            loaded = store.Load();
+        }
+
+        Assert.True(store.MigratedFromLegacy);
+        Assert.Equal(HotkeyGesture.Parse("F13"), loaded.Microphone.Hotkey.Key);
+        Assert.True(File.Exists(Path.Combine(store.Directory, "Resources", "Notifications", "ok.wav")));
+        Assert.True(File.Exists(store.FilePath));
+    }
 }

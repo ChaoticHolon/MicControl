@@ -191,4 +191,90 @@ public sealed class UiStressTests
 
         Assert.Empty(errors.Select(e => e.ToString()));
     }
+
+    public static TheoryData<string> BadIcons() => ["garbage", "empty", "truncated", "bomb", "directory", "zero-size"];
+
+    [AvaloniaTheory]
+    [MemberData(nameof(BadIcons))]
+    public void CustomIcon_BadFile_UsesTheDefaultIcon(string kind)
+    {
+        // A huge image used to throw Skia's plain "Unable to allocate pixels" Exception out of the view model: no start.
+        var path = Path.Combine(Path.GetTempPath(), $"miccontrol-icon-{Guid.NewGuid():N}.png");
+        switch (kind)
+        {
+            case "garbage": File.WriteAllText(path, "this is not an image"); break;
+            case "empty": File.WriteAllBytes(path, []); break;
+            case "truncated": File.WriteAllBytes(path, ImageSizeTests.OnePixelPng[..30]); break;
+            case "bomb": File.WriteAllBytes(path, ImageSizeTests.PngClaiming(40000, 40000)); break;
+            case "directory": Directory.CreateDirectory(path); break;
+            default: File.WriteAllBytes(path, ImageSizeTests.PngClaiming(0, 0)); break;
+        }
+
+        try
+        {
+            using var defaults = new TestHarness();
+            using var harness = new TestHarness(s => s.Overlay.MutedIconPath = s.Overlay.UnmutedIconPath = path);
+            var vm = harness.ViewModel;
+            Assert.Same(defaults.ViewModel.MutedIcon, vm.MutedIcon);
+
+            harness.Dialogs.PickedFile = path;
+            vm.SelectMutedIconCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("That file isn't an image MicControl can read.", vm.StatusMessage);
+        }
+        finally
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path);
+            }
+            else
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [AvaloniaFact]
+    public void HotkeysAndDeviceEvents_QueuedBehindDispose_DoNotThrow()
+    {
+        var errors = new List<Exception>();
+        void OnUnhandled(object? sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            errors.Add(e.Exception);
+            e.Handled = true;
+        }
+
+        Dispatcher.UIThread.UnhandledException += OnUnhandled;
+        try
+        {
+            var harness = new TestHarness(s =>
+            {
+                s.Microphone.Hotkey.Key = HotkeyGesture.Parse("F13");
+                s.CustomHotkeysEnabled = true;
+                s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.SpeakerVolumeUp, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("F14") } });
+            });
+            var main = harness.Settings.Current.Microphone.Hotkey;
+            harness.Hotkeys.Trigger(harness.Settings.Current.CustomHotkeys[0].Hotkey, true); // starts the volume repeat timer
+
+            // What the hook and Core Audio do on exit: events are posted, then the app shuts down before they run.
+            for (var i = 0; i < 50; i++)
+            {
+                var pressed = i % 2 == 0;
+                Dispatcher.UIThread.Post(() => harness.Hotkeys.Trigger(main, pressed));
+                Dispatcher.UIThread.Post(harness.Devices.RaiseDevicesChanged);
+                Dispatcher.UIThread.Post(harness.Devices.Microphone.Rebind);
+            }
+
+            harness.Dispose();
+            Dispatcher.UIThread.RunJobs();
+            harness.Settings.Flush();
+        }
+        finally
+        {
+            Dispatcher.UIThread.UnhandledException -= OnUnhandled;
+        }
+
+        Assert.Empty(errors.Select(e => e.ToString()));
+    }
 }

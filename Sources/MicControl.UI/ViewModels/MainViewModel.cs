@@ -729,10 +729,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         try
         {
-            return new Bitmap(path);
+            using var stream = File.OpenRead(path);
+            var header = new byte[256 * 1024]; // enough for a JPEG's size after its EXIF data
+            var length = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+            if (!Imaging.ImageSize.IsReasonable(header.AsSpan(0, length)))
+            {
+                return null;
+            }
+
+            stream.Position = 0;
+            return new Bitmap(stream);
         }
-        catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException
+            or OutOfMemoryException || ex.GetType() == typeof(Exception))
         {
+            // Skia reports pixels it can't allocate (an image too large to decode) as a plain Exception.
             return null;
         }
     }
