@@ -15,7 +15,7 @@ on:
         options: [delete-merged-branches, move-tag]
         required: true
       tag:
-        description: "move-tag only: the release tag, e.g. v2.0.0"
+        description: "move-tag only: the release tag, e.g. v1.0.0"
         type: string
         required: false
       commit:

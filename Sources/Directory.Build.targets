@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    No build telemetry (developer's choice). Avalonia.BuildServices, a dependency of Avalonia, reports every build to
+    Avalonia's servers from its AvaloniaStats target; its only documented opt-out is the AVALONIA_TELEMETRY_OPTOUT
+    environment variable, which each machine would have to set. This file loads after the package's targets, so this
+    empty target replaces it on every machine. The SDK's own telemetry (DOTNET_CLI_TELEMETRY_OPTOUT) can only be
+    turned off by the environment: CI sets it, and README says how to on a PC.
+  -->
+  <Target Name="AvaloniaStats" />
+</Project>

@@ -1,6 +1,6 @@
 // Generates MicControl's default mute/unmute cues ("Relay on" / "Relay off") as 48 kHz 16-bit mono WAV.
 // Run from the repository root:  dotnet run tools/GenerateCueSounds.cs
-// Optional argument: output folder (default Sources/MicControlNG.UI/Assets/Notifications).
+// Optional argument: output folder (default Sources/MicControl.UI/Assets/Notifications).
 //
 // The sounds are synthesised, not recorded, so they are ours to ship. The model is the "asymmetric relay" from the
 // cue designer: a short seeded noise burst (plus optional contact bounces) rings a band-pass resonance whose pitch can
@@ -9,7 +9,7 @@
 
 using System.Text;
 
-var output = args.Length > 0 ? args[0] : Path.Combine("Sources", "MicControlNG.UI", "Assets", "Notifications");
+var output = args.Length > 0 ? args[0] : Path.Combine("Sources", "MicControl.UI", "Assets", "Notifications");
 Directory.CreateDirectory(output);
 
 // Unmute: the relay latches. A dark 2.2 kHz click with one contact bounce over a soft, steady 1175 Hz triangle.

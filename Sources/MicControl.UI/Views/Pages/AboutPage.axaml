@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:MicControl.Controls"
+             xmlns:vm="using:MicControl.ViewModels"
+             xmlns:s="using:MicControl.Settings"
+             xmlns:p="using:MicControl.Platform"
+             x:Class="MicControl.Views.Pages.AboutPage"
+             x:DataType="vm:MainViewModel">
+    <StackPanel Classes="page">
+        <TextBlock Classes="pageTitle" Text="About" />
+        <TextBlock Classes="pageSubtitle" Text="Version and updates, optional features, and help when something goes wrong." />
+        <Border Classes="card hero">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Image Width="56" Height="56" Source="{Binding CurrentIcon}" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                    <TextBlock Classes="heroTitle" Text="{x:Static vm:MainViewModel.AppName}" />
+                    <TextBlock Classes="secondary heroDetail" Text="{Binding VersionText, StringFormat='Version {0}'}" />
+                </StackPanel>
+                <Button Grid.Column="2" Classes="heroAction" Content="Project page" Command="{Binding OpenProjectPageCommand}" />
+            </Grid>
+        </Border>
+
+        <TextBlock Classes="section" Text="Updates" />
+        <Border Classes="card" IsVisible="{Binding UpdateVersion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Classes="accent" Content="Restart and update" Command="{Binding InstallUpdateCommand}" />
+                <TextBlock VerticalAlignment="Center" Text="{Binding UpdateVersion, StringFormat='Version {0} is ready to install.'}" />
+            </DockPanel>
+        </Border>
+        <c:SettingRow Glyph="&#xE895;" Header="Check for updates" Description="{Binding UpdateStatus}">
+            <Button Content="Check now" Command="{Binding CheckUpdatesCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE823;" Header="Check automatically at startup">
+            <ToggleSwitch IsChecked="{Binding CheckForUpdates}" AutomationProperties.Name="Check for updates at startup" />
+        </c:SettingRow>
+
+        <!-- Optional features, with the other settings and before the read-only details: each adds its page tab while on -->
+        <TextBlock Classes="section" Text="Advanced" />
+        <c:SettingRow Glyph="&#xE765;" Header="Custom hotkeys"
+                      Description="Bind more keys to actions like mute, unmute or speaker volume. Adds the Hotkeys page.">
+            <ToggleSwitch IsChecked="{Binding CustomHotkeysEnabled}" AutomationProperties.Name="Custom hotkeys" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE995;" Header="Custom sounds"
+                      Description="Choose your own sounds, volume and playback device. Adds the Sounds page. When off, the built-in cues play.">
+            <ToggleSwitch IsChecked="{Binding CustomSoundsEnabled}" AutomationProperties.Name="Custom sounds" />
+        </c:SettingRow>
+
+        <TextBlock Classes="section" Text="System" />
+        <c:SettingRow Glyph="&#xE7F8;" Header="Operating system" Description="{Binding OsText}" />
+        <c:SettingRow Glyph="&#xE943;" Header="Runtime" Description="{Binding RuntimeText}" />
+        <c:SettingRow Glyph="&#xE771;" Header="UI framework" Description="{Binding UiFrameworkText}" />
+        <c:SettingRow Glyph="&#xE72E;" Header="Hotkey access" Description="{Binding HotkeyAccessText}" />
+
+        <TextBlock Classes="section" Text="Files and support" />
+        <c:SettingRow Glyph="&#xE8B7;" Header="Settings folder" Description="{Binding SettingsFolder}">
+            <Button Content="Open" Command="{Binding OpenSettingsFolderCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE9F9;" Header="Logs" Description="Attach these when reporting a problem">
+            <Button Content="Open" Command="{Binding OpenLogsFolderCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE9D9;" Header="Log detail" Description="How much MicControl writes to its logs. More detail helps track down problems.">
+            <ComboBox MinWidth="200" ItemsSource="{Binding LogLevels}" SelectedValue="{Binding LogDetail}"
+                      DisplayMemberBinding="{Binding Name, x:DataType=vm:Choice}" SelectedValueBinding="{Binding Value, x:DataType=vm:Choice}"
+                      AutomationProperties.Name="Log detail" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE7BE;" Header="Setup guide" Description="Walk through the first-run setup again">
+            <Button Content="Run setup" Command="{Binding RunSetupAgainCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE9F9;" Header="License" Description="MicControl is free software under the GNU GPL, version 3 or later. It includes open-source components under their own licenses.">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="License" Command="{Binding OpenLicenseCommand}" />
+                <Button Content="Third-party notices" Command="{Binding OpenThirdPartyNoticesCommand}" />
+            </StackPanel>
+        </c:SettingRow>
+        <TextBlock Classes="secondary" Margin="4,16,0,0" Text="Inspired by MicSwitch by Xab3r." />
+    </StackPanel>
+</UserControl>
