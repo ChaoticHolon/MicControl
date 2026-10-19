@@ -78,18 +78,18 @@ public sealed partial class MainViewModel
     [ObservableProperty]
     public partial bool IsOverlayEditing { get; set; }
 
-    public bool IsOverlayVisible => OverlayEnabled && (IsOverlayEditing || MuteRules.IsOverlayVisible(OverlayVisibility, IsMuted == true));
+    public bool IsOverlayVisible => OverlayEnabled && (IsOverlayEditing || MuteRules.IsOverlayVisible(OverlayVisibility, IsMutedState));
 
     public double OverlayOpacity
     {
         get => Settings.Overlay.Opacity;
-        set => SetAndSave(Settings.Overlay.Opacity, Math.Clamp(value, 0.2, 1), v => Settings.Overlay.Opacity = v, isSlider: true);
+        set => SetAndSave(Settings.Overlay.Opacity, Math.Clamp(value, OverlaySettings.MinOpacity, OverlaySettings.MaxOpacity), v => Settings.Overlay.Opacity = v, isSlider: true);
     }
 
     public double OverlayScale
     {
         get => Settings.Overlay.Scale;
-        set => SetAndSave(Settings.Overlay.Scale, Math.Clamp(value, 0.6, 2.5), v => Settings.Overlay.Scale = v, isSlider: true);
+        set => SetAndSave(Settings.Overlay.Scale, Math.Clamp(value, OverlaySettings.MinScale, OverlaySettings.MaxScale), v => Settings.Overlay.Scale = v, isSlider: true);
     }
 
     public bool OverlayShowLabel
@@ -188,7 +188,7 @@ public sealed partial class MainViewModel
             outputIndicatorTimer.Stop();
             ShowOutputIndicator = false;
         };
-        volumeRepeatTimer.Tick += (_, _) => speakers.Volume = (speakers.Volume ?? 0) + volumeRepeatStep;
+        volumeRepeatTimer.Tick += (_, _) => speakers.ChangeVolume(volumeRepeatStep);
     }
 
     private void OnOverlayVisibilityInputsChanged()
@@ -274,10 +274,10 @@ public sealed partial class MainViewModel
 
         // Copy so the icon keeps working if the original file is moved.
         var directory = Path.Combine(settingsService.Directory, "Icons");
-        Directory.CreateDirectory(directory);
         var target = Path.Combine(directory, name + Path.GetExtension(file));
         try
         {
+            Directory.CreateDirectory(directory);
             // Picking the copy that's already in use (it's in the settings folder) needs no copy.
             if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
             {

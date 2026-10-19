@@ -136,6 +136,11 @@ public partial class App : Application
 
         LogLogging(logger, logLevels.Minimum, fileLogs.FilePath);
         LogSettingsLoaded(logger, settings.Current.Version, settings.Current.SetupCompleted, settings.Current.Window.AppMode, settings.MigratedFromLegacy);
+        if (settings.LoadError is { } loadError)
+        {
+            LogSettingsUnreadable(logger, settings.Directory, loadError);
+        }
+
         ApplyTheme(settings.Current.Window.Theme);
 
         if (settings.MigratedFromLegacy)
@@ -364,6 +369,9 @@ public partial class App : Application
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Log detail {Level}; writing to {File}")]
     private static partial void LogLogging(ILogger logger, LogLevel level, string file);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Settings in {Directory} couldn't be read, so defaults apply and changes aren't saved until the next start")]
+    private static partial void LogSettingsUnreadable(ILogger logger, string directory, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Settings loaded: version {Version}, setup completed {SetupCompleted}, app mode {AppMode}, imported from MicSwitch {Migrated}")]
     private static partial void LogSettingsLoaded(ILogger logger, int version, bool setupCompleted, AppMode appMode, bool migrated);

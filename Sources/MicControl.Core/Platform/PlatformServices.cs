@@ -50,10 +50,17 @@ public interface IAudioEndpointGroup : IDisposable
     bool? Mute { get; set; }
 
     /// <summary>
-    /// Scalar volume 0..1. A set volume is also applied to devices bound later (plugged in again); setting
-    /// <c>null</c> stops that and leaves the volume as it is.
+    /// Scalar volume 0..1 (of the first device). A set volume is kept: applied to every controlled device, to devices
+    /// bound later (plugged in again), and again whenever something else changes it; setting <c>null</c> stops that
+    /// and leaves the volume as it is.
     /// </summary>
     float? Volume { get; set; }
+
+    /// <summary>
+    /// Moves each controlled device's own volume by <paramref name="delta"/> (clamped to 0..1), so devices keep their
+    /// differences. Nothing is kept: devices bound later and later changes by others are left alone.
+    /// </summary>
+    void ChangeVolume(float delta);
 
     /// <summary>Re-reads the device list and re-attaches to the selected device(s).</summary>
     void Rebind();
@@ -168,6 +175,13 @@ public interface IWindowInterop
 {
     /// <summary>Makes an overlay window ignore mouse input (click-through) and stay out of Alt+Tab.</summary>
     void ConfigureOverlay(nint handle, bool clickThrough);
+
+    /// <summary>
+    /// Puts the always-on-top overlay back on top whenever another window comes to the foreground: a newer topmost
+    /// window (a browser or game going full screen, another app's "always on top", the taskbar) otherwise covers it
+    /// for good. Dispose the result to stop. Returns <c>null</c> if the OS refused.
+    /// </summary>
+    IDisposable? KeepOnTop(nint handle);
 
     /// <summary>
     /// Reports close and session-end messages a window receives (close requests, session ending, destruction).

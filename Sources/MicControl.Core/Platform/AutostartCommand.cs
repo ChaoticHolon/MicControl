@@ -3,7 +3,7 @@ namespace MicControl.Platform;
 /// <summary>Reads autostart command lines (Run key values, scheduled task actions).</summary>
 public static class AutostartCommand
 {
-    /// <summary>The executable a command line starts: the quoted first token, or everything up to ".exe".</summary>
+    /// <summary>The executable a command line starts: the quoted first token, or everything up to the first ".exe" that ends a name.</summary>
     public static string? GetExecutable(string? command)
     {
         var text = command?.Trim();
@@ -18,10 +18,15 @@ public static class AutostartCommand
             return end > 1 ? text[1..end] : null;
         }
 
-        var exe = text.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
-        if (exe >= 0)
+        // ".exe" ends the path only where the name ends: C:\Users\alex.exeter\…\MicSwitch.exe isn't C:\Users\alex.exe.
+        for (var exe = text.IndexOf(".exe", StringComparison.OrdinalIgnoreCase); exe >= 0;
+            exe = text.IndexOf(".exe", exe + 1, StringComparison.OrdinalIgnoreCase))
         {
-            return text[..(exe + ".exe".Length)];
+            var end = exe + ".exe".Length;
+            if (end == text.Length || char.IsWhiteSpace(text[end]))
+            {
+                return text[..end];
+            }
         }
 
         var space = text.IndexOf(' ', StringComparison.Ordinal);

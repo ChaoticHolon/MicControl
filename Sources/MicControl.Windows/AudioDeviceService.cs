@@ -32,7 +32,7 @@ public sealed partial class AudioDeviceService : IAudioDevices, IMMNotificationC
                 {
                     return new AudioDeviceInfo(d.ID, d.FriendlyName);
                 }
-                catch (COMException)
+                catch (Exception ex) when (ex is ExternalException or InvalidComObjectException or UnauthorizedAccessException)
                 {
                     return null; // removed while the list was read
                 }
@@ -47,7 +47,7 @@ public sealed partial class AudioDeviceService : IAudioDevices, IMMNotificationC
         {
             return [.. enumerator.EnumerateAudioEndPoints(flow == AudioFlow.Capture ? DataFlow.Capture : DataFlow.Render, DeviceState.Active)];
         }
-        catch (COMException ex)
+        catch (Exception ex) when (ex is ExternalException or InvalidComObjectException or UnauthorizedAccessException)
         {
             LogEnumerationFailed(flow, ex);
             return [];

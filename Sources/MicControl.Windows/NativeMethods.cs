@@ -51,6 +51,48 @@ internal static partial class NativeMethods
         public nuint dwExtraInfo;
     }
 
+    public const uint INPUT_KEYBOARD = 1;
+    public const uint KEYEVENTF_KEYUP = 0x2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct INPUT
+    {
+        public uint type;
+        public INPUTUNION u;
+    }
+
+    // Sized like the native union: MOUSEINPUT is its largest member.
+    [StructLayout(LayoutKind.Explicit)]
+    public struct INPUTUNION
+    {
+        [FieldOffset(0)]
+        public MOUSEINPUT mi;
+
+        [FieldOffset(0)]
+        public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public nuint dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public nuint dwExtraInfo;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct MSG
     {
@@ -83,6 +125,9 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     public static partial short GetAsyncKeyState(int vKey);
 
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial uint SendInput(uint cInputs, INPUT[] pInputs, int cbSize);
+
     [LibraryImport("kernel32.dll")]
     public static partial uint GetCurrentThreadId();
 
@@ -94,6 +139,29 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     public static partial nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
+
+    // Overlay z-order (WindowInterop.KeepOnTop).
+    public const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    public const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+    public const uint WINEVENT_SKIPOWNPROCESS = 0x0002;
+    public const nint HWND_TOPMOST = -1;
+    public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOMOVE = 0x0002;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_NOOWNERZORDER = 0x0200;
+
+    public delegate void WinEventProc(nint hWinEventHook, uint eventType, nint hwnd, int idObject, int idChild, uint idEventThread, uint dwmsEventTime);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SetWinEventHook(uint eventMin, uint eventMax, nint hmodWinEventProc, WinEventProc pfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnhookWinEvent(nint hWinEventHook);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
     public static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 

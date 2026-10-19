@@ -7,7 +7,8 @@ namespace MicControl.Windows;
 
 /// <summary>
 /// Core Audio implementation of <see cref="IAudioEndpointGroup"/>. Every (re)bound device gets the mute state and the
-/// kept volume the app last set: a microphone plugged back in mid push-to-talk must not come back live.
+/// kept volume the app last set: a microphone plugged back in mid push-to-talk must not come back live. A kept volume
+/// is also restored when something else changes it (Windows' or a voice app's automatic gain).
 /// </summary>
 internal sealed class AudioEndpointGroup : IAudioEndpointGroup
 {
@@ -15,6 +16,9 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
     private readonly AudioFlow flow;
     private readonly IUiDispatcher dispatcher;
     private List<MMDevice> endpoints = [];
+    // What each device actually holds after the app set the kept volume (a device with coarse volume steps rounds
+    // it): only a change away from that is someone else's, so restoring it can never loop.
+    private readonly Dictionary<MMDevice, float> keptLevels = [];
     private string deviceId = AppSettings.AllDevices;
     private bool? lastMute;
     private float? lastVolume;
@@ -67,10 +71,13 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
             lastVolume = value is { } v ? Math.Clamp(v, 0, 1) : null;
             if (lastVolume is { } volume)
             {
-                endpoints.ForEach(e => Try(() => e.AudioEndpointVolume.MasterVolumeLevelScalar = volume));
+                endpoints.ForEach(e => Keep(e, volume));
             }
         }
     }
+
+    public void ChangeVolume(float delta) =>
+        endpoints.ForEach(e => Try(() => e.AudioEndpointVolume.MasterVolumeLevelScalar = Math.Clamp(e.AudioEndpointVolume.MasterVolumeLevelScalar + delta, 0, 1)));
 
     public void Rebind()
     {
@@ -97,7 +104,7 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
 
             if (lastVolume is { } volume)
             {
-                Try(() => endpoint.AudioEndpointVolume.MasterVolumeLevelScalar = volume);
+                Keep(endpoint, volume);
             }
         }
 
@@ -114,7 +121,34 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
 
     // Arrives on a COM worker thread.
     private void OnVolumeNotification(AudioVolumeNotificationData data) =>
-        dispatcher.Post(() => StateChanged?.Invoke(this, EventArgs.Empty));
+        dispatcher.Post(() =>
+        {
+            RestoreKeptVolume();
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        });
+
+    private void RestoreKeptVolume()
+    {
+        if (lastVolume is not { } volume)
+        {
+            return;
+        }
+
+        foreach (var endpoint in endpoints)
+        {
+            var current = Try(() => (float?)endpoint.AudioEndpointVolume.MasterVolumeLevelScalar, null);
+            if (current is { } level && (!keptLevels.TryGetValue(endpoint, out var kept) || Math.Abs(level - kept) > 0.001f))
+            {
+                Keep(endpoint, volume);
+            }
+        }
+    }
+
+    private void Keep(MMDevice endpoint, float volume) => Try(() =>
+    {
+        endpoint.AudioEndpointVolume.MasterVolumeLevelScalar = volume;
+        keptLevels[endpoint] = endpoint.AudioEndpointVolume.MasterVolumeLevelScalar;
+    });
 
     private void Release()
     {
@@ -125,16 +159,22 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
         }
 
         endpoints = [];
+        keptLevels.Clear();
     }
 
-    // Devices can disappear at any moment; COM calls on a removed device fail and are ignored.
+    // Devices can disappear at any moment; calls on a removed device fail and are ignored. Besides COMException
+    // (e.g. AUDCLNT_E_DEVICE_INVALIDATED), a driver can answer E_ACCESSDENIED or E_INVALIDARG, which .NET turns into
+    // other exception types: none of them may crash the app from a device notification.
+    private static bool IsDeviceFailure(Exception ex) =>
+        ex is ExternalException or InvalidComObjectException or UnauthorizedAccessException or ArgumentException or InvalidCastException;
+
     private static void Try(Action action)
     {
         try
         {
             action();
         }
-        catch (COMException)
+        catch (Exception ex) when (IsDeviceFailure(ex))
         {
         }
     }
@@ -145,7 +185,7 @@ internal sealed class AudioEndpointGroup : IAudioEndpointGroup
         {
             return func();
         }
-        catch (COMException)
+        catch (Exception ex) when (IsDeviceFailure(ex))
         {
             return fallback;
         }

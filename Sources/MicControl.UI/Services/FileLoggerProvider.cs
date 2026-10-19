@@ -45,7 +45,15 @@ public sealed class FileLoggerProvider : ILoggerProvider
         this.levels = levels;
         this.directory = directory;
         now = clock ?? (() => DateTime.Now);
-        Directory.CreateDirectory(directory);
+        try
+        {
+            Directory.CreateDirectory(directory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A settings folder that can't be written (a redirected AppData that's offline, a file named "logs"):
+            // the app still starts, and lines are dropped until the file can be opened.
+        }
         appendLock = new Mutex(false, LockName(directory));
         var start = now();
         filePath = PathFor(start);

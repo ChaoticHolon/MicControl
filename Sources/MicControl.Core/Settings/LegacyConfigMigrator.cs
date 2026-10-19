@@ -29,7 +29,7 @@ public static class LegacyConfigMigrator
             // 1.x wrote UTF-16 with a BOM; ReadAllText detects the encoding.
             return Migrate(File.ReadAllText(candidate), iconDirectory);
         }
-        catch (Exception ex) when (ex is JsonException or IOException or FormatException or InvalidOperationException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or FormatException or InvalidOperationException)
         {
             return null;
         }
@@ -43,9 +43,10 @@ public static class LegacyConfigMigrator
         var items = JsonNode.Parse(legacyJson, documentOptions: DocumentOptions)?["Items"]?.AsArray() ?? [];
         // A type listed twice (seen in configs edited by hand) keeps its last entry, as MicSwitch read it.
         var configs = new Dictionary<string, JsonObject>(StringComparer.Ordinal);
+        // Entries and fields of the wrong shape are skipped one by one, so one bad edit doesn't lose the whole import.
         foreach (var item in items)
         {
-            if (item?["TypeName"] is JsonValue type && type.TryGetValue<string>(out var name) && item["ConfigValue"] is JsonObject value)
+            if (Get(item, "TypeName") is JsonValue type && type.TryGetValue<string>(out var name) && Get(item, "ConfigValue") is JsonObject value)
             {
                 configs[name.Split('.')[^1]] = value;
             }
@@ -76,7 +77,7 @@ public static class LegacyConfigMigrator
         if (configs.TryGetValue("MicSwitchVolumeControlConfig", out var output))
         {
             var enabled = Bool(output["IsEnabled"]) ?? false;
-            settings.SpeakerDeviceId = String(output["DeviceId"]?["LineId"]) ?? settings.SpeakerDeviceId;
+            settings.SpeakerDeviceId = String(Get(output["DeviceId"], "LineId")) ?? settings.SpeakerDeviceId;
             AddCustom(settings, HotkeyAction.SpeakerToggleMute, output["HotkeyForToggle"], enabled);
             AddCustom(settings, HotkeyAction.SpeakerMute, output["HotkeyForMute"], enabled);
             AddCustom(settings, HotkeyAction.SpeakerUnmute, output["HotkeyForUnmute"], enabled);
@@ -90,7 +91,7 @@ public static class LegacyConfigMigrator
     private static void ApplyMain(AppSettings settings, JsonObject main, string? iconDirectory)
     {
         var mic = settings.Microphone;
-        mic.DeviceId = String(main["MicrophoneLineId"]?["LineId"]) ?? mic.DeviceId;
+        mic.DeviceId = String(Get(main["MicrophoneLineId"], "LineId")) ?? mic.DeviceId;
         mic.VolumeControlEnabled = Bool(main["VolumeControlEnabled"]) ?? false;
         mic.Volume = Float(main["Volume"]);
 
@@ -167,10 +168,18 @@ public static class LegacyConfigMigrator
             return null;
         }
 
-        Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, fileName);
-        File.WriteAllBytes(path, Convert.FromBase64String(base64));
-        return path;
+        try
+        {
+            var bytes = Convert.FromBase64String(base64);
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, fileName);
+            File.WriteAllBytes(path, bytes);
+            return path;
+        }
+        catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private static void AddCustom(AppSettings settings, HotkeyAction action, JsonNode? node, bool enabled)
@@ -212,6 +221,8 @@ public static class LegacyConfigMigrator
 
         return values is [var l, var t, var w, var h] && w > 0 && h > 0 ? new WindowBounds(l, t, w, h) : null;
     }
+
+    private static JsonNode? Get(JsonNode? node, string name) => node is JsonObject o ? o[name] : null;
 
     private static string? String(JsonNode? node) =>
         node is JsonValue v && v.TryGetValue<string>(out var s) && !string.IsNullOrWhiteSpace(s) ? s : null;

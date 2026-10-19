@@ -27,6 +27,9 @@ public sealed class SettingsService
     /// <summary>True when this user had no settings to load or import: first-run defaults apply.</summary>
     public bool IsFirstRun => store.IsFirstRun;
 
+    /// <summary>Why the settings file couldn't be read (locked or not readable): defaults apply and the file is left alone.</summary>
+    public Exception? LoadError => store.LoadError;
+
     public void ScheduleSave()
     {
         saveTimer.Stop();

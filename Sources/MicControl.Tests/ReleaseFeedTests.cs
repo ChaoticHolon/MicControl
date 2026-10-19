@@ -146,4 +146,37 @@ public sealed class ReleaseFeedTests
         Assert.True(await ReleaseFeed.MatchesAsync(new MemoryStream(Setup), Sha512Hex.ToUpperInvariant(), token));
         Assert.False(await ReleaseFeed.MatchesAsync(new MemoryStream([1, 2, 3]), Sha512Hex, token));
     }
+
+    [Fact]
+    public void FindSha512_IgnoresAByteOrderMark()
+    {
+        var hash = new string('a', 128);
+
+        Assert.Equal(hash, ReleaseFeed.FindSha512($"\uFEFF{hash}  MicControl-Setup-2.1.0.exe\r\n", "MicControl-Setup-2.1.0.exe"));
+    }
+
+    [Theory]
+    [InlineData("MicControl-Setup-9.9.9.exe")] // a release's signed checksums attached to a newer tag
+    [InlineData("x/MicControl-Setup-2.1.0.exe")]
+    [InlineData("MicControl-Setup-2.1.0.exe.bak")]
+    [InlineData("MicControl-Setup-2.1.0")]
+    public void VerifiedSha512_ChecksumsOfAnotherFile_VerifyNothing(string fileName)
+    {
+        var release = new InstallerRelease(new Version(9, 9, 9), new Uri(Base + "s.exe"), fileName, new Uri(Base + "SHA512SUMS"), new Uri(Base + "SHA512SUMS.sig"));
+
+        Assert.Null(ReleaseFeed.VerifiedSha512(release, Encoding.UTF8.GetBytes(SecurityTests.Sums), SecurityTests.GoodSignature, [SecurityTests.ReleaseKey]));
+    }
+
+    [Fact]
+    public void Parse_AnHttpCopyOfTheSetupListedAfterTheHttpsOne_OffersNothing()
+    {
+        var json = Release().Replace("\"assets\": [", $$"""
+            "assets": [ { "name": "MicControl-Setup-2.1.0.exe", "browser_download_url": "{{Base}}first.exe" },
+            """, StringComparison.Ordinal);
+        Assert.NotNull(ReleaseFeed.Parse(json));
+
+        Assert.Null(ReleaseFeed.Parse(Release(url: "http://example.com/MicControl-Setup-2.1.0.exe")));
+        Assert.Null(ReleaseFeed.Parse(Release(url: "file:///C:/Windows/notepad.exe")));
+        Assert.Null(ReleaseFeed.Parse(Release(asset: "../MicControl-Setup-2.1.0.exe")));
+    }
 }

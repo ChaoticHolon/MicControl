@@ -230,6 +230,50 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void SpeakerVolumeHotkey_StepsEachSpeaker_AndKeepsNoLevel()
+    {
+        using var harness = new TestHarness(s =>
+        {
+            s.CustomHotkeysEnabled = true;
+            s.CustomHotkeys.Add(new CustomHotkey
+            {
+                Action = HotkeyAction.SpeakerVolumeUp,
+                Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse("F15") },
+            });
+        });
+        var speaker = harness.Devices.Speaker;
+        var before = speaker.Volume!.Value;
+
+        harness.Hotkeys.Trigger(harness.ViewModel.Settings.CustomHotkeys[0].Hotkey, pressed: true);
+        harness.Hotkeys.Trigger(harness.ViewModel.Settings.CustomHotkeys[0].Hotkey, pressed: false);
+        Assert.True(speaker.Volume > before);
+        harness.ViewModel.SpeakerVolume = 20;
+
+        // MicSwitch flattened "All speakers" to one level and put it back on every device change (its #100, #101).
+        Assert.Equal(0.2f, speaker.Volume!.Value, 3);
+        Assert.Null(speaker.KeptVolume);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(OverlayVisibilityMode.WhenUnmuted, false)]
+    [InlineData(OverlayVisibilityMode.WhenMuted, true)]
+    public void NoMicrophone_LooksMuted_NeverLive(OverlayVisibilityMode visibility, bool overlayShown)
+    {
+        using var harness = new TestHarness(s => s.Overlay.Visibility = visibility);
+        var vm = harness.ViewModel;
+        harness.Devices.Microphone.IsConnected = false;
+        harness.Devices.Microphone.Rebind();
+
+        // MicSwitch showed the live icon and overlay when no microphone was connected (its #114).
+        Assert.Null(vm.IsMuted);
+        Assert.Equal("No microphone", vm.StateLabel);
+        Assert.True(vm.IsMutedState);
+        Assert.False(vm.IsLiveState);
+        Assert.Same(vm.MutedIcon, vm.CurrentIcon);
+        Assert.Equal(overlayShown, vm.IsOverlayVisible);
+    }
+
+    [AvaloniaFact]
     public void QuickToggles_OverlayRestoresLastMode_AndSoundsCanBeSilenced()
     {
         using var harness = new TestHarness();

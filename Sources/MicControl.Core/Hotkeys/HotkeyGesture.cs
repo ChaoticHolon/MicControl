@@ -115,9 +115,13 @@ public sealed record HotkeyGesture(HotkeyModifiers Modifiers = HotkeyModifiers.N
             return true;
         }
 
-        // A trailing delimiter after a modifier ("Ctrl+") is a gesture typed halfway, not a key named "Ctrl+".
+        // A trailing delimiter after a modifier ("Ctrl+") is a gesture typed halfway, not a key named "Ctrl+". "None"
+        // is no key (it would print as "None" and load back empty), and key names never hold control characters or
+        // half a surrogate pair (which a save would turn into U+FFFD).
         if (keyPart.Length == 0 || keyPart.Length > 1 && keyPart[^1] == Delimiter
-            || keyPart.Contains(' ', StringComparison.Ordinal) && !KeyAliases.ContainsKey(keyPart))
+            || keyPart.Contains(' ', StringComparison.Ordinal) && !KeyAliases.ContainsKey(keyPart)
+            || keyPart.Equals("None", StringComparison.OrdinalIgnoreCase)
+            || keyPart.Any(c => char.IsControl(c) || char.IsSurrogate(c)))
         {
             return false;
         }

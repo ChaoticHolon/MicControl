@@ -229,11 +229,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool IsMicrophoneConnected => microphone.IsConnected;
 
-    public bool IsMutedState => IsMuted == true;
+    /// <summary>Muted, or no microphone connected: anything but live looks muted (red), never live.</summary>
+    public bool IsMutedState => IsMuted != false;
 
     public bool IsLiveState => IsMuted == false;
 
-    public string StatusGlyph => IsMuted == true ? "" : "";
+    public string StatusGlyph => IsMutedState ? "" : "";
 
     public string StateLabel => IsMuted switch
     {
@@ -254,13 +255,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public string ToggleMuteText => IsMuted == true ? "Unmute" : "Mute";
 
-    public Bitmap CurrentIcon => IsMuted == true ? MutedIcon : UnmutedIcon;
+    public Bitmap CurrentIcon => IsMutedState ? MutedIcon : UnmutedIcon;
 
     /// <summary>
     /// The window and tray icon for <see cref="CurrentIcon"/>: the built-in .ico, which has a drawing for each small
     /// size so the tray stays sharp, or the user's own overlay icon.
     /// </summary>
-    public WindowIcon CurrentWindowIcon => IsMuted == true
+    public WindowIcon CurrentWindowIcon => IsMutedState
         ? ReferenceEquals(MutedIcon, DefaultMutedIcon) ? DefaultMutedWindowIcon.Value : new WindowIcon(MutedIcon)
         : ReferenceEquals(UnmutedIcon, DefaultUnmutedIcon) ? DefaultUnmutedWindowIcon.Value : new WindowIcon(UnmutedIcon);
 
@@ -599,11 +600,47 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var customCount = hotkeyRegistrations.Count - 1;
         LogHotkeysApplied(mic.MuteMode, mic.Hotkey.Key, mic.Hotkey.AlternativeKey, customCount);
 
-        void Register(HotkeySettings settings, string name, Action<bool> handler) => hotkeyRegistrations.Add(hotkeys.Register(settings, pressed =>
+        void Register(HotkeySettings settings, string name, Action<bool> handler)
         {
-            LogHotkeyEvent(name, pressed ? "pressed" : "released");
+            var registration = new HotkeyRegistration(handler, () => LogHeldHotkeyReleased(name));
+            registration.Inner = hotkeys.Register(settings, pressed =>
+            {
+                LogHotkeyEvent(name, pressed ? "pressed" : "released");
+                registration.OnEvent(pressed);
+            });
+            hotkeyRegistrations.Add(registration);
+        }
+    }
+
+    /// <summary>
+    /// A registered hotkey that remembers whether it's held. Re-applying the hotkeys (a setting changed while a key
+    /// was down) ends the hold: the new registration never saw the press, so it ignores the release, and a mouse
+    /// button doesn't repeat its press. Without this, push-to-talk held on a mouse button stayed live after letting
+    /// go, and a held volume key kept changing the volume.
+    /// </summary>
+    private sealed class HotkeyRegistration(Action<bool> handler, Action onReleasedByDispose) : IDisposable
+    {
+        private bool isHeld;
+
+        public IDisposable? Inner { get; set; }
+
+        public void OnEvent(bool pressed)
+        {
+            isHeld = pressed;
             handler(pressed);
-        }));
+        }
+
+        public void Dispose()
+        {
+            Inner?.Dispose();
+            Inner = null;
+            if (isHeld)
+            {
+                isHeld = false;
+                onReleasedByDispose();
+                handler(false);
+            }
+        }
     }
 
     private void SetMute(bool? mute)
@@ -728,10 +765,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
         try
         {
-            return new Bitmap(path);
+            using var stream = File.OpenRead(path);
+            var header = new byte[256 * 1024]; // enough for a JPEG's size after its EXIF data
+            var length = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+            if (!Imaging.ImageSize.IsReasonable(header.AsSpan(0, length)))
+            {
+                return null;
+            }
+
+            stream.Position = 0;
+            return new Bitmap(stream);
         }
-        catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException
+            or OutOfMemoryException || ex.GetType() == typeof(Exception))
         {
+            // Skia reports pixels it can't allocate (an image too large to decode) as a plain Exception.
             return null;
         }
     }
@@ -791,6 +839,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Hotkey {Name} {Event}")]
     private partial void LogHotkeyEvent(string name, string @event);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Hotkey {Name} released: the hotkeys changed while it was held")]
+    private partial void LogHeldHotkeyReleased(string name);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Custom hotkey {Key} / {AlternativeKey} -> {Action} (exclusive: {Suppress})")]
     private partial void LogCustomHotkey(Hotkeys.HotkeyGesture key, Hotkeys.HotkeyGesture alternativeKey, HotkeyAction action, bool suppress);

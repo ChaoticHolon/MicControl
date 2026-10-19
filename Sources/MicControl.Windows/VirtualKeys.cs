@@ -27,6 +27,18 @@ internal static class VirtualKeys
         ["OemCloseBrackets"] = 0xDD, ["Oem6"] = 0xDD, ["OemQuotes"] = 0xDE, ["Oem7"] = 0xDE, ["Oem8"] = 0xDF,
         ["OemBackslash"] = 0xE2, ["Oem102"] = 0xE2, ["Attn"] = 0xF6, ["CrSel"] = 0xF7, ["ExSel"] = 0xF8,
         ["EraseEof"] = 0xF9, ["Play"] = 0xFA, ["Zoom"] = 0xFB, ["Pa1"] = 0xFD, ["OemClear"] = 0xFE,
+
+        // IME and regional keys (Japanese 変換/無変換 are popular push-to-talk keys; ABNT is Brazilian), under the
+        // names Avalonia's Key.ToString() gives them, including the DBE aliases it picks for shared values.
+        ["KanaMode"] = 0x15, ["HangulMode"] = 0x15, ["JunjaMode"] = 0x17, ["FinalMode"] = 0x18, ["HanjaMode"] = 0x19,
+        ["KanjiMode"] = 0x19, ["ImeConvert"] = 0x1C, ["ImeNonConvert"] = 0x1D, ["ImeAccept"] = 0x1E, ["ImeModeChange"] = 0x1F,
+        ["AbntC1"] = 0xC1, ["AbntC2"] = 0xC2, ["ImeProcessed"] = 0xE5,
+        ["OemAttn"] = 0xF0, ["DbeAlphanumeric"] = 0xF0, ["OemFinish"] = 0xF1, ["DbeKatakana"] = 0xF1,
+        ["OemCopy"] = 0xF2, ["DbeHiragana"] = 0xF2, ["OemAuto"] = 0xF3, ["DbeSbcsChar"] = 0xF3,
+        ["OemEnlw"] = 0xF4, ["DbeDbcsChar"] = 0xF4, ["OemBackTab"] = 0xF5, ["DbeRoman"] = 0xF5, ["DbeNoRoman"] = 0xF6,
+        ["DbeEnterWordRegisterMode"] = 0xF7, ["DbeEnterImeConfigureMode"] = 0xF8, ["DbeFlushString"] = 0xF9,
+        ["DbeCodeInput"] = 0xFA, ["DbeNoCodeInput"] = 0xFB, ["NoName"] = 0xFC, ["DbeDetermineString"] = 0xFC,
+        ["DbeEnterDialogConversionMode"] = 0xFD,
     };
 
     /// <returns>The virtual-key code, or 0 when the name is unknown.</returns>

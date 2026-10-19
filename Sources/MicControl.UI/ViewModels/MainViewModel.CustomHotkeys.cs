@@ -77,7 +77,9 @@ public sealed partial class MainViewModel
     public double SpeakerVolume
     {
         get => (speakers.Volume ?? 0) * 100;
-        set => speakers.Volume = (float)(value / 100);
+        // Moves every controlled speaker by the same step and keeps nothing: "All speakers" must not flatten
+        // every output to one level, and a level kept for plugged-in devices would undo the user's own changes.
+        set => speakers.ChangeVolume((float)(value / 100) - (speakers.Volume ?? 0));
     }
 
     [ObservableProperty]
@@ -94,7 +96,10 @@ public sealed partial class MainViewModel
         return [.. AllActions.Where(a => !Equals(a.Value, main) || Equals(a.Value, current))];
     }
 
-    [RelayCommand]
+    /// <summary>False once the list holds <see cref="AppSettings.MaxCustomHotkeys"/> rows.</summary>
+    public bool CanAddCustomHotkey => CustomHotkeys.Count < AppSettings.MaxCustomHotkeys;
+
+    [RelayCommand(CanExecute = nameof(CanAddCustomHotkey))]
     private void AddCustomHotkey()
     {
         var main = MuteRules.MainActionFor(MuteMode);
@@ -120,6 +125,8 @@ public sealed partial class MainViewModel
     {
         OnPropertyChanged(nameof(HasCustomHotkeys));
         OnPropertyChanged(nameof(HasSpeakerActions));
+        OnPropertyChanged(nameof(CanAddCustomHotkey));
+        AddCustomHotkeyCommand.NotifyCanExecuteChanged();
         ApplyHotkeys();
         Save();
     }
@@ -165,7 +172,7 @@ public sealed partial class MainViewModel
         }
 
         volumeRepeatStep = step;
-        speakers.Volume = (speakers.Volume ?? 0) + step;
+        speakers.ChangeVolume(step);
         volumeRepeatTimer.Start();
     }
 

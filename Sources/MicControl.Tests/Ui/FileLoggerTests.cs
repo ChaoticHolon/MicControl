@@ -150,5 +150,17 @@ public sealed class FileLoggerTests : IDisposable
         Assert.Equal(5, harness.ViewModel.LogLevels.Count);
     }
 
+    [Fact]
+    public void LogsFolderCantBeCreated_StillStarts_AndDropsLines()
+    {
+        // A file where the folder goes (or a redirected AppData that's offline) used to stop every start.
+        var path = Path.Combine(directory, "logs");
+        File.WriteAllText(path, "not a folder");
+        using var provider = new FileLoggerProvider(path, new LogLevelSwitch());
+        Write(provider.CreateLogger("MicControl.Tests.Sample"), LogLevel.Information, "dropped");
+        Assert.True(provider.Flush(TimeSpan.FromSeconds(5)));
+        Assert.Equal("not a folder", File.ReadAllText(path));
+    }
+
     private static void Write(ILogger logger, LogLevel level, string message) => logger.Log(level, default, message, null, (s, _) => s);
 }

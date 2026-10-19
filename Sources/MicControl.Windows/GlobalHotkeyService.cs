@@ -14,7 +14,8 @@ namespace MicControl.Windows;
 /// </summary>
 public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
 {
-    private const int VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_MENU = 0x12, VK_LWIN = 0x5B, VK_RWIN = 0x5C;
+    private const int VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_MENU = 0x12, VK_LWIN = 0x5B, VK_RWIN = 0x5C, VK_LMENU = 0xA4, VK_RMENU = 0xA5;
+    private const ushort VK_MASK = 0xE8; // unassigned: no app or Windows itself acts on it
     private const uint WM_CHECK_HELD = 0x8000 + 1; // WM_APP + 1, posted to the hook thread
     private static readonly TimeSpan HeldCheckInterval = TimeSpan.FromMilliseconds(250);
 
@@ -127,6 +128,11 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
             var isDown = wParam is WM_KEYDOWN or WM_SYSKEYDOWN;
             if (Process(t => !t.Gesture.IsMouse && t.VirtualKey == data.vkCode, isDown, (int)data.vkCode, isWheel: false))
             {
+                if (isDown)
+                {
+                    MaskWinAndAlt((int)data.vkCode);
+                }
+
                 return 1;
             }
         }
@@ -204,6 +210,31 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
         }
 
         return suppress;
+    }
+
+    /// <summary>
+    /// An exclusive hotkey with Win or Alt (Win+F1): the key is swallowed, so when Win or Alt comes up Windows thinks
+    /// it was pressed alone and opens the Start menu, or the active app's menu bar takes the keyboard. A press of an
+    /// unassigned key in between (as AutoHotkey does) tells Windows the modifier was used for something.
+    /// </summary>
+    private void MaskWinAndAlt(int swallowedKey)
+    {
+        if (swallowedKey is VK_LWIN or VK_RWIN or VK_MENU or VK_LMENU or VK_RMENU
+            || !(IsKeyDown(VK_LWIN) || IsKeyDown(VK_RWIN) || IsKeyDown(VK_LMENU) || IsKeyDown(VK_RMENU)))
+        {
+            return;
+        }
+
+        INPUT[] inputs =
+        [
+            new() { type = INPUT_KEYBOARD, u = new() { ki = new() { wVk = VK_MASK } } },
+            new() { type = INPUT_KEYBOARD, u = new() { ki = new() { wVk = VK_MASK, dwFlags = KEYEVENTF_KEYUP } } },
+        ];
+        if (SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>()) != inputs.Length)
+        {
+            var error = Marshal.GetLastPInvokeError();
+            LogMaskFailed(error);
+        }
     }
 
     // Thread pool: only wakes the hook thread while a hotkey is held.
@@ -290,6 +321,9 @@ public sealed partial class GlobalHotkeyService : IGlobalHotkeys, IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Hotkey handler failed")]
     private partial void LogHandlerFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Could not mask Win/Alt after an exclusive hotkey, Win32 error {Error}")]
+    private partial void LogMaskFailed(int error);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Low-level keyboard and mouse hooks installed")]
     private partial void LogHooksInstalled();
