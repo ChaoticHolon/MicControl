@@ -1,0 +1,106 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MicControl.ViewModels"
+        x:Class="MicControl.Views.InstallerWindow"
+        x:DataType="vm:InstallerViewModel"
+        Title="{Binding WindowTitle}"
+        Width="620" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PageBackgroundBrush}">
+    <!-- Setup and uninstall: the app's own theme, cards and accent, so it looks like MicControl itself. -->
+    <StackPanel Margin="28,24,28,24" Spacing="20">
+        <!-- Header -->
+        <Grid ColumnDefinitions="Auto,*">
+            <Border Width="52" Height="52" CornerRadius="26" Background="{DynamicResource SystemControlHighlightAccentBrush}">
+                <TextBlock Classes="glyph" FontSize="24" Foreground="White" HorizontalAlignment="Center" Text="&#xE720;" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock FontSize="20" FontWeight="SemiBold" Text="MicControl" />
+                <TextBlock Classes="secondary" FontSize="13" Text="{Binding Version, StringFormat='Version {0}'}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Install: who for -->
+        <StackPanel Spacing="10" IsVisible="{Binding IsInstall}">
+            <StackPanel Spacing="10" IsVisible="{Binding IsStartPage}">
+                <TextBlock FontSize="24" FontWeight="SemiBold" Text="Who should be able to use MicControl?" TextWrapping="Wrap" />
+                <Border Classes="card">
+                    <RadioButton GroupName="scope" IsChecked="{Binding ForAllUsers}">
+                        <StackPanel Margin="4,0,0,0">
+                            <TextBlock FontWeight="SemiBold" Text="Everyone on this PC (recommended)" />
+                            <TextBlock Classes="secondary" Text="{Binding AllUsersDescription}" />
+                        </StackPanel>
+                    </RadioButton>
+                </Border>
+                <Border Classes="card">
+                    <RadioButton GroupName="scope" IsChecked="{Binding ForJustMe}">
+                        <StackPanel Margin="4,0,0,0">
+                            <TextBlock FontWeight="SemiBold" Text="Just me" />
+                            <TextBlock Classes="secondary" Text="{Binding JustMeDescription}" />
+                        </StackPanel>
+                    </RadioButton>
+                </Border>
+                <TextBlock Classes="secondary" FontSize="13" Text="{Binding ExistingNote}"
+                           IsVisible="{Binding ExistingNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="secondary" FontSize="13" Text="{Binding OtherCopyNote}"
+                           IsVisible="{Binding OtherCopyNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Uninstall: confirm -->
+        <StackPanel Spacing="10" IsVisible="{Binding IsUninstall}">
+            <StackPanel Spacing="10" IsVisible="{Binding IsStartPage}">
+                <TextBlock FontSize="24" FontWeight="SemiBold" Text="Uninstall MicControl?" />
+                <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding UninstallDescription}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Working -->
+        <StackPanel Spacing="14" IsVisible="{Binding IsWorkingPage}">
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding WorkingTitle}" />
+            <ProgressBar Height="4" MinHeight="4" CornerRadius="2" Minimum="0" Maximum="1" Value="{Binding Progress}" />
+        </StackPanel>
+
+        <!-- Done -->
+        <StackPanel Spacing="12" IsVisible="{Binding IsDonePage}">
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding DoneTitle}" />
+            <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding DoneText}" />
+            <CheckBox Content="Start MicControl now" IsChecked="{Binding LaunchAfterInstall}" IsVisible="{Binding IsInstall}" />
+        </StackPanel>
+
+        <!-- Failed -->
+        <StackPanel Spacing="12" IsVisible="{Binding IsFailedPage}">
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="That didn't work" />
+            <TextBlock FontSize="14" TextWrapping="Wrap" Text="Nothing else on your PC was changed. The details are below and in the log." />
+        </StackPanel>
+
+        <Border Classes="card caution" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource CautionForegroundBrush}" Text="{Binding Error}" />
+        </Border>
+
+        <!-- Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Cancel" MinWidth="96" HorizontalContentAlignment="Center" Command="{Binding CancelCommand}" IsVisible="{Binding IsStartPage}" />
+            <Button Classes="accent" Content="Install" MinWidth="110" HorizontalContentAlignment="Center" Command="{Binding InstallCommand}">
+                <Button.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsStartPage" />
+                        <Binding Path="IsInstall" />
+                    </MultiBinding>
+                </Button.IsVisible>
+            </Button>
+            <Button Classes="accent" Content="Uninstall" MinWidth="110" HorizontalContentAlignment="Center" Command="{Binding UninstallCommand}" IsEnabled="{Binding CanUninstall}">
+                <Button.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsStartPage" />
+                        <Binding Path="IsUninstall" />
+                    </MultiBinding>
+                </Button.IsVisible>
+            </Button>
+            <Button Content="Back" MinWidth="96" HorizontalContentAlignment="Center" Command="{Binding BackCommand}" IsVisible="{Binding IsFailedPage}" />
+            <Button Content="Close" MinWidth="96" HorizontalContentAlignment="Center" Command="{Binding CancelCommand}" IsVisible="{Binding IsFailedPage}" />
+            <Button Classes="accent" MinWidth="110" HorizontalContentAlignment="Center" Command="{Binding FinishCommand}" IsVisible="{Binding IsDonePage}"
+                    Content="{Binding FinishText}" />
+        </StackPanel>
+    </StackPanel>
+</Window>

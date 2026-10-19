@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Test method names use underscores for readability. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Avalonia.Headless.XUnit" />
+    <!-- Real rendering in the headless tests, so ScreenshotTests can capture the windows. -->
+    <PackageReference Include="Avalonia.Skia" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MicControl.Core\MicControl.Core.csproj" />
+    <ProjectReference Include="..\MicControl.UI\MicControl.UI.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Windows executable: wires the Avalonia UI (MicControl.UI) to the Windows platform services (MicControl.Windows). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\MicControl.UI\Assets\microphoneEnabled.ico</ApplicationIcon>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+  <!--
+    Release builds are one self-contained file that is both the setup (MicControl-Setup-<version>.exe) and, once it
+    has copied itself into place, the installed app. Native libraries unpack to %TEMP%\.net on first start (missing
+    files are restored automatically); everything else runs from the file. See installer\build.ps1.
+  -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The built-in sounds travel inside the executable; installing writes them next to it (WindowsInstaller). -->
+    <EmbeddedResource Include="..\MicControl.UI\Assets\Notifications\*.wav" LogicalName="Sounds/%(Filename)%(Extension)" />
+    <!-- The licence and third-party notices travel with the exe; installing writes them next to it. -->
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="Legal/LICENSE.txt" />
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.txt" LogicalName="Legal/THIRD-PARTY-NOTICES.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MicControl.UI\MicControl.UI.csproj" />
+    <ProjectReference Include="..\MicControl.Windows\MicControl.Windows.csproj" />
+  </ItemGroup>
+</Project>

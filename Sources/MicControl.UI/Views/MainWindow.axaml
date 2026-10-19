@@ -1,0 +1,123 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MicControl.ViewModels"
+        xmlns:pages="using:MicControl.Views.Pages"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        x:Class="MicControl.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding Title}"
+        Width="1000" Height="720" MinWidth="780" MinHeight="520"
+        Background="{DynamicResource PageBackgroundBrush}"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="52"
+        WindowDecorationsTheme="{DynamicResource HeaderDecorations}">
+    <Window.Resources>
+        <!-- Avalonia draws the title bar's parts over the window: keep its minimize, maximize and close buttons, but drop
+             its title text (the header shows the name) and its full-screen button (MicControl has no full-screen mode). -->
+        <ControlTheme x:Key="HeaderDecorations" TargetType="chrome:WindowDrawnDecorations"
+                      BasedOn="{StaticResource {x:Type chrome:WindowDrawnDecorations}}">
+            <!-- The panel's own IsVisible is a template binding, which outranks a style, so hide the text inside it -->
+            <Style Selector="^ /template/ Panel#PART_TitleTextPanel > TextBlock">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+            <Style Selector="^ /template/ Button#PART_FullScreenButton">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </ControlTheme>
+    </Window.Resources>
+    <Panel>
+        <DockPanel>
+            <!-- Header, drawn in the title bar like a browser: page tabs (the first, Home, is the icon and name), (away from Home, which shows it
+                 already) the microphone state, then room for the system's minimize, maximize and close buttons.
+                 Empty space drags the window; the tabs and buttons are marked User so they get clicks. -->
+            <Border DockPanel.Dock="Top" Height="52" Padding="8,0,0,0" Background="Transparent"
+                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1"
+                    chrome:WindowDecorationProperties.ElementRole="TitleBar">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <ListBox Classes="tabs" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                             ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}"
+                             chrome:WindowDecorationProperties.ElementRole="User">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:NavItem">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                        <!-- Home's tab is the app icon (live/muted) and name -->
+                                        <Image Width="20" Height="20" VerticalAlignment="Center" IsVisible="{Binding IsBrand}"
+                                               Source="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).CurrentIcon}"
+                                               RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                        <TextBlock Classes="glyph" FontSize="17" VerticalAlignment="Center" IsVisible="{Binding !IsBrand}" Text="{Binding Glyph}" />
+                                        <TextBlock FontSize="15" VerticalAlignment="Center" Classes.brand="{Binding IsBrand}" Text="{Binding Title}" />
+                                    </StackPanel>
+                                    <Border Classes="tabLine" Margin="0,10,0,0" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <!-- Status chip, on every page: the state at a glance, and one click to switch. Smaller and quieter than
+                         Home's status card, which stays the main control. -->
+                    <Button Grid.Column="1" Classes="statusChip" Margin="12,0,16,0" VerticalAlignment="Center"
+                            Command="{Binding ToggleMuteCommand}" IsEnabled="{Binding IsMicrophoneConnected}"
+                            ToolTip.Tip="{Binding MainHotkeySummary}" AutomationProperties.Name="Microphone state"
+                            chrome:WindowDecorationProperties.ElementRole="User">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Classes="micDot" Classes.muted="{Binding IsMutedState}" Width="20" Height="20" CornerRadius="10">
+                                <TextBlock Classes="glyph" FontSize="11" Foreground="White" HorizontalAlignment="Center" Text="{Binding StatusGlyph}" />
+                            </Border>
+                            <!-- Each text sits over an invisible copy of its longest word, so switching between Live and Muted
+                                 never changes the chip's width (right-aligned, it would otherwise shift the whole chip) -->
+                            <Grid VerticalAlignment="Center">
+                                <TextBlock Classes="chipSizer" FontSize="13" FontWeight="SemiBold" Text="Muted" />
+                                <TextBlock FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding StateLabel}" />
+                            </Grid>
+                            <Border Width="1" Height="14" VerticalAlignment="Center" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+                            <Grid VerticalAlignment="Center">
+                                <TextBlock Classes="chipSizer" FontSize="13" Text="Unmute" />
+                                <TextBlock Classes="secondary" FontSize="13" HorizontalAlignment="Center" Text="{Binding ToggleMuteText}" />
+                            </Grid>
+                        </StackPanel>
+                    </Button>
+                    <!-- The system's caption buttons (3 x 46 px) sit over this column while the title bar is ours -->
+                    <Border Grid.Column="2" Width="138" IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}" />
+                </Grid>
+            </Border>
+
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="32,12,32,0" MaxWidth="1000">
+                    <Border Classes="card caution" IsVisible="{Binding Capabilities.LimitationNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <DockPanel>
+                            <TextBlock Classes="glyph" Text="&#xE7BA;" Margin="0,0,12,0" Foreground="{DynamicResource CautionForegroundBrush}" />
+                            <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Capabilities.LimitationNotice}" />
+                        </DockPanel>
+                    </Border>
+                    <Border Classes="card" IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="&#xE711;" FontFamily="{StaticResource IconFont}" Padding="8"
+                                    Command="{Binding DismissStatusCommand}" AutomationProperties.Name="Dismiss" />
+                            <TextBlock Classes="glyph" Text="&#xE946;" Margin="0,0,12,0" />
+                            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <Panel>
+                        <pages:HomePage IsVisible="{Binding IsHomePage}" />
+                        <pages:SoundsPage IsVisible="{Binding IsSoundsPage}" />
+                        <pages:OverlayPage IsVisible="{Binding IsOverlayPage}" />
+                        <pages:HotkeysPage IsVisible="{Binding IsHotkeysPage}" />
+                        <pages:AboutPage IsVisible="{Binding IsAboutPage}" />
+                    </Panel>
+                </ScrollViewer>
+            </DockPanel>
+        </DockPanel>
+
+        <pages:SetupView IsVisible="{Binding IsSetupVisible}" />
+        <!-- Setup covers the header, so it gets its own strip to drag the window by -->
+        <Border Height="52" VerticalAlignment="Top" Background="Transparent" IsVisible="{Binding IsSetupVisible}"
+                chrome:WindowDecorationProperties.ElementRole="TitleBar" />
+    </Panel>
+</Window>
