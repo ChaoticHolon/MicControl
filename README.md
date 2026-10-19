@@ -78,6 +78,9 @@ foreach ($v in 'DOTNET_CLI_TELEMETRY_OPTOUT', 'TESTINGPLATFORM_TELEMETRY_OPTOUT'
 ### Settings
 Settings are stored in `%APPDATA%\MicControl\settings.json`, logs in `%APPDATA%\MicControl\logs`. On first start, MicControl imports a MicSwitch 1.x `%APPDATA%\MicSwitch\release\config.cfg`, with its custom icon and sounds (MicSwitch's beeps become MicControl's own cues). The mode and startup state start from MicControl's defaults (push-to-talk, muted), and setup still runs so you can review what was imported. A MicSwitch autostart entry is taken over by MicControl only when the MicSwitch program it starts has been removed; an installed MicSwitch keeps its own.
 
+## Security
+Found a security problem? Please report it privately, as described in [SECURITY.md](SECURITY.md).
+
 ## Privacy
 MicControl collects no telemetry and sends nothing about you or your PC. The only network access is the update check, which reads the latest release from GitHub (About → Check automatically at startup turns it off) and downloads an update when you install one.
 
