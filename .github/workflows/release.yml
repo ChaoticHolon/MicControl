@@ -12,6 +12,14 @@ on:
 permissions:
   contents: write
 
+# No telemetry from the build tools (developer's choice): the .NET SDK, Microsoft.Testing.Platform and Avalonia's
+# build telemetry (also disabled for every machine in Sources/Directory.Build.targets).
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: '1'
+  AVALONIA_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
 jobs:
   release:
     runs-on: windows-latest

@@ -59,6 +59,13 @@ On Windows without `sha512sum`, compare `(Get-FileHash MicControl-Setup-1.0.0.ex
 
 The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux soon (KDE Plasma 6 on Wayland is the planned first target). The tests, including headless UI tests, run on Windows and Linux.
 
+### Telemetry
+The build tools phone home by default; this repository turns that off where it can. Avalonia's build telemetry is disabled for every build in `Sources\Directory.Build.targets`, and CI also opts out of the .NET SDK's and the test platform's. Those two only listen to environment variables, so set them once on your own PC (a new terminal and Visual Studio pick them up):
+
+```powershell
+foreach ($v in 'DOTNET_CLI_TELEMETRY_OPTOUT', 'TESTINGPLATFORM_TELEMETRY_OPTOUT', 'AVALONIA_TELEMETRY_OPTOUT', 'DOTNET_NOLOGO') { [Environment]::SetEnvironmentVariable($v, '1', 'User') }
+```
+
 ### Project layout
 | Project | Contents |
 | --- | --- |
@@ -71,10 +78,14 @@ The UI is built with [Avalonia](https://avaloniaui.net) so it can run on Linux s
 ### Settings
 Settings are stored in `%APPDATA%\MicControl\settings.json`, logs in `%APPDATA%\MicControl\logs`. On first start, MicControl imports a MicSwitch 1.x `%APPDATA%\MicSwitch\release\config.cfg`, with its custom icon and sounds (MicSwitch's beeps become MicControl's own cues). The mode and startup state start from MicControl's defaults (push-to-talk, muted), and setup still runs so you can review what was imported. A MicSwitch autostart entry is taken over by MicControl only when the MicSwitch program it starts has been removed; an installed MicSwitch keeps its own.
 
-### Credits
+## Privacy
+MicControl collects no telemetry and sends nothing about you or your PC. The only network access is the update check, which reads the latest release from GitHub (About → Check automatically at startup turns it off) and downloads an update when you install one.
+
 ## License
 MicControl is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License](LICENSE), version 3 or (at your option) any later version. It comes with no warranty.
 
 It bundles open-source components under their own licenses (MIT, BSD and others), listed with their full texts in [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). The setup installs both files next to `MicControl.exe`, and About → License opens them. After changing packages, regenerate the notices with `dotnet run tools/GenerateThirdPartyNotices.cs` from the repository root; CI fails while they're out of date.
+
+## Credits
 
 Inspired by [MicSwitch](https://github.com/iXab3r/MicSwitch) by Xab3r. Icons from Microsoft's [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT licence, bundled in `Sources/MicControl.UI/Assets/Fonts`).

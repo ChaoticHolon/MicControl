@@ -105,6 +105,10 @@ MicControl grows from mic muting into voice processing and mixing. None of it is
 - **Device aliases**: custom names for devices, keyed by device id in settings (small; could ship in a 1.x).
 - Later: a clip recorder writing the recording bus to disk; macOS audio core (Core Audio HAL, ScreenCaptureKit); network control and streaming (OSC, a VBAN-compatible protocol).
 
+## Privacy and telemetry (developer's rule)
+- The app sends nothing: its only network access is the GitHub release check and the update download (`UpdateService`). Never add analytics, crash reporting or any other phone-home; README's Privacy section promises this.
+- Build tools are opted out wherever possible: `Sources/Directory.Build.targets` replaces Avalonia.BuildServices' `AvaloniaStats` target with an empty one (its only documented opt-out is the `AVALONIA_TELEMETRY_OPTOUT` environment variable); CI workflows and `.claude/settings.json` set `DOTNET_CLI_TELEMETRY_OPTOUT`, `TESTINGPLATFORM_TELEMETRY_OPTOUT`, `AVALONIA_TELEMETRY_OPTOUT` and `DOTNET_NOLOGO`; README gives the developer the one line to set them on a PC. Check new tools and packages for telemetry and opt out of it.
+
 ## Conventions
 - Package versions live only in `Sources/Directory.Packages.props`; shared build settings are in `Directory.Build.props`, style in `.editorconfig`.
 - XAML uses compiled bindings (`x:DataType`). For a ComboBox, use `DisplayMemberBinding` and `SelectedValueBinding` with `x:DataType`. Selected values must never be `null`: use `""` for "None" or "Default". Setters bound to `SelectedValue` must ignore `null` (a ComboBox pushes it while it builds), or opening a page rewrites settings.
