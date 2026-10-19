@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:MicControl.Controls"
+             xmlns:vm="using:MicControl.ViewModels"
+             xmlns:s="using:MicControl.Settings"
+             xmlns:p="using:MicControl.Platform"
+             x:Class="MicControl.Views.Pages.OverlayPage"
+             x:DataType="vm:MainViewModel">
+    <StackPanel Classes="page">
+        <TextBlock Classes="pageTitle" Text="Overlay" />
+        <TextBlock Classes="pageSubtitle" Text="A small always-on-top badge that shows whether you're muted, even over games." />
+
+        <!-- Live preview -->
+        <Border Classes="card" Height="140" Padding="0" ClipToBounds="True">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                    <GradientStop Color="#3A4A6B" Offset="0" />
+                    <GradientStop Color="#6B4A5E" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <TextBlock Margin="12,8" Foreground="#CCFFFFFF" FontSize="12" Text="Preview" />
+                <c:OverlayBadge HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="{Binding OverlayOpacity}" />
+            </Grid>
+        </Border>
+
+        <c:SettingRow Glyph="&#xE7F4;" Header="Show overlay">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Slider Classes="row" Minimum="0" Maximum="3" TickFrequency="1" IsSnapToTickEnabled="True" TickPlacement="BottomRight"
+                        SmallChange="1" LargeChange="1" Value="{Binding OverlayVisibilityStep}"
+                        AutomationProperties.Name="Show overlay" ToolTip.Tip="Never, When muted, When live, Always" />
+                <TextBlock Classes="sliderValue" Text="{Binding OverlayVisibilityName}" />
+            </StackPanel>
+        </c:SettingRow>
+        <StackPanel IsEnabled="{Binding OverlayEnabled}">
+            <c:SettingRow Glyph="&#xE8B0;" Header="Position" Description="Snap to a corner, or drag it with Edit position (double-click it when done)">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopLeft}" ToolTip.Tip="Top left" AutomationProperties.Name="Top left" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.TopRight}" ToolTip.Tip="Top right" AutomationProperties.Name="Top right" RenderTransform="scaleX(-1)" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.BottomLeft}" ToolTip.Tip="Bottom left" AutomationProperties.Name="Bottom left" RenderTransform="scaleY(-1)" />
+                    <Button Padding="8" FontFamily="{StaticResource IconFont}" Content="&#xE742;" Command="{Binding PlaceOverlayCommand}" CommandParameter="{x:Static s:OverlayCorner.BottomRight}" ToolTip.Tip="Bottom right" AutomationProperties.Name="Bottom right" RenderTransform="scale(-1,-1)" />
+                    <ToggleButton Margin="8,0,0,0" IsChecked="{Binding IsOverlayEditing}" Content="Edit position" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE740;" Header="Size">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Classes="row" Minimum="0.6" Maximum="2.5" SmallChange="0.1" Value="{Binding OverlayScale}" AutomationProperties.Name="Overlay size" />
+                    <TextBlock Classes="sliderValue" Text="{Binding OverlayScale, StringFormat={}{0:0%}}" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE790;" Header="Opacity">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider Classes="row" Minimum="0.2" Maximum="1" SmallChange="0.05" Value="{Binding OverlayOpacity}" AutomationProperties.Name="Overlay opacity" />
+                    <TextBlock Classes="sliderValue" Text="{Binding OverlayOpacity, StringFormat={}{0:0%}}" />
+                </StackPanel>
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE8E9;" Header="Show Muted / Live label">
+                <ToggleSwitch IsChecked="{Binding OverlayShowLabel}" AutomationProperties.Name="Show label" />
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xE720;" Header="Speaking indicator" Description="Outlines the overlay in green while you talk. Keeps the mic open, so Windows shows it as in use.">
+                <ToggleSwitch IsChecked="{Binding ShowSpeakingIndicator}" AutomationProperties.Name="Speaking indicator" />
+            </c:SettingRow>
+            <c:SettingRow Glyph="&#xEB9F;" Header="Custom icons" Description="Use your own images instead of the colored dot. Also used for the tray icon.">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Padding="6" Command="{Binding SelectMutedIconCommand}" ToolTip.Tip="Choose the muted icon" AutomationProperties.Name="Choose muted icon">
+                        <Image Source="{Binding MutedIcon}" Width="28" Height="28" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    </Button>
+                    <Button Padding="6" Command="{Binding SelectUnmutedIconCommand}" ToolTip.Tip="Choose the live icon" AutomationProperties.Name="Choose live icon">
+                        <Image Source="{Binding UnmutedIcon}" Width="28" Height="28" RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    </Button>
+                    <Button Content="Reset" Command="{Binding ResetIconsCommand}" />
+                </StackPanel>
+            </c:SettingRow>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

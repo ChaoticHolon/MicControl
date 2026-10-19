@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="MicControl.Core/MicControl.Core.csproj" />
+  <Project Path="MicControl.UI/MicControl.UI.csproj" />
+  <Project Path="MicControl.Windows/MicControl.Windows.csproj" />
+  <Project Path="MicControl/MicControl.csproj" />
+  <Project Path="MicControl.Tests/MicControl.Tests.csproj" />
+</Solution>

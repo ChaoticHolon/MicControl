@@ -6,6 +6,18 @@ on:
     branches: [master, dev]
   pull_request:
 
+# CI only reads the code (checkout; artifacts use their own token), so its GITHUB_TOKEN is read-only.
+permissions:
+  contents: read
+
+# No telemetry from the build tools (developer's choice): the .NET SDK, Microsoft.Testing.Platform and Avalonia's
+# build telemetry (also disabled for every machine in Sources/Directory.Build.targets).
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: '1'
+  AVALONIA_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -15,17 +27,20 @@ jobs:
         with:
           global-json-file: global.json
       - name: Build
-        run: dotnet build Sources/MicControlNG.slnx -c Release
+        run: dotnet build Sources/MicControl.slnx -c Release
       - name: Test
-        run: dotnet test --project Sources/MicControlNG.Tests -c Release --no-build
+        run: dotnet test --project Sources/MicControl.Tests -c Release --no-build
+      # Every bundled package must have its licence in THIRD-PARTY-NOTICES.txt, which ships with the exe.
+      - name: Third-party notices
+        run: dotnet run tools/GenerateThirdPartyNotices.cs -- --check
       # The setup is the app published as one file; keep it building and keep it as an artifact for manual testing.
       - name: Build setup
         shell: pwsh
         run: installer/build.ps1 -Version 0.0.${{ github.run_number }}
       - uses: actions/upload-artifact@v7
         with:
-          name: MicControlNG-Setup
-          path: artifacts/MicControlNG-Setup-*.exe
+          name: MicControl-Setup
+          path: artifacts/MicControl-Setup-*.exe
           retention-days: 14
 
   # Core logic and the Avalonia UI (headless) are cross-platform; keep them building and passing on Linux.
@@ -37,4 +52,4 @@ jobs:
         with:
           global-json-file: global.json
       - name: Test
-        run: dotnet test --project Sources/MicControlNG.Tests -c Release
+        run: dotnet test --project Sources/MicControl.Tests -c Release
