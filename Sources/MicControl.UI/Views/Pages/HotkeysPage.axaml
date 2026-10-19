@@ -38,6 +38,8 @@
                 <TextBlock Text="Add hotkey" />
             </StackPanel>
         </Button>
+        <TextBlock Classes="secondary" Margin="0,8,0,0" TextWrapping="Wrap" IsVisible="{Binding !CanAddCustomHotkey}"
+                   Text="That's the most custom hotkeys MicControl keeps (100). Remove one to add another." />
 
         <StackPanel IsVisible="{Binding HasSpeakerActions}">
             <TextBlock Classes="section" Text="Speakers" />

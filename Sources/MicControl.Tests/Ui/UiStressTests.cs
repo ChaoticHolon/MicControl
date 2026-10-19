@@ -344,4 +344,27 @@ public sealed class UiStressTests
 
         Assert.Empty(errors.Select(e => e.ToString()));
     }
+
+    [AvaloniaFact]
+    public void CustomHotkeys_CappedOnLoadAndOnAdd()
+    {
+        // 1,000 rows took 33 s to show headlessly; 5,000 long enough for the UI watchdog to restart the app.
+        using var harness = new TestHarness(s =>
+        {
+            for (var i = 0; i < AppSettings.MaxCustomHotkeys + 50; i++)
+            {
+                s.CustomHotkeys.Add(new CustomHotkey { Action = HotkeyAction.ToggleMute, Hotkey = new HotkeySettings { Key = HotkeyGesture.Parse($"Ctrl+F{i % 24 + 1}") } });
+            }
+        });
+        var vm = harness.ViewModel;
+        Assert.Equal(AppSettings.MaxCustomHotkeys, vm.CustomHotkeys.Count);
+        Assert.False(vm.CanAddCustomHotkey);
+        Assert.False(vm.AddCustomHotkeyCommand.CanExecute(null));
+
+        vm.CustomHotkeys[0].RemoveCommand.Execute(null);
+        Assert.True(vm.AddCustomHotkeyCommand.CanExecute(null));
+        vm.AddCustomHotkeyCommand.Execute(null);
+        Assert.Equal(AppSettings.MaxCustomHotkeys, harness.Settings.Current.CustomHotkeys.Count);
+        Assert.False(vm.AddCustomHotkeyCommand.CanExecute(null));
+    }
 }

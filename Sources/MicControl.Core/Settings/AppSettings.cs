@@ -24,6 +24,12 @@ public sealed class AppSettings
     /// </summary>
     public bool CustomHotkeysEnabled { get; set; }
 
+    /// <summary>
+    /// The most <see cref="CustomHotkeys"/> kept. A hand-edited file with thousands froze the Hotkeys page (each row is
+    /// a few controls) and made every key press check them all in the keyboard hook.
+    /// </summary>
+    public const int MaxCustomHotkeys = 100;
+
     /// <summary>Additional hotkeys, each bound to one action; they work only while <see cref="CustomHotkeysEnabled"/>.</summary>
     public List<CustomHotkey> CustomHotkeys { get; set; } = [];
 
@@ -64,6 +70,10 @@ public sealed class AppSettings
         Microphone.InitialState = Defined(Microphone.InitialState, defaults.Microphone.InitialState);
         Microphone.Volume = Microphone.Volume is { } volume && !float.IsNaN(volume) ? Math.Clamp(volume, 0, 1) : null;
         CustomHotkeys.RemoveAll(h => !System.Enum.IsDefined(h.Action));
+        if (CustomHotkeys.Count > MaxCustomHotkeys)
+        {
+            CustomHotkeys.RemoveRange(MaxCustomHotkeys, CustomHotkeys.Count - MaxCustomHotkeys);
+        }
         Notifications.Volume = float.IsNaN(Notifications.Volume) ? defaults.Notifications.Volume : Math.Clamp(Notifications.Volume, 0, 1);
         Overlay.Visibility = Defined(Overlay.Visibility, defaults.Overlay.Visibility);
         Overlay.LastVisibleMode = Defined(Overlay.LastVisibleMode, defaults.Overlay.LastVisibleMode);

@@ -96,7 +96,10 @@ public sealed partial class MainViewModel
         return [.. AllActions.Where(a => !Equals(a.Value, main) || Equals(a.Value, current))];
     }
 
-    [RelayCommand]
+    /// <summary>False once the list holds <see cref="AppSettings.MaxCustomHotkeys"/> rows.</summary>
+    public bool CanAddCustomHotkey => CustomHotkeys.Count < AppSettings.MaxCustomHotkeys;
+
+    [RelayCommand(CanExecute = nameof(CanAddCustomHotkey))]
     private void AddCustomHotkey()
     {
         var main = MuteRules.MainActionFor(MuteMode);
@@ -122,6 +125,8 @@ public sealed partial class MainViewModel
     {
         OnPropertyChanged(nameof(HasCustomHotkeys));
         OnPropertyChanged(nameof(HasSpeakerActions));
+        OnPropertyChanged(nameof(CanAddCustomHotkey));
+        AddCustomHotkeyCommand.NotifyCanExecuteChanged();
         ApplyHotkeys();
         Save();
     }
