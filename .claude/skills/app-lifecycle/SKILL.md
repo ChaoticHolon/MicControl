@@ -1,0 +1,14 @@
+---
+name: app-lifecycle
+description: How MicControl survives shutdown, sign-out and external closes - WindowGuard (WM_QUERYENDSESSION/WM_ENDSESSION, hidden helper windows refusing closes, the tray "zombie" bug), WindowLifecycleWatcher logging, UiWatchdog relaunch, OnMainLoopEnded. Load before touching App.axaml.cs exit/shutdown code, AppShutdown, WindowGuard, WatchLifecycle, UiWatchdog or overlay recreation.
+---
+
+# Shutdown and resilience (`App.axaml.cs`, `AppShutdown`)
+
+The hard rule (a session end always exits cleanly and never hides to the tray) is in CLAUDE.md; this is how it works.
+
+- A session end (shutdown, restart, sign-out, Restart Manager) always exits cleanly, in both modes, once Windows confirms it (WM_ENDSESSION): `WindowGuard` answers the WM_QUERYENDSESSION for Avalonia's message window, so the app keeps running if another app vetoes the shutdown. The log is flushed (`FileLoggerProvider.Flush`) before WM_ENDSESSION returns and keeps logging. It never hides to the tray, which would veto the restart. Avalonia's `ShutdownRequested` still exits on platforms without the guard.
+- Otherwise the overlay and hidden main window refuse every close (an external close of the hidden main window shows no tray notice). `WindowGuard` makes the hidden helper windows refuse closes too, on every thread of the process: Avalonia's `AvaloniaMessageWindow` (dispatcher posts, timers, tray icon), its `AvaloniaSimpleWindow`s (on the UI thread one owns the overlay, and Windows destroys owned windows with it; another lives on a background thread), and the IME windows. It rescans whenever one of our windows opens, and logs each helper it protects (name, handle, thread) or fails to watch. UI-thread windows are subclassed with comctl32; other threads' windows get their window procedure replaced, so their messages are handled (and logged) on their own thread, and only the UI thread's windows start the exit. External closes (e.g. `taskkill` without `/F`) are refused and logged as Warnings. Destroying the message window was the "zombie" bug (tray icon gone, hotkeys dead, process alive); destroying the hidden window that owns the overlay crashed the next mute change. If the overlay is destroyed anyway, `App` replaces it with a new one.
+- `IWindowInterop.WatchLifecycle` (`WindowLifecycleWatcher`, a Win32 subclass) logs WM_CLOSE, SC_CLOSE, WM_QUERYENDSESSION, WM_ENDSESSION and WM_DESTROY at Information, with flags, sent or posted, and the foreground process.
+- A `UiWatchdog` pings the UI thread every 20 s. After 3 misses it releases the hook, flushes the log, starts a fresh copy (`--relaunched-from=<pid>`, which waits for the old copy to exit) and ends with exit code 3.
+- When the main loop returns, `Program` calls `App.OnMainLoopEnded`, which cleans up if our exit didn't run, then `Environment.Exit`.
