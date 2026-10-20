@@ -26,6 +26,9 @@ MicControl is the successor to and inspired by [MicSwitch](https://github.com/iX
 - **Installs for everyone or just you** (no admin needed for just you), and **updates itself** from GitHub Releases, verified before it runs
 - **MicSwitch 1.x settings are imported** automatically on first start
 
+## Roadmap
+Next up: a 1.0.1 that tests the updater, then device aliases and other 1.x features, an audio engine with voice processing and noise removal, per-app capture, Linux (KDE Plasma on Wayland), and output buses for streaming. macOS follows next year. See [ROADMAP.md](ROADMAP.md) for the full plans.
+
 ## Install
 Download `MicControl-Setup-<version>.exe` from [Releases](https://github.com/ChaoticHolon/MicControl/releases) and choose **Everyone on this PC** (Program Files, needs admin) or **Just me** (your own Programs folder, no admin). Settings stay in your own `%APPDATA%\MicControl` either way. Windows SmartScreen may warn because the setup isn't code-signed (yet): choose **More info → Run anyway**. For unattended installs: `MicControl-Setup-<version>.exe --install --silent --scope=all` (or `--scope=user`); uninstall with `MicControl.exe --uninstall --silent`.
 

@@ -1,11 +1,13 @@
 ---
 name: roadmap
-description: MicControl's future plans in detail - Linux/macOS packaging and distribution, 1.x features, audio engine, speech enhancement, per-app capture, routing/buses, streamer support, backlog. Load before designing or building any of these, or when a change might close the door on them.
+description: MicControl's future plans in full technical detail (the human-readable version is ROADMAP.md) - Linux/macOS packaging and distribution, 1.x features, audio engine, speech enhancement, per-app capture, routing/buses, streamer support, backlog. Load before designing or building any of these, or when a change might close the door on them.
 ---
 
 # MicControl roadmap and platform plans (developer's plans; nothing built yet)
 
 MicControl grows from mic muting into voice processing and mixing. None of it is in 1.0; keep the current design open to it.
+
+`ROADMAP.md` at the repo root is the readable, structured version of these plans for people. When a plan changes, update both, so they never disagree.
 
 ## Packaging and platforms
 - Arch/CachyOS: two AUR `PKGBUILD`s. `miccontrol` builds from the source tag with `dotnet publish`; `miccontrol-bin` repackages the release's `miccontrol-<version>-linux-x64.tar.gz`. Framework-dependent on Arch's `dotnet-runtime`, installed system-wide (`/usr/lib/miccontrol`, `/usr/bin/miccontrol` launcher, `/usr/share/applications` desktop file, hicolor icons); settings in `~/.config/MicControl`. Updates come from pacman/shelly/paru/yay. Create and maintain pacman repo later.

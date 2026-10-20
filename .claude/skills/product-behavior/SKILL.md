@@ -5,7 +5,7 @@ description: The developer's detailed product decisions for MicControl - MicSwit
 
 # Product behavior (developer's decisions)
 
-The short rules are in CLAUDE.md under "Product decisions"; this is the full behavior they summarize. Keep it this way unless the developer decides otherwise.
+The short rules are in CLAUDE.md under "Hard rules"; this is the full behavior they summarize. Keep it this way unless the developer decides otherwise.
 
 ## Startup, tray and window
 - A MicSwitch 1.x import brings hotkeys, microphone, sounds, overlay and window settings, but never MicSwitch's mode or startup state (new users always get Push-to-talk and Muted), and setup still runs so the imported values can be reviewed. Imported custom hotkeys and non-default sounds stay switched off; setup's last step asks whether to use them (`OffersImportedCustomHotkeys`/`OffersImportedSounds`).
@@ -29,3 +29,17 @@ The short rules are in CLAUDE.md under "Product decisions"; this is the full beh
 
 ## Settings file
 - Settings: `%APPDATA%\MicControl\settings.json` (camelCase, hotkeys stored as text like `"Ctrl+F1"`); logs in `%APPDATA%\MicControl\logs\MicControl-yyyyMMdd.log` (a new file each day, also while running; last 7 kept; every process logging to the folder, such as the app and its setup, shares the file and appends under a named mutex). A hand-edited `settings.json` with `null` sections, rows or hotkeys loads with defaults in their place, and out-of-range numbers (including floats too large to save, which read as infinity), unknown enum values and negative window sizes are clamped or reset (`AppSettings.Normalize`, also applied to a MicSwitch import); a failed save is retried and never crashes; a file that stays locked loads defaults for the session and is never saved over (`SettingsStore.LoadError`). The settings format starts at version 1 (`AppSettings.CurrentVersion`); bump it only with a migration. Keep the MicSwitch 1.x import working (`LegacyConfigMigrator`, `%APPDATA%\MicSwitch\release\config.cfg`), and keep hotkey strings compatible with MicSwitch 1.x.
+
+## Summary
+- Default mode is Push-to-talk; Toggle and Push-to-mute are alternatives. State at startup (Toggle only) defaults to Muted. "Exclusive hotkey" (suppress) is off by default.
+- A MicSwitch 1.x import never brings MicSwitch's mode or startup state (new users always get Push-to-talk and Muted). Setup still runs so the imported values can be reviewed, and imported custom hotkeys and non-default sounds stay off until setup's last step turns them on.
+- Close to the tray (`IsTrayMode`, stored as `window.appMode`): one on/off switch; users never see "App mode", "Tray mode" or "Window mode". On (default) starts hidden and Close/Minimize hide to the tray; off is a normal app. First run always shows the window, for setup.
+- Shutdown and resilience (`App.axaml.cs`, `AppShutdown`, `WindowGuard`, `UiWatchdog`; details in the `app-lifecycle` skill): a session end (shutdown, restart, sign-out) always exits cleanly once Windows confirms it (WM_ENDSESSION) and never hides to the tray, which would veto the restart. Otherwise the overlay, the hidden main window and Avalonia's hidden helper windows refuse every external close: destroying the message window was the tray "zombie" bug.
+- Start with Windows is on by default, but only a new user's first run of an *installed* copy turns it on; dev/portable builds never register themselves, and existing or imported users keep their choice.
+- The tray icon is always shown. Left-click (or double-click) opens the full window and never changes state; there is no quick popup (the developer dropped it).
+- Optional features live in About → Advanced, off by default: a switch named "Custom X" adds a page plainly named "X" (Custom hotkeys → Hotkeys, Custom sounds → Sounds); keep that pattern. Basic settings (Play sounds, overlay, etc.) stay on Home.
+- Push-to-talk never stays live (a missed key-up is released, and changing hotkeys while one is held ends the hold). No microphone connected looks muted, never live. A microphone that comes back gets the app's last mute state and kept volume; speaker volume is never kept or flattened.
+- "Show overlay" is a four-stop slider (Never → When muted → When live → Always), not a dropdown; the overlay is click-through except while editing its position, and is kept on top.
+- The level meter and speaking indicator open the mic (OS "in use" indicator), so the meter only runs while Home/Setup is visible and the speaking indicator is opt-in.
+- MicSwitch's issue tracker (iXab3r/MicSwitch, archived) was audited against MicControl in `docs/micswitch-issues-audit.md`; check it before redesigning something MicSwitch got wrong.
+- Assets are generated, never hand-edited: the app icon (`tools/GenerateAppIcons.cs`, simple shapes, never a font glyph, so it's ours to ship), the "Relay on"/"Relay off" cues (`tools/GenerateCueSounds.cs`) and the icon font (`tools/GenerateIconFont.py`, Fluent UI System Icons, MIT); details in the `generated-assets` skill. Notification sounds must be CC0/public-domain; MicSwitch's beeps don't ship.
