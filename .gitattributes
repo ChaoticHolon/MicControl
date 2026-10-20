@@ -1,0 +1,22 @@
+# Line endings: the repository stores LF; text files check out with the platform's endings (core.autocrlf decides)
+# except where a tool needs one kind.
+* text=auto
+
+# bash fails on CRLF ("set: pipefail: invalid option name"), and Git for Windows' default core.autocrlf=true would give it.
+*.sh text eol=lf
+
+# PowerShell scripts check out with CRLF everywhere, as Windows PowerShell 5.1 and editors on Windows expect.
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets: never converted or diffed as text.
+*.png binary
+*.ico binary
+*.wav binary
+*.ttf binary
+*.exe binary
+*.dll binary
+*.zip binary

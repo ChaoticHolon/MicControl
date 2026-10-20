@@ -1,10 +1,16 @@
 #!/bin/bash
 # Signs this cloud session's commits with the cloud signing key (tools/Signing.ps1 CloudKey), so they show as
 # Verified on GitHub. The key comes from the environment's MICCONTROL_GIT_SIGNING_KEY (base64 of the private key);
-# without it, or without ssh-keygen, commits stay unsigned rather than failing.
+# without it, or without ssh-keygen, it prints one note and exits 0, so a session never fails over signing.
 set -euo pipefail
 
-if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ] || [ -z "${MICCONTROL_GIT_SIGNING_KEY:-}" ]; then
+# Only cloud sessions need it: the developer's PC signs with its own key (tools/Signing.ps1 GitSigning).
+if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+  exit 0
+fi
+
+if [ -z "${MICCONTROL_GIT_SIGNING_KEY:-}" ]; then
+  echo "git-signing: MICCONTROL_GIT_SIGNING_KEY isn't set, so this session's commits use the platform's signing key (not Verified on GitHub)" >&2
   exit 0
 fi
 
