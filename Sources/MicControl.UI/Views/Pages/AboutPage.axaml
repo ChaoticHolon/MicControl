@@ -50,6 +50,9 @@
         <c:SettingRow Glyph="&#xE943;" Header="Runtime" Description="{Binding RuntimeText}" />
         <c:SettingRow Glyph="&#xE771;" Header="UI framework" Description="{Binding UiFrameworkText}" />
         <c:SettingRow Glyph="&#xE72E;" Header="Hotkey access" Description="{Binding HotkeyAccessText}" />
+        <c:SettingRow Glyph="&#xE73F;" Header="Tray icons" Description="{Binding TrayIconsDescription}" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
+            <Button Content="Choose…" Command="{Binding OpenTrayIconSettingsCommand}" AutomationProperties.Name="Choose tray icons" />
+        </c:SettingRow>
 
         <TextBlock Classes="section" Text="Files and support" />
         <c:SettingRow Glyph="&#xE8B7;" Header="Settings folder" Description="{Binding SettingsFolder}">
