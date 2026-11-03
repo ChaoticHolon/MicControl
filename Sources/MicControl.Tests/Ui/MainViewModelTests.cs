@@ -319,6 +319,120 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void SpeakingIndicator_ReadsTheMeterWithoutRecording_UntilHomeIsVisible()
+    {
+        // Recording all day would keep Windows' "microphone in use" icon up.
+        using var harness = new TestHarness(s =>
+        {
+            s.Overlay.Visibility = OverlayVisibilityMode.Always;
+            s.Overlay.ShowSpeakingIndicator = true;
+        });
+        var vm = harness.ViewModel;
+
+        Assert.Equal((1, 0), (harness.LevelMonitor.ActiveSessions, harness.LevelMonitor.OpenSessions));
+        vm.IsWindowVisible = true;
+        Assert.Equal((1, 1), (harness.LevelMonitor.ActiveSessions, harness.LevelMonitor.OpenSessions));
+        vm.IsWindowVisible = false;
+        Assert.Equal((1, 0), (harness.LevelMonitor.ActiveSessions, harness.LevelMonitor.OpenSessions));
+    }
+
+    [AvaloniaFact]
+    public void TrayIcons_OpensWindowsSettings_AndShowsTheSteps()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+
+        Assert.Equal("Turn on MicControl.", vm.TrayIconsDescription);
+        vm.OpenTrayIconSettingsCommand.Execute(null);
+        Assert.Equal(1, harness.SystemPages.TrayIconsOpened);
+        Assert.Null(vm.StatusMessage);
+
+        harness.SystemPages.Fails = true;
+        vm.OpenTrayIconSettingsCommand.Execute(null);
+        Assert.Equal("Windows couldn't open its taskbar settings.", vm.StatusMessage);
+    }
+
+    [AvaloniaFact]
+    public void ChoosingAMicrophone_UpdatesEveryListShowingIt()
+    {
+        // Setup and Home each have a microphone list bound to the same property.
+        using var harness = new TestHarness(s => s.Microphone.DeviceId = AppSettings.AllDevices);
+        var vm = harness.ViewModel;
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.SelectedMicrophoneId = "mic-1";
+
+        Assert.Contains(nameof(vm.SelectedMicrophoneId), changed);
+        Assert.Contains(nameof(vm.MicrophoneStatusDetail), changed);
+    }
+
+    [AvaloniaFact]
+    public void AllMicrophones_ShowsABarForEachMicrophone()
+    {
+        using var harness = new TestHarness(s => s.Microphone.DeviceId = AppSettings.AllDevices);
+        harness.Devices.Microphones.Add(new("mic-2", "Webcam Microphone"));
+        harness.Devices.RaiseDevicesChanged();
+        var vm = harness.ViewModel;
+
+        vm.IsWindowVisible = true;
+        Assert.True(vm.ShowsMicrophoneLevels);
+        Assert.Equal(["USB Microphone", "Webcam Microphone"], vm.MicrophoneLevels.Select(l => l.Name));
+
+        vm.SelectedMicrophoneId = "mic-1";
+        Assert.False(vm.ShowsMicrophoneLevels);
+        Assert.Empty(vm.MicrophoneLevels);
+    }
+
+    [AvaloniaFact]
+    public void SetupMicTest_IsLiveOnlyWhileHeld()
+    {
+        using var harness = new TestHarness(s => s.SetupCompleted = false);
+        var vm = harness.ViewModel;
+
+        Assert.True(vm.IsMuted);
+        Assert.True(vm.ShowsMicTest);
+        vm.BeginMicTest();
+        Assert.False(vm.IsMuted);
+        Assert.True(vm.ShowsMicTest);
+        vm.EndMicTest();
+        Assert.True(vm.IsMuted);
+
+        // Leaving the step mutes again too.
+        vm.BeginMicTest();
+        vm.SetupNextCommand.Execute(null);
+        Assert.True(vm.IsMuted);
+    }
+
+    [AvaloniaFact]
+    public void SetupMicTest_LeavesALiveMicAlone()
+    {
+        using var harness = new TestHarness(s => s.SetupCompleted = false);
+        var vm = harness.ViewModel;
+        vm.ToggleMuteCommand.Execute(null);
+
+        Assert.False(vm.IsMuted);
+        Assert.False(vm.ShowsMicTest);
+        Assert.StartsWith("Talk and watch the bar.", vm.SetupMicTestHint, StringComparison.Ordinal);
+        vm.BeginMicTest();
+        vm.EndMicTest();
+        Assert.False(vm.IsMuted);
+    }
+
+    [AvaloniaFact]
+    public void SetupMicTestHint_NamesThePushToTalkKey()
+    {
+        using var harness = new TestHarness(s =>
+        {
+            s.SetupCompleted = false;
+            s.Microphone.MuteMode = MuteMode.PushToTalk;
+            s.Microphone.Hotkey.Key = new HotkeyGesture(HotkeyModifiers.None, "F13");
+        });
+
+        Assert.StartsWith("Hold the test button (or F13) and talk.", harness.ViewModel.SetupMicTestHint, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
     public void Setup_WalksThroughSteps_AndCompletes()
     {
         using var harness = new TestHarness(s => s.SetupCompleted = false);
@@ -346,7 +460,7 @@ public sealed class MainViewModelTests
 
         Assert.True(harness.ViewModel.ShouldShowTrayNotice());
         Assert.False(harness.ViewModel.ShouldShowTrayNotice());
-        Assert.Equal("Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window.", harness.ViewModel.TrayNoticeText);
+        Assert.Equal("Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window. If it's hidden under the ^ arrow, drag it onto the taskbar to keep it in view.", harness.ViewModel.TrayNoticeText);
 
         harness.ViewModel.DismissTrayNoticeForever();
         Assert.True(harness.ViewModel.Settings.Window.TrayNoticeDismissed);

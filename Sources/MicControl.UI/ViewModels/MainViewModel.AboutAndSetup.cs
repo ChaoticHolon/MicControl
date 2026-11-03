@@ -11,6 +11,9 @@ public sealed partial class MainViewModel
 {
     private const string ReleasesUrl = RepositoryUrl + "/releases/latest";
 
+    // Unmuted by setup's hold-to-test, so letting go mutes again.
+    private bool micTestUnmuted;
+
     // ---------------------------------------------------------------- About
 
     public string VersionText { get; } = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "Development build";
@@ -220,6 +223,50 @@ public sealed partial class MainViewModel
         _ => "Next",
     };
 
+    /// <summary>
+    /// Setup's "Hold to test" on the microphone step: a muted mic gives the meter silence, so the button makes it
+    /// live only while it's held, like push-to-talk, and nothing can be left live.
+    /// </summary>
+    public void BeginMicTest()
+    {
+        if (IsMuted == true)
+        {
+            micTestUnmuted = true;
+            LogMicTest(true);
+            SetMute(false);
+        }
+    }
+
+    public void EndMicTest()
+    {
+        if (micTestUnmuted)
+        {
+            micTestUnmuted = false;
+            LogMicTest(false);
+            SetMute(true);
+        }
+    }
+
+    /// <summary>The test button shows while the mic is muted (or being tested); a live mic already moves the bar.</summary>
+    public bool ShowsMicTest => IsMuted == true || micTestUnmuted;
+
+    public string SetupMicTestHint
+    {
+        get
+        {
+            const string Check = "If the bar doesn't move, pick another microphone.";
+            if (!ShowsMicTest)
+            {
+                return $"Talk and watch the bar. {Check}";
+            }
+
+            var key = MainHotkey.Key.IsEmpty ? MainHotkey.AlternativeKey : MainHotkey.Key;
+            return MuteMode == MuteMode.PushToTalk && !key.IsEmpty
+                ? $"Hold the test button (or {key}) and talk. {Check}"
+                : $"Hold the test button and talk. {Check}";
+        }
+    }
+
     [RelayCommand]
     private void SetupNext()
     {
@@ -252,7 +299,11 @@ public sealed partial class MainViewModel
     }
 
     [RelayCommand]
-    private void SkipSetup() => SetupCompleted = true;
+    private void SkipSetup()
+    {
+        EndMicTest();
+        SetupCompleted = true;
+    }
 
     [RelayCommand]
     private void RunSetupAgain()
@@ -263,6 +314,7 @@ public sealed partial class MainViewModel
 
     partial void OnSetupStepChanged(int value)
     {
+        EndMicTest();
         LogSetupStep(value);
         OnPropertyChanged(nameof(IsSetupStep1));
         OnPropertyChanged(nameof(IsSetupStep2));
@@ -272,6 +324,9 @@ public sealed partial class MainViewModel
         OnPropertyChanged(nameof(SetupProgressText));
         OnPropertyChanged(nameof(SetupNextText));
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Setup microphone test {Active}")]
+    private partial void LogMicTest(bool active);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Update check: newer version {Version}")]
     private partial void LogUpdateCheck(string version);

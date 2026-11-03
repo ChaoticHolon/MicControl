@@ -70,11 +70,14 @@ public interface IAudioEndpointGroup : IDisposable
 public interface IInputLevelMonitor
 {
     /// <summary>
-    /// Starts listening to a capture device (<c>null</c> or <see cref="AppSettings.AllDevices"/> = the default
-    /// communications microphone). <paramref name="onPeak"/> receives peaks 0..1 on a background thread.
-    /// Dispose the result to stop. Opening the device shows the OS "microphone in use" indicator.
+    /// Starts listening to a capture device (<c>null</c> = the default communications microphone,
+    /// <see cref="AppSettings.AllDevices"/> = every active microphone). <paramref name="onPeak"/> receives each
+    /// microphone's id and peak (0..1) on a background thread.
+    /// Dispose the result to stop. With <paramref name="openDevice"/> the device is recorded from, so the level is
+    /// always measured but the OS shows its "microphone in use" indicator. Without it only the device's own meter is
+    /// read: no indicator, and the level is 0 unless another app is recording (enough for "speaking" in a call).
     /// </summary>
-    IDisposable Start(string? deviceId, Action<float> onPeak);
+    IDisposable Start(string? deviceId, bool openDevice, Action<string, float> onPeak);
 }
 
 public interface IGlobalHotkeys
@@ -106,6 +109,12 @@ public interface IStartupRegistration
     /// Entries for a MicSwitch that is still installed are left alone.
     /// </summary>
     void MigrateLegacyEntries();
+
+    /// <summary>
+    /// Fixes this copy's own autostart entry when an older version registered it in a way that stops working
+    /// (a scheduled task that Windows ends 72 hours after sign-in). Called at every start.
+    /// </summary>
+    void RepairEntries();
 }
 
 /// <summary>An installed copy: its scope, folder and version (from Settings → Apps).</summary>
@@ -233,9 +242,28 @@ public enum WindowLifecycleKind
 public sealed record WindowLifecycleMessage(
     WindowLifecycleKind Kind, string Window, string Message, string Details, string Origin, string? ForegroundProcess);
 
+/// <summary>Opens the OS's own settings pages.</summary>
+public interface ISystemSettingsPages
+{
+    /// <summary>
+    /// What to do in the settings <see cref="OpenTrayIcons"/> opens, for this OS version (the OS may not link
+    /// straight to the tray icon list).
+    /// </summary>
+    string TrayIconSteps { get; }
+
+    /// <summary>
+    /// Opens the settings where the user picks which tray icons the taskbar shows. Apps can't promote their own icon
+    /// out of the overflow (Windows has no API for it), so the user does it there. False if it couldn't be opened.
+    /// </summary>
+    bool OpenTrayIcons();
+}
+
 /// <summary>What the current platform can do, so the UI can hide unsupported options.</summary>
 public sealed record PlatformCapabilities
 {
+    /// <summary><see cref="ISystemSettingsPages.OpenTrayIcons"/> works.</summary>
+    public bool CanOpenTrayIconSettings { get; init; }
+
     /// <summary>Hotkeys can be hidden from other applications.</summary>
     public bool CanSuppressHotkeys { get; init; }
 

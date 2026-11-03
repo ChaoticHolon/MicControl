@@ -141,6 +141,10 @@ internal sealed class FakeStartup : IStartupRegistration
     public void MigrateLegacyEntries()
     {
     }
+
+    public void RepairEntries()
+    {
+    }
 }
 
 internal sealed class FakeInstaller : IInstaller
@@ -235,22 +239,45 @@ internal sealed class FakeDialogs : IDialogService
 
 internal sealed class FakeLevelMonitor : IInputLevelMonitor
 {
-    private Action<float>? onPeak;
+    private Action<string, float>? onPeak;
 
     public int ActiveSessions { get; private set; }
 
-    public IDisposable Start(string? deviceId, Action<float> onPeak)
+    /// <summary>Sessions that record from the device (and so show the OS "microphone in use" indicator).</summary>
+    public int OpenSessions { get; private set; }
+
+    public IDisposable Start(string? deviceId, bool openDevice, Action<string, float> onPeak)
     {
         this.onPeak = onPeak;
         ActiveSessions++;
-        return new Stop(() => ActiveSessions--);
+        OpenSessions += openDevice ? 1 : 0;
+        return new Stop(() =>
+        {
+            ActiveSessions--;
+            OpenSessions -= openDevice ? 1 : 0;
+        });
     }
 
-    public void Report(float peak) => onPeak?.Invoke(peak);
+    public void Report(float peak, string deviceId = "mic-1") => onPeak?.Invoke(deviceId, peak);
 
     private sealed class Stop(Action action) : IDisposable
     {
         public void Dispose() => action();
+    }
+}
+
+internal sealed class FakeSystemSettingsPages : ISystemSettingsPages
+{
+    public int TrayIconsOpened { get; private set; }
+
+    public bool Fails { get; set; }
+
+    public string TrayIconSteps => "Turn on MicControl.";
+
+    public bool OpenTrayIcons()
+    {
+        TrayIconsOpened++;
+        return !Fails;
     }
 }
 

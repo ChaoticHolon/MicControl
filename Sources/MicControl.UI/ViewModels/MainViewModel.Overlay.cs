@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -17,7 +19,8 @@ public sealed partial class MainViewModel
     private static readonly Lazy<WindowIcon> DefaultUnmutedWindowIcon = new(() => LoadWindowIcon("microphoneEnabled.ico"));
     private readonly DispatcherTimer levelTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private IDisposable? levelSession;
-    private float latestPeak;
+    private bool levelSessionOpensDevice;
+    private readonly ConcurrentDictionary<string, float> latestPeaks = new();
     private bool isWindowVisible;
 
     /// <summary>Raised when the overlay should move to its configured corner.</summary>
@@ -197,36 +200,66 @@ public sealed partial class MainViewModel
         UpdateLevelMonitoring();
     }
 
+    /// <summary>With "All microphones", one bar per microphone (Home and setup); <see cref="InputLevel"/> is the loudest.</summary>
+    public ObservableCollection<MicrophoneLevel> MicrophoneLevels { get; } = [];
+
+    public bool ShowsMicrophoneLevels => MicrophoneLevels.Count > 1;
+
     private void InitializeLevelMeter() => levelTimer.Tick += (_, _) =>
     {
-        // Fast attack, slow release, like a hardware meter.
-        var peak = Volatile.Read(ref latestPeak);
-        InputLevel = Math.Max(peak, InputLevel * 0.85);
-        if (InputLevel < 0.005)
+        foreach (var level in MicrophoneLevels)
         {
-            InputLevel = 0;
+            level.Level = Smooth(level.Level, latestPeaks.GetValueOrDefault(level.Id));
         }
+
+        InputLevel = Smooth(InputLevel, latestPeaks.IsEmpty ? 0 : latestPeaks.Values.Max());
     };
 
+    // Fast attack, slow release, like a hardware meter.
+    private static double Smooth(double shown, float peak)
+    {
+        var level = Math.Max(peak, shown * 0.85);
+        return level < 0.005 ? 0 : level;
+    }
+
+    private void RefreshMicrophoneLevels()
+    {
+        MicrophoneLevels.Clear();
+        if (levelSession is not null && SelectedMicrophoneId == AppSettings.AllDevices)
+        {
+            foreach (var microphone in Microphones.Where(m => m.Id != AppSettings.AllDevices))
+            {
+                MicrophoneLevels.Add(new MicrophoneLevel(microphone.Id, microphone.Name));
+            }
+        }
+
+        OnPropertyChanged(nameof(ShowsMicrophoneLevels));
+    }
+
+    /// <summary>
+    /// The meter on a visible Home or setup page records from the mic, so it always moves. The speaking indicator
+    /// alone only reads the mic's own meter: it runs all day, and recording would keep Windows' "microphone in use"
+    /// icon up the whole time; that meter moves when a call app is recording, which is when speaking matters.
+    /// </summary>
     private void UpdateLevelMonitoring()
     {
-        var wanted = (IsWindowVisible && (IsHomePage || !SetupCompleted)) || (ShowSpeakingIndicator && IsOverlayVisible);
-        if (wanted == (levelSession is not null))
+        var meterVisible = IsWindowVisible && (IsHomePage || !SetupCompleted);
+        var wanted = meterVisible || (ShowSpeakingIndicator && IsOverlayVisible);
+        if (wanted == (levelSession is not null) && (!wanted || meterVisible == levelSessionOpensDevice))
         {
             return;
         }
 
-        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, ShowSpeakingIndicator && IsOverlayVisible);
+        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, ShowSpeakingIndicator && IsOverlayVisible, meterVisible);
+        StopLevelMonitoring();
         if (wanted)
         {
-            levelSession = levelMonitor.Start(SelectedMicrophoneId, peak => Volatile.Write(ref latestPeak, peak));
+            levelSession = levelMonitor.Start(SelectedMicrophoneId, meterVisible, (id, peak) => latestPeaks[id] = peak);
+            levelSessionOpensDevice = meterVisible;
             levelTimer.Start();
         }
-        else
-        {
-            StopLevelMonitoring();
-        }
 
+        RefreshMicrophoneLevels();
         OnPropertyChanged(nameof(IsLevelMeterActive));
     }
 
@@ -244,7 +277,7 @@ public sealed partial class MainViewModel
         levelSession?.Dispose();
         levelSession = null;
         levelTimer.Stop();
-        Volatile.Write(ref latestPeak, 0);
+        latestPeaks.Clear();
         InputLevel = 0;
     }
 
@@ -309,6 +342,6 @@ public sealed partial class MainViewModel
     [LoggerMessage(Level = LogLevel.Information, Message = "Overlay edit position {Editing}")]
     private partial void LogOverlayEditing(bool editing);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, speaking indicator: {Speaking})")]
-    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool speaking);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, speaking indicator: {Speaking}, recording: {Recording})")]
+    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool speaking, bool recording);
 }

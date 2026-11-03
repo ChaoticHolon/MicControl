@@ -46,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IUpdateService updates;
     private readonly IDialogService dialogs;
     private readonly IInputLevelMonitor levelMonitor;
+    private readonly ISystemSettingsPages systemPages;
     private readonly ILogger<MainViewModel> logger;
     private readonly IAudioEndpointGroup microphone;
     private readonly IAudioEndpointGroup speakers;
@@ -64,6 +65,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IUpdateService updates,
         IDialogService dialogs,
         IInputLevelMonitor levelMonitor,
+        ISystemSettingsPages systemPages,
         PlatformCapabilities capabilities,
         ILogger<MainViewModel> logger)
     {
@@ -75,6 +77,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         this.updates = updates;
         this.dialogs = dialogs;
         this.levelMonitor = levelMonitor;
+        this.systemPages = systemPages;
         this.logger = logger;
         Capabilities = capabilities;
 
@@ -222,6 +225,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ApplyMicrophoneVolume();
             RestartLevelMonitoring();
             Save();
+
+            // Home and setup each have a microphone list; both follow the choice.
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MicrophoneStatusDetail));
         }
     }
 
@@ -292,6 +299,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsPushToMuteMode));
             OnPropertyChanged(nameof(MicrophoneStatusDetail));
             OnPropertyChanged(nameof(MainHotkeyLabel));
+            OnPropertyChanged(nameof(SetupMicTestHint));
             OnPropertyChanged(nameof(MainHotkeyDescription));
             OnPropertyChanged(nameof(MainHotkeySummary));
             OnPropertyChanged(nameof(ModeDescription));
@@ -536,6 +544,24 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void DismissStatus() => StatusMessage = null;
 
+    /// <summary>Windows won't let an app show its own tray icon outside the overflow, so the user picks it there.</summary>
+    [RelayCommand]
+    private void OpenTrayIconSettings()
+    {
+        var opened = systemPages.OpenTrayIcons();
+        LogTrayIconSettingsOpened(opened);
+        if (!opened)
+        {
+            StatusMessage = "Windows couldn't open its taskbar settings.";
+        }
+    }
+
+    /// <summary>Shown under Tray icons in setup and About: where to go, for this Windows version.</summary>
+    public string TrayIconsDescription => systemPages.TrayIconSteps;
+
+    /// <summary>Setup's closing call to action: why, then the same steps.</summary>
+    public string SetupTrayIconsText => $"Windows hides new tray icons under the ^ arrow, so you can't see at a glance whether you're muted. {systemPages.TrayIconSteps}";
+
     /// <summary>
     /// Whether to show the "still running in the tray" notice when the window hides to the tray:
     /// once per session, unless the user chose "Don't show again".
@@ -559,7 +585,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Save();
     }
 
-    public string TrayNoticeText => "Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window.";
+    public string TrayNoticeText => "Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window. If it's hidden under the ^ arrow, drag it onto the taskbar to keep it in view.";
 
     public void Dispose()
     {
@@ -577,6 +603,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         () =>
         {
             OnPropertyChanged(nameof(HasMainHotkey));
+            OnPropertyChanged(nameof(SetupMicTestHint));
             OnPropertyChanged(nameof(MainHotkeySummary));
             ApplyHotkeys();
             Save();
@@ -705,6 +732,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(MicrophoneStatus));
         OnPropertyChanged(nameof(MicrophoneStatusDetail));
         OnPropertyChanged(nameof(ToggleMuteText));
+        OnPropertyChanged(nameof(ShowsMicTest));
+        OnPropertyChanged(nameof(SetupMicTestHint));
         OnPropertyChanged(nameof(CurrentIcon));
         OnPropertyChanged(nameof(IsOverlayVisible));
         OnPropertyChanged(nameof(MicrophoneVolume));
@@ -729,6 +758,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(PlaybackDeviceId));
         OnPropertyChanged(nameof(MicrophoneStatusDetail));
         LogDevices(Microphones.Count - 1, outputs.Count, SelectedMicrophoneId);
+
+        // With All microphones, listen to the new set of devices.
+        if (SelectedMicrophoneId == AppSettings.AllDevices)
+        {
+            RestartLevelMonitoring();
+        }
 
         void Replace(ObservableCollection<AudioDeviceInfo> target, AudioDeviceInfo[] items, string selectedId, string selectedProperty)
         {
@@ -854,6 +889,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Showing the 'still running in the tray' notice")]
     private partial void LogTrayNoticeShown();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Opened Windows' tray icon settings: {Opened}")]
+    private partial void LogTrayIconSettingsOpened(bool opened);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "First run of an installed copy: turning on Start with Windows")]
     private partial void LogFirstRunAutostart();

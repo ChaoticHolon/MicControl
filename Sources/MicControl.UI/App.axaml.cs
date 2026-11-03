@@ -155,6 +155,20 @@ public partial class App : Application
             }
         }
 
+        // Off the UI thread: it queries Task Scheduler, and a slow answer mustn't hold up the hotkeys.
+        var startup = services.GetRequiredService<IStartupRegistration>();
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                startup.RepairEntries();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException or IOException or System.ComponentModel.Win32Exception)
+            {
+                LogAutostartRepairFailed(logger, ex);
+            }
+        });
+
         var hotkeys = services.GetRequiredService<IGlobalHotkeys>();
         HotkeyBox.CapturingChanged += (_, capturing) => hotkeys.IsPaused = capturing;
 
@@ -363,6 +377,9 @@ public partial class App : Application
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Could not replace MicSwitch autostart entries")]
     private static partial void LogAutostartMigrationFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not check or repair the autostart entry")]
+    private static partial void LogAutostartRepairFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Starting MicControl {Version} on {Os}; full hotkey access: {FullAccess}; settings: {SettingsDirectory}; autostart: {IsAutostart}")]
     private static partial void LogStarting(ILogger logger, Version? version, OperatingSystem os, bool fullAccess, string settingsDirectory, bool isAutostart);

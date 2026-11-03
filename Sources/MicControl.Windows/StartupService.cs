@@ -54,9 +54,12 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
         {
             if (IsElevated)
             {
-                var user = $"{Environment.UserDomainName}\\{Environment.UserName}";
-                var exitCode = Schtasks($"/Create /F /TN \"{TaskName}\" /TR \"{Command.Replace("\"", "\\\"", StringComparison.Ordinal)}\" /SC ONLOGON /RL HIGHEST /RU \"{user}\" /IT");
+                var exitCode = CreateTask();
                 LogAutostartTaskCreated(TaskName, Command, exitCode);
+                if (exitCode != 0)
+                {
+                    throw new InvalidOperationException("Windows couldn't create the startup task.");
+                }
             }
             else
             {
@@ -180,6 +183,67 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
         }
     }
 
+    /// <summary>
+    /// Replaces this user's task when an older MicControl made it with the scheduler's defaults (which end the app
+    /// 72 hours after sign-in). Only a task that starts this copy is touched, and only when elevated, as creating it is.
+    /// </summary>
+    public void RepairEntries()
+    {
+        if (!IsElevated)
+        {
+            return;
+        }
+
+        var (exitCode, xml) = SchtasksWithOutput($"/Query /TN \"{TaskName}\" /XML");
+        if (exitCode != 0 || !AutostartTask.NeedsRepair(xml))
+        {
+            return;
+        }
+
+        // The task's Command is quoted when the path has spaces or was written by schtasks /TR.
+        var program = GetTaskCommand(xml);
+        if (!string.Equals(AutostartCommand.GetExecutable(program), Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
+        {
+            LogAutostartTaskNotRepaired(TaskName, program ?? "none");
+            return;
+        }
+
+        var created = CreateTask();
+        LogAutostartTaskRepaired(TaskName, created);
+        isEnabled = null;
+    }
+
+    /// <summary>
+    /// Creates (or replaces) this user's task from <see cref="AutostartTask.CreateXml"/> through the Task Scheduler
+    /// API, which creates the \MicControl\ folder as needed. The XML is passed in memory: a temp file for
+    /// <c>schtasks /XML</c> could be swapped by another process before this elevated one registers it. Returns 0, or
+    /// the error's HRESULT.
+    /// </summary>
+    private static int CreateTask()
+    {
+        const int CreateOrUpdate = 6;
+        const int InteractiveToken = 3;
+        var user = $"{Environment.UserDomainName}\\{Environment.UserName}";
+        var xml = AutostartTask.CreateXml(Environment.ProcessPath!, AutostartArgument, user);
+        var type = Type.GetTypeFromProgID("Schedule.Service")
+            ?? throw new InvalidOperationException("Task Scheduler isn't available.");
+        try
+        {
+            dynamic scheduler = Activator.CreateInstance(type)!;
+            scheduler.Connect();
+            scheduler.GetFolder(@"\").RegisterTask(@"\" + TaskName, xml, CreateOrUpdate, null, null, InteractiveToken, null);
+            return 0;
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            return ex.HResult;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return ex.HResult;
+        }
+    }
+
     private static bool HasRunKey(string name) => GetRunKey(name) is not null;
 
     private static string? GetRunKey(string name)
@@ -194,14 +258,14 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
     private static string? GetScheduledTaskCommand(string name)
     {
         var (exitCode, output) = SchtasksWithOutput($"/Query /TN \"{name}\" /XML");
-        if (exitCode != 0)
-        {
-            return null;
-        }
+        return exitCode == 0 ? GetTaskCommand(output) : null;
+    }
 
+    private static string? GetTaskCommand(string xml)
+    {
         try
         {
-            return XDocument.Parse(output).Descendants(TaskNamespace + "Exec").Elements(TaskNamespace + "Command").FirstOrDefault()?.Value;
+            return XDocument.Parse(xml).Descendants(TaskNamespace + "Exec").Elements(TaskNamespace + "Command").FirstOrDefault()?.Value;
         }
         catch (XmlException)
         {
@@ -227,8 +291,14 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
         return (process.ExitCode, output);
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: scheduled task {Task} created for {Command} (schtasks exit {ExitCode})")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: scheduled task {Task} created for {Command} (result {ExitCode})")]
     private partial void LogAutostartTaskCreated(string task, string command, int exitCode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: replaced scheduled task {Task}, which had a time limit or battery rules (result {ExitCode})")]
+    private partial void LogAutostartTaskRepaired(string task, int exitCode);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Autostart: scheduled task {Task} has a time limit or battery rules but starts {Program}, not this copy, so it was left alone")]
+    private partial void LogAutostartTaskNotRepaired(string task, string program);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Autostart: Run key set to {Command}")]
     private partial void LogAutostartRunKeySet(string command);

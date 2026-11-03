@@ -18,13 +18,33 @@
                     <!-- Step 1: microphone -->
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupStep1}">
                         <TextBlock FontSize="24" FontWeight="SemiBold" Text="Welcome! Which microphone do you use?" TextWrapping="Wrap" />
-                        <TextBlock Classes="secondary" FontSize="14" Text="Pick the microphone you talk into. 'All microphones' mutes every one at once." />
+                        <TextBlock Classes="secondary" FontSize="14" Text="Pick the one you talk into. Not sure, or use more than one? Choose &quot;All microphones&quot; to control them all at the same time." TextWrapping="Wrap" />
                         <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Microphones}" SelectedValue="{Binding SelectedMicrophoneId}"
                                   DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}" />
-                        <TextBlock Classes="secondary" FontSize="14" Text="Say something: the bar should move. If it doesn't, try another microphone or press Unmute." />
-                        <ProgressBar Classes="meter" Value="{Binding InputLevel}" />
-                        <Button HorizontalAlignment="Left" Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" />
-                    </StackPanel>
+                        <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap" Text="{Binding SetupMicTestHint}" />
+                        <Grid ColumnDefinitions="Auto,*">
+                            <!-- Live only while held (SetupView.axaml.cs), like push-to-talk -->
+                            <Button x:Name="MicTestButton" Margin="0,0,16,0" Content="Hold to test" IsVisible="{Binding ShowsMicTest}"
+                                    AutomationProperties.Name="Hold to test the microphone" />
+                            <Panel Grid.Column="1" VerticalAlignment="Center">
+                                <ProgressBar Classes="meter" VerticalAlignment="Center" Value="{Binding InputLevel}" IsVisible="{Binding !ShowsMicrophoneLevels}" />
+                                <ItemsControl ItemsSource="{Binding MicrophoneLevels}" IsVisible="{Binding ShowsMicrophoneLevels}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="6" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:MicrophoneLevel">
+                                            <Grid ColumnDefinitions="180,*">
+                                                <TextBlock Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" />
+                                                <ProgressBar Grid.Column="1" Classes="meter" VerticalAlignment="Center" Value="{Binding Level}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Panel>
+                        </Grid>                    </StackPanel>
 
                     <!-- Step 2: mode and key -->
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupStep2}">
@@ -95,7 +115,18 @@
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupDone}">
                         <TextBlock FontSize="24" FontWeight="SemiBold" Text="You're all set" />
                         <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding MainHotkeySummary, StringFormat='{}{0}. Change anything later from Home.'}" IsVisible="{Binding HasMainHotkey}" />
-                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: MicControl lives in the notification area, near the clock. Right-click its icon for quick controls or to exit; click it to open this window." />
+                        <!-- Call to action: Windows puts new tray icons under the ^ arrow, and apps can't move them out -->
+                        <Border Classes="card" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Classes="accent" VerticalAlignment="Center" Margin="16,0,0,0" Content="Open taskbar settings"
+                                        Command="{Binding OpenTrayIconSettingsCommand}" />
+                                <StackPanel Spacing="4">
+                                    <TextBlock FontWeight="SemiBold" Text="Keep MicControl's icon in view" />
+                                    <TextBlock Classes="secondary" TextWrapping="Wrap"
+                                               Text="{Binding SetupTrayIconsText}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: MicControl lives in the notification area, near the clock (or under the ^ arrow, if you didn't choose to show it). Right-click its icon for quick controls or to exit; click it to open this window." />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
