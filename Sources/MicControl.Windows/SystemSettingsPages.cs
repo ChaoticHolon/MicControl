@@ -7,23 +7,23 @@ namespace MicControl.Windows;
 public sealed class SystemSettingsPages : ISystemSettingsPages
 {
     /// <summary>
-    /// Windows 10's "Notification Area Icons" (a Show/Hide choice for every icon, the Microphone one included);
-    /// Windows 11 dropped it, and its Taskbar settings list the tray icons instead.
+    /// Settings → Personalization → Taskbar. Neither Windows 10 nor 11 has a link straight to the tray icon list, so
+    /// the steps name the section to open: a link on 10, a collapsed section on 11.
     /// </summary>
-    private static string TrayIconsPage => Environment.OSVersion.Version.Build >= 22000
-        ? "ms-settings:taskbar"
-        : "shell:::{05D7B0F4-2121-4EFF-BF6B-ED3F69B894D9}";
-
-    public bool OpenTrayIcons()
+    public string? OpenTrayIcons()
     {
         try
         {
-            Process.Start(new ProcessStartInfo(TrayIconsPage) { UseShellExecute = true })?.Dispose();
-            return true;
+            Process.Start(new ProcessStartInfo("ms-settings:taskbar") { UseShellExecute = true })?.Dispose();
         }
         catch (Win32Exception)
         {
-            return false;
+            return null;
         }
+
+        var section = Environment.OSVersion.Version.Build >= 22000
+            ? "open \"Other system tray icons\""
+            : "click \"Select which icons appear on the taskbar\"";
+        return $"In the taskbar settings, {section}, then turn MicControl on and Microphone off.";
     }
 }

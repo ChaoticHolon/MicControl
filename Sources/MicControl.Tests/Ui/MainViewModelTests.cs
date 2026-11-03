@@ -337,18 +337,18 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
-    public void TrayIcons_OpensWindowsSettings_AndSaysSoWhenItCant()
+    public void TrayIcons_OpensWindowsSettings_AndShowsTheSteps()
     {
         using var harness = new TestHarness();
         var vm = harness.ViewModel;
 
         vm.OpenTrayIconSettingsCommand.Execute(null);
         Assert.Equal(1, harness.SystemPages.TrayIconsOpened);
-        Assert.Null(vm.StatusMessage);
+        Assert.Equal("Turn MicControl on.", vm.StatusMessage);
 
         harness.SystemPages.Fails = true;
         vm.OpenTrayIconSettingsCommand.Execute(null);
-        Assert.Equal("Windows couldn't open its tray icon settings.", vm.StatusMessage);
+        Assert.Equal("Windows couldn't open its taskbar settings.", vm.StatusMessage);
     }
 
     [AvaloniaFact]

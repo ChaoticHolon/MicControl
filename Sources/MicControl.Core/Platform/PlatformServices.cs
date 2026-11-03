@@ -245,10 +245,11 @@ public sealed record WindowLifecycleMessage(
 public interface ISystemSettingsPages
 {
     /// <summary>
-    /// Opens the page where the user picks which tray icons the taskbar shows. Apps can't promote their own icon out
-    /// of the overflow (Windows has no API for it), so the user does it there. False if it couldn't be opened.
+    /// Opens the settings where the user picks which tray icons the taskbar shows. Apps can't promote their own icon
+    /// out of the overflow (Windows has no API for it), so the user does it there. Returns the steps to show the user
+    /// (the OS may not link straight to the list), or null if the settings couldn't be opened.
     /// </summary>
-    bool OpenTrayIcons();
+    string? OpenTrayIcons();
 }
 
 /// <summary>What the current platform can do, so the UI can hide unsupported options.</summary>

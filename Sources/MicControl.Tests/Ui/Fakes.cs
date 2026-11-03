@@ -272,10 +272,10 @@ internal sealed class FakeSystemSettingsPages : ISystemSettingsPages
 
     public bool Fails { get; set; }
 
-    public bool OpenTrayIcons()
+    public string? OpenTrayIcons()
     {
         TrayIconsOpened++;
-        return !Fails;
+        return Fails ? null : "Turn MicControl on.";
     }
 }
 
