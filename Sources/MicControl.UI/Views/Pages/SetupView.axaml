@@ -76,6 +76,9 @@
                         <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding CloseToTrayDescription}">
                             <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
                         </c:SettingRow>
+                        <c:SettingRow Glyph="&#xE7F8;" Header="Tray icons" Description="{Binding TrayIconsDescription}" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
+                            <Button Content="Choose…" Command="{Binding OpenTrayIconSettingsCommand}" AutomationProperties.Name="Choose tray icons" />
+                        </c:SettingRow>
                         <StackPanel Spacing="4" IsVisible="{Binding OffersImports}">
                             <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold" Text="Bring over more from MicSwitch?" />
                             <TextBlock Classes="secondary" FontSize="14" Margin="0,0,0,4" TextWrapping="Wrap"

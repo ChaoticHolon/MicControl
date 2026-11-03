@@ -266,6 +266,19 @@ internal sealed class FakeLevelMonitor : IInputLevelMonitor
     }
 }
 
+internal sealed class FakeSystemSettingsPages : ISystemSettingsPages
+{
+    public int TrayIconsOpened { get; private set; }
+
+    public bool Fails { get; set; }
+
+    public bool OpenTrayIcons()
+    {
+        TrayIconsOpened++;
+        return !Fails;
+    }
+}
+
 internal sealed class FakeWindowInterop : IWindowInterop
 {
     public void ConfigureOverlay(nint handle, bool clickThrough)

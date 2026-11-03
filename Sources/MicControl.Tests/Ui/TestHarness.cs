@@ -50,7 +50,8 @@ internal sealed class TestHarness : IDisposable
             Updates,
             Dialogs,
             LevelMonitor,
-            new PlatformCapabilities { CanSuppressHotkeys = true, SupportsMouseHotkeys = true },
+            SystemPages,
+            new PlatformCapabilities { CanSuppressHotkeys = true, SupportsMouseHotkeys = true, CanOpenTrayIconSettings = true },
             NullLogger<MainViewModel>.Instance);
     }
 
@@ -67,6 +68,8 @@ internal sealed class TestHarness : IDisposable
     public FakeDialogs Dialogs { get; } = new();
 
     public FakeLevelMonitor LevelMonitor { get; } = new();
+
+    public FakeSystemSettingsPages SystemPages { get; } = new();
 
     public SettingsService Settings { get; }
 

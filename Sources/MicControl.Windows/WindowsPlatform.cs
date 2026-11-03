@@ -22,6 +22,7 @@ public static class WindowsPlatform
     {
         CanSuppressHotkeys = true,
         SupportsMouseHotkeys = true,
+        CanOpenTrayIconSettings = true,
         LimitationNotice = StartupService.IsElevated
             ? null
             : "MicControl isn't running as administrator. Hotkeys won't work while an elevated app or game is focused.",

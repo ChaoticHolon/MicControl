@@ -89,6 +89,9 @@
         <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding CloseToTrayDescription}">
             <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
         </c:SettingRow>
+        <c:SettingRow Glyph="&#xE7F8;" Header="Tray icons" Description="{Binding TrayIconsDescription}" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
+            <Button Content="Choose…" Command="{Binding OpenTrayIconSettingsCommand}" AutomationProperties.Name="Choose tray icons" />
+        </c:SettingRow>
         <c:SettingRow Glyph="&#xE790;" Header="Theme">
             <!-- Segmented control: three peers with no order between them, so not a slider -->
             <Border Classes="segmented">

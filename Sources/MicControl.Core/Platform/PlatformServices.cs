@@ -241,9 +241,22 @@ public enum WindowLifecycleKind
 public sealed record WindowLifecycleMessage(
     WindowLifecycleKind Kind, string Window, string Message, string Details, string Origin, string? ForegroundProcess);
 
+/// <summary>Opens the OS's own settings pages.</summary>
+public interface ISystemSettingsPages
+{
+    /// <summary>
+    /// Opens the page where the user picks which tray icons the taskbar shows. Apps can't promote their own icon out
+    /// of the overflow (Windows has no API for it), so the user does it there. False if it couldn't be opened.
+    /// </summary>
+    bool OpenTrayIcons();
+}
+
 /// <summary>What the current platform can do, so the UI can hide unsupported options.</summary>
 public sealed record PlatformCapabilities
 {
+    /// <summary><see cref="ISystemSettingsPages.OpenTrayIcons"/> works.</summary>
+    public bool CanOpenTrayIconSettings { get; init; }
+
     /// <summary>Hotkeys can be hidden from other applications.</summary>
     public bool CanSuppressHotkeys { get; init; }
 

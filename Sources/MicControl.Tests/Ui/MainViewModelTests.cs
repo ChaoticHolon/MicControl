@@ -337,6 +337,21 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void TrayIcons_OpensWindowsSettings_AndSaysSoWhenItCant()
+    {
+        using var harness = new TestHarness();
+        var vm = harness.ViewModel;
+
+        vm.OpenTrayIconSettingsCommand.Execute(null);
+        Assert.Equal(1, harness.SystemPages.TrayIconsOpened);
+        Assert.Null(vm.StatusMessage);
+
+        harness.SystemPages.Fails = true;
+        vm.OpenTrayIconSettingsCommand.Execute(null);
+        Assert.Equal("Windows couldn't open its tray icon settings.", vm.StatusMessage);
+    }
+
+    [AvaloniaFact]
     public void Setup_WalksThroughSteps_AndCompletes()
     {
         using var harness = new TestHarness(s => s.SetupCompleted = false);

@@ -46,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IUpdateService updates;
     private readonly IDialogService dialogs;
     private readonly IInputLevelMonitor levelMonitor;
+    private readonly ISystemSettingsPages systemPages;
     private readonly ILogger<MainViewModel> logger;
     private readonly IAudioEndpointGroup microphone;
     private readonly IAudioEndpointGroup speakers;
@@ -64,6 +65,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IUpdateService updates,
         IDialogService dialogs,
         IInputLevelMonitor levelMonitor,
+        ISystemSettingsPages systemPages,
         PlatformCapabilities capabilities,
         ILogger<MainViewModel> logger)
     {
@@ -75,6 +77,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         this.updates = updates;
         this.dialogs = dialogs;
         this.levelMonitor = levelMonitor;
+        this.systemPages = systemPages;
         this.logger = logger;
         Capabilities = capabilities;
 
@@ -536,6 +539,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void DismissStatus() => StatusMessage = null;
 
+    /// <summary>Windows won't let an app show its own tray icon outside the overflow, so the user picks it there.</summary>
+    [RelayCommand]
+    private void OpenTrayIconSettings()
+    {
+        var opened = systemPages.OpenTrayIcons();
+        LogTrayIconSettingsOpened(opened);
+        if (!opened)
+        {
+            StatusMessage = "Windows couldn't open its tray icon settings.";
+        }
+    }
+
+    public string TrayIconsDescription => "Keep MicControl's icon on the taskbar, and hide Windows' Microphone icon, which shows whenever an app records";
+
     /// <summary>
     /// Whether to show the "still running in the tray" notice when the window hides to the tray:
     /// once per session, unless the user chose "Don't show again".
@@ -854,6 +871,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Showing the 'still running in the tray' notice")]
     private partial void LogTrayNoticeShown();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Opened Windows' tray icon settings: {Opened}")]
+    private partial void LogTrayIconSettingsOpened(bool opened);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "First run of an installed copy: turning on Start with Windows")]
     private partial void LogFirstRunAutostart();

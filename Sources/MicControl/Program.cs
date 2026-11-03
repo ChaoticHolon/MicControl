@@ -116,6 +116,7 @@ internal static class Program
         .AddSingleton<IInputLevelMonitor, InputLevelMonitor>()
         .AddSingleton<ISoundPlayer, WasapiSoundPlayer>()
         .AddSingleton<IStartupRegistration, StartupService>()
+        .AddSingleton<ISystemSettingsPages, SystemSettingsPages>()
         .AddSingleton<IWindowInterop, WindowInterop>()
         .AddSingleton<IInstaller, WindowsInstaller>()
         .AddSingleton<IUpdateService, UpdateService>();
