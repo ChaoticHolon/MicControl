@@ -21,9 +21,8 @@ public sealed class SystemSettingsPages : ISystemSettingsPages
             return null;
         }
 
-        var section = Environment.OSVersion.Version.Build >= 22000
-            ? "scroll down and open \"Other system tray icons\""
-            : "scroll down to \"Notification area\" and click \"Select which icons appear on the taskbar\"";
-        return $"In the taskbar settings, {section}, then turn MicControl on and Microphone off.";
+        return Environment.OSVersion.Version.Build >= 22000
+            ? "Scroll down and open “Other system tray icons”, then turn on MicControl."
+            : "Under “Notification area”, choose “Select which icons appear on the taskbar”. Turn on MicControl and turn off Microphone.";
     }
 }
