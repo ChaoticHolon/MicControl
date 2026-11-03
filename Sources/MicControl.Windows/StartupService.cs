@@ -200,8 +200,9 @@ public sealed partial class StartupService(ILogger<StartupService> logger) : ISt
             return;
         }
 
+        // The task's Command is quoted when the path has spaces or was written by schtasks /TR.
         var program = GetTaskCommand(xml);
-        if (!string.Equals(program, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(AutostartCommand.GetExecutable(program), Environment.ProcessPath, StringComparison.OrdinalIgnoreCase))
         {
             LogAutostartTaskNotRepaired(TaskName, program ?? "none");
             return;
