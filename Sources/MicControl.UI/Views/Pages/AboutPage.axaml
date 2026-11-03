@@ -50,9 +50,6 @@
         <c:SettingRow Glyph="&#xE943;" Header="Runtime" Description="{Binding RuntimeText}" />
         <c:SettingRow Glyph="&#xE771;" Header="UI framework" Description="{Binding UiFrameworkText}" />
         <c:SettingRow Glyph="&#xE72E;" Header="Hotkey access" Description="{Binding HotkeyAccessText}" />
-        <c:SettingRow Glyph="&#xE73F;" Header="Tray icons" Description="{Binding TrayIconsDescription}" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
-            <Button Content="Choose…" Command="{Binding OpenTrayIconSettingsCommand}" AutomationProperties.Name="Choose tray icons" />
-        </c:SettingRow>
 
         <TextBlock Classes="section" Text="Files and support" />
         <c:SettingRow Glyph="&#xE8B7;" Header="Settings folder" Description="{Binding SettingsFolder}">
@@ -68,6 +65,9 @@
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE7BE;" Header="Setup guide" Description="Walk through the first-run setup again">
             <Button Content="Run setup" Command="{Binding RunSetupAgainCommand}" />
+        </c:SettingRow>
+        <c:SettingRow Glyph="&#xE73F;" Header="Tray icons" Description="{Binding TrayIconsDescription}" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
+            <Button Content="Choose…" Command="{Binding OpenTrayIconSettingsCommand}" AutomationProperties.Name="Choose tray icons" />
         </c:SettingRow>
         <c:SettingRow Glyph="&#xE9F9;" Header="License" Description="MicControl is free software under the GNU GPL, version 3 or later. It includes open-source components under their own licenses.">
             <StackPanel Orientation="Horizontal" Spacing="8">
