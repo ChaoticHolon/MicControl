@@ -78,9 +78,6 @@
                         <c:SettingRow Glyph="&#xE73F;" Header="Close to the tray" Description="{Binding CloseToTrayDescription}">
                             <ToggleSwitch IsChecked="{Binding IsTrayMode}" AutomationProperties.Name="Close to the tray" />
                         </c:SettingRow>
-                        <c:SettingRow Glyph="&#xE7F8;" Header="Tray icons" Description="{Binding TrayIconsDescription}" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
-                            <Button Content="Choose…" Command="{Binding OpenTrayIconSettingsCommand}" AutomationProperties.Name="Choose tray icons" />
-                        </c:SettingRow>
                         <StackPanel Spacing="4" IsVisible="{Binding OffersImports}">
                             <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold" Text="Bring over more from MicSwitch?" />
                             <TextBlock Classes="secondary" FontSize="14" Margin="0,0,0,4" TextWrapping="Wrap"
@@ -100,7 +97,18 @@
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupDone}">
                         <TextBlock FontSize="24" FontWeight="SemiBold" Text="You're all set" />
                         <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding MainHotkeySummary, StringFormat='{}{0}. Change anything later from Home.'}" IsVisible="{Binding HasMainHotkey}" />
-                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: MicControl lives in the notification area, near the clock (or under the ^ arrow, if you didn't choose to show it). Right-click its icon for quick controls or to exit; click it to open this window." />
+                        <!-- Call to action: Windows puts new tray icons under the ^ arrow, and apps can't move them out -->
+                        <Border Classes="card" IsVisible="{Binding Capabilities.CanOpenTrayIconSettings}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Classes="accent" VerticalAlignment="Center" Margin="16,0,0,0" Content="Open taskbar settings"
+                                        Command="{Binding OpenTrayIconSettingsCommand}" />
+                                <StackPanel Spacing="4">
+                                    <TextBlock FontWeight="SemiBold" Text="Keep MicControl's icon in view" />
+                                    <TextBlock Classes="secondary" TextWrapping="Wrap"
+                                               Text="{Binding SetupTrayIconsText}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="Tip: MicControl lives in the notification area, near the clock (or under the ^ arrow, if you didn't choose to show it). Right-click its icon for quick controls or to exit; click it to open this window." />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">

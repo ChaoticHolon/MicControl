@@ -555,6 +555,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>Shown under Tray icons in setup and About: where to go, for this Windows version.</summary>
     public string TrayIconsDescription => systemPages.TrayIconSteps;
 
+    /// <summary>Setup's closing call to action: why, then the same steps.</summary>
+    public string SetupTrayIconsText => $"Windows hides new tray icons under the ^ arrow, so you can't see at a glance whether you're muted. {systemPages.TrayIconSteps}";
+
     /// <summary>
     /// Whether to show the "still running in the tray" notice when the window hides to the tray:
     /// once per session, unless the user chose "Don't show again".
