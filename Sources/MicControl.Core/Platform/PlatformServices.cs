@@ -106,6 +106,12 @@ public interface IStartupRegistration
     /// Entries for a MicSwitch that is still installed are left alone.
     /// </summary>
     void MigrateLegacyEntries();
+
+    /// <summary>
+    /// Fixes this copy's own autostart entry when an older version registered it in a way that stops working
+    /// (a scheduled task that Windows ends 72 hours after sign-in). Called at every start.
+    /// </summary>
+    void RepairEntries();
 }
 
 /// <summary>An installed copy: its scope, folder and version (from Settings → Apps).</summary>

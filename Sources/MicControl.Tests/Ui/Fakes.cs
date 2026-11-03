@@ -141,6 +141,10 @@ internal sealed class FakeStartup : IStartupRegistration
     public void MigrateLegacyEntries()
     {
     }
+
+    public void RepairEntries()
+    {
+    }
 }
 
 internal sealed class FakeInstaller : IInstaller
