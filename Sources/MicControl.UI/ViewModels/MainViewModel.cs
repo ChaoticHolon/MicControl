@@ -559,7 +559,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Save();
     }
 
-    public string TrayNoticeText => "Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window.";
+    public string TrayNoticeText => "Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window. If it's hidden under the ^ arrow, drag it onto the taskbar to keep it in view.";
 
     public void Dispose()
     {

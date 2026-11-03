@@ -17,6 +17,7 @@ public sealed partial class MainViewModel
     private static readonly Lazy<WindowIcon> DefaultUnmutedWindowIcon = new(() => LoadWindowIcon("microphoneEnabled.ico"));
     private readonly DispatcherTimer levelTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private IDisposable? levelSession;
+    private bool levelSessionOpensDevice;
     private float latestPeak;
     private bool isWindowVisible;
 
@@ -208,23 +209,27 @@ public sealed partial class MainViewModel
         }
     };
 
+    /// <summary>
+    /// The meter on a visible Home or setup page records from the mic, so it always moves. The speaking indicator
+    /// alone only reads the mic's own meter: it runs all day, and recording would keep Windows' "microphone in use"
+    /// icon up the whole time; that meter moves when a call app is recording, which is when speaking matters.
+    /// </summary>
     private void UpdateLevelMonitoring()
     {
-        var wanted = (IsWindowVisible && (IsHomePage || !SetupCompleted)) || (ShowSpeakingIndicator && IsOverlayVisible);
-        if (wanted == (levelSession is not null))
+        var meterVisible = IsWindowVisible && (IsHomePage || !SetupCompleted);
+        var wanted = meterVisible || (ShowSpeakingIndicator && IsOverlayVisible);
+        if (wanted == (levelSession is not null) && (!wanted || meterVisible == levelSessionOpensDevice))
         {
             return;
         }
 
-        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, ShowSpeakingIndicator && IsOverlayVisible);
+        LogLevelMonitoring(wanted, IsWindowVisible && IsHomePage, !SetupCompleted, ShowSpeakingIndicator && IsOverlayVisible, meterVisible);
+        StopLevelMonitoring();
         if (wanted)
         {
-            levelSession = levelMonitor.Start(SelectedMicrophoneId, peak => Volatile.Write(ref latestPeak, peak));
+            levelSession = levelMonitor.Start(SelectedMicrophoneId, meterVisible, peak => Volatile.Write(ref latestPeak, peak));
+            levelSessionOpensDevice = meterVisible;
             levelTimer.Start();
-        }
-        else
-        {
-            StopLevelMonitoring();
         }
 
         OnPropertyChanged(nameof(IsLevelMeterActive));
@@ -309,6 +314,6 @@ public sealed partial class MainViewModel
     [LoggerMessage(Level = LogLevel.Information, Message = "Overlay edit position {Editing}")]
     private partial void LogOverlayEditing(bool editing);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, speaking indicator: {Speaking})")]
-    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool speaking);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Level meter {Running} (Home visible: {Home}, setup: {Setup}, speaking indicator: {Speaking}, recording: {Recording})")]
+    private partial void LogLevelMonitoring(bool running, bool home, bool setup, bool speaking, bool recording);
 }

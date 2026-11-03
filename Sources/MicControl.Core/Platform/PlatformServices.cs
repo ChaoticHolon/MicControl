@@ -72,9 +72,11 @@ public interface IInputLevelMonitor
     /// <summary>
     /// Starts listening to a capture device (<c>null</c> or <see cref="AppSettings.AllDevices"/> = the default
     /// communications microphone). <paramref name="onPeak"/> receives peaks 0..1 on a background thread.
-    /// Dispose the result to stop. Opening the device shows the OS "microphone in use" indicator.
+    /// Dispose the result to stop. With <paramref name="openDevice"/> the device is recorded from, so the level is
+    /// always measured but the OS shows its "microphone in use" indicator. Without it only the device's own meter is
+    /// read: no indicator, and the level is 0 unless another app is recording (enough for "speaking" in a call).
     /// </summary>
-    IDisposable Start(string? deviceId, Action<float> onPeak);
+    IDisposable Start(string? deviceId, bool openDevice, Action<float> onPeak);
 }
 
 public interface IGlobalHotkeys

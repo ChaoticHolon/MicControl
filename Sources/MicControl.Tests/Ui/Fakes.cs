@@ -243,11 +243,19 @@ internal sealed class FakeLevelMonitor : IInputLevelMonitor
 
     public int ActiveSessions { get; private set; }
 
-    public IDisposable Start(string? deviceId, Action<float> onPeak)
+    /// <summary>Sessions that record from the device (and so show the OS "microphone in use" indicator).</summary>
+    public int OpenSessions { get; private set; }
+
+    public IDisposable Start(string? deviceId, bool openDevice, Action<float> onPeak)
     {
         this.onPeak = onPeak;
         ActiveSessions++;
-        return new Stop(() => ActiveSessions--);
+        OpenSessions += openDevice ? 1 : 0;
+        return new Stop(() =>
+        {
+            ActiveSessions--;
+            OpenSessions -= openDevice ? 1 : 0;
+        });
     }
 
     public void Report(float peak) => onPeak?.Invoke(peak);

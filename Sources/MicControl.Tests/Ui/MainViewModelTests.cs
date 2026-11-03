@@ -319,6 +319,24 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void SpeakingIndicator_ReadsTheMeterWithoutRecording_UntilHomeIsVisible()
+    {
+        // Recording all day would keep Windows' "microphone in use" icon up.
+        using var harness = new TestHarness(s =>
+        {
+            s.Overlay.Visibility = OverlayVisibilityMode.Always;
+            s.Overlay.ShowSpeakingIndicator = true;
+        });
+        var vm = harness.ViewModel;
+
+        Assert.Equal((1, 0), (harness.LevelMonitor.ActiveSessions, harness.LevelMonitor.OpenSessions));
+        vm.IsWindowVisible = true;
+        Assert.Equal((1, 1), (harness.LevelMonitor.ActiveSessions, harness.LevelMonitor.OpenSessions));
+        vm.IsWindowVisible = false;
+        Assert.Equal((1, 0), (harness.LevelMonitor.ActiveSessions, harness.LevelMonitor.OpenSessions));
+    }
+
+    [AvaloniaFact]
     public void Setup_WalksThroughSteps_AndCompletes()
     {
         using var harness = new TestHarness(s => s.SetupCompleted = false);
@@ -346,7 +364,7 @@ public sealed class MainViewModelTests
 
         Assert.True(harness.ViewModel.ShouldShowTrayNotice());
         Assert.False(harness.ViewModel.ShouldShowTrayNotice());
-        Assert.Equal("Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window.", harness.ViewModel.TrayNoticeText);
+        Assert.Equal("Right-click the tray icon for quick controls or to exit. Click or double-click it to get back to the full window. If it's hidden under the ^ arrow, drag it onto the taskbar to keep it in view.", harness.ViewModel.TrayNoticeText);
 
         harness.ViewModel.DismissTrayNoticeForever();
         Assert.True(harness.ViewModel.Settings.Window.TrayNoticeDismissed);
