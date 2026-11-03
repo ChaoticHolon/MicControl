@@ -225,6 +225,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             ApplyMicrophoneVolume();
             RestartLevelMonitoring();
             Save();
+
+            // Home and setup each have a microphone list; both follow the choice.
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MicrophoneStatusDetail));
         }
     }
 

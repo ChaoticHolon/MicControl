@@ -353,6 +353,21 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void ChoosingAMicrophone_UpdatesEveryListShowingIt()
+    {
+        // Setup and Home each have a microphone list bound to the same property.
+        using var harness = new TestHarness(s => s.Microphone.DeviceId = AppSettings.AllDevices);
+        var vm = harness.ViewModel;
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.SelectedMicrophoneId = "mic-1";
+
+        Assert.Contains(nameof(vm.SelectedMicrophoneId), changed);
+        Assert.Contains(nameof(vm.MicrophoneStatusDetail), changed);
+    }
+
+    [AvaloniaFact]
     public void AllMicrophones_ShowsABarForEachMicrophone()
     {
         using var harness = new TestHarness(s => s.Microphone.DeviceId = AppSettings.AllDevices);
