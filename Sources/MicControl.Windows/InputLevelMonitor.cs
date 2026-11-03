@@ -34,12 +34,19 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
             try
             {
                 using var enumerator = new MMDeviceEnumerator();
-                using var device = GetDevice(enumerator);
-                var meter = device.AudioMeterInformation;
-                using var timer = new PeriodicTimer(MeterInterval);
-                while (await timer.WaitForNextTickAsync(stop.Token).ConfigureAwait(false))
+                var devices = GetDevices(enumerator);
+                try
                 {
-                    onPeak(Math.Clamp(meter.MasterPeakValue, 0, 1));
+                    var meters = devices.Select(d => d.AudioMeterInformation).ToList();
+                    using var timer = new PeriodicTimer(MeterInterval);
+                    while (await timer.WaitForNextTickAsync(stop.Token).ConfigureAwait(false))
+                    {
+                        onPeak(meters.Count == 0 ? 0 : Math.Clamp(meters.Max(m => m.MasterPeakValue), 0, 1));
+                    }
+                }
+                finally
+                {
+                    devices.ForEach(d => d.Dispose());
                 }
             }
             catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
@@ -57,20 +64,52 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
             try
             {
                 using var enumerator = new MMDeviceEnumerator();
-                using var device = GetDevice(enumerator);
-                using var capture = new WasapiCapture(device);
-                var format = capture.WaveFormat;
-                capture.DataAvailable += (_, e) => onPeak(Peak(e.Buffer, e.BytesRecorded, format));
-                capture.StartRecording();
+                var devices = GetDevices(enumerator);
+                var captures = new List<WasapiCapture>();
                 try
                 {
-                    await Task.Delay(Timeout.Infinite, stop.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                }
+                    // One stream per microphone; the meter shows the loudest. A device that fails to start is skipped.
+                    var peaks = new float[devices.Count];
+                    for (var i = 0; i < devices.Count; i++)
+                    {
+                        var index = i;
+                        try
+                        {
+                            var capture = new WasapiCapture(devices[i]);
+                            captures.Add(capture);
+                            var format = capture.WaveFormat;
+                            capture.DataAvailable += (_, e) =>
+                            {
+                                Volatile.Write(ref peaks[index], Peak(e.Buffer, e.BytesRecorded, format));
+                                onPeak(peaks.Max());
+                            };
+                            capture.RecordingStopped += (_, _) => Volatile.Write(ref peaks[index], 0);
+                            capture.StartRecording();
+                        }
+                        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+                        {
+                            LogFailed(logger, ex);
+                        }
+                    }
 
-                capture.StopRecording();
+                    try
+                    {
+                        await Task.Delay(Timeout.Infinite, stop.Token).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+                    {
+                    }
+
+                    foreach (var capture in captures)
+                    {
+                        capture.StopRecording();
+                    }
+                }
+                finally
+                {
+                    captures.ForEach(c => c.Dispose());
+                    devices.ForEach(d => d.Dispose());
+                }
             }
             catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
             {
@@ -78,10 +117,13 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
             }
         }
 
-        private MMDevice GetDevice(MMDeviceEnumerator enumerator) =>
-            string.IsNullOrEmpty(deviceId) || deviceId == AppSettings.AllDevices
-                ? enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications)
-                : enumerator.GetDevice(deviceId);
+        /// <summary>"All microphones" is every active one (the bar shows the loudest); otherwise the chosen device, or the default communications microphone.</summary>
+        private List<MMDevice> GetDevices(MMDeviceEnumerator enumerator) => deviceId switch
+        {
+            AppSettings.AllDevices => [.. enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active)],
+            null or "" => [enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications)],
+            _ => [enumerator.GetDevice(deviceId)],
+        };
 
         public void Dispose()
         {
