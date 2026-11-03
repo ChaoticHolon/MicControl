@@ -21,9 +21,11 @@
                         <TextBlock Classes="secondary" FontSize="14" Text="Pick the microphone you talk into. 'All microphones' mutes every one at once." />
                         <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Microphones}" SelectedValue="{Binding SelectedMicrophoneId}"
                                   DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}" />
-                        <TextBlock Classes="secondary" FontSize="14" Text="Say something: the bar should move. If it doesn't, try another microphone or press Unmute." />
+                        <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap" Text="{Binding SetupMicTestHint}" />
                         <ProgressBar Classes="meter" Value="{Binding InputLevel}" />
-                        <Button HorizontalAlignment="Left" Content="{Binding ToggleMuteText}" Command="{Binding ToggleMuteCommand}" />
+                        <!-- Live only while held (SetupView.axaml.cs), like push-to-talk -->
+                        <Button x:Name="MicTestButton" HorizontalAlignment="Left" Content="Hold to test" IsVisible="{Binding ShowsMicTest}"
+                                AutomationProperties.Name="Hold to test the microphone" />
                     </StackPanel>
 
                     <!-- Step 2: mode and key -->

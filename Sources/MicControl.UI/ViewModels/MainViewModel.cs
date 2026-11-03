@@ -295,6 +295,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsPushToMuteMode));
             OnPropertyChanged(nameof(MicrophoneStatusDetail));
             OnPropertyChanged(nameof(MainHotkeyLabel));
+            OnPropertyChanged(nameof(SetupMicTestHint));
             OnPropertyChanged(nameof(MainHotkeyDescription));
             OnPropertyChanged(nameof(MainHotkeySummary));
             OnPropertyChanged(nameof(ModeDescription));
@@ -595,6 +596,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         () =>
         {
             OnPropertyChanged(nameof(HasMainHotkey));
+            OnPropertyChanged(nameof(SetupMicTestHint));
             OnPropertyChanged(nameof(MainHotkeySummary));
             ApplyHotkeys();
             Save();
@@ -723,6 +725,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(MicrophoneStatus));
         OnPropertyChanged(nameof(MicrophoneStatusDetail));
         OnPropertyChanged(nameof(ToggleMuteText));
+        OnPropertyChanged(nameof(ShowsMicTest));
+        OnPropertyChanged(nameof(SetupMicTestHint));
         OnPropertyChanged(nameof(CurrentIcon));
         OnPropertyChanged(nameof(IsOverlayVisible));
         OnPropertyChanged(nameof(MicrophoneVolume));

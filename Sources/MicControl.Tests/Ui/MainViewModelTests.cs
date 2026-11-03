@@ -353,6 +353,54 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void SetupMicTest_IsLiveOnlyWhileHeld()
+    {
+        using var harness = new TestHarness(s => s.SetupCompleted = false);
+        var vm = harness.ViewModel;
+
+        Assert.True(vm.IsMuted);
+        Assert.True(vm.ShowsMicTest);
+        vm.BeginMicTest();
+        Assert.False(vm.IsMuted);
+        Assert.True(vm.ShowsMicTest);
+        vm.EndMicTest();
+        Assert.True(vm.IsMuted);
+
+        // Leaving the step mutes again too.
+        vm.BeginMicTest();
+        vm.SetupNextCommand.Execute(null);
+        Assert.True(vm.IsMuted);
+    }
+
+    [AvaloniaFact]
+    public void SetupMicTest_LeavesALiveMicAlone()
+    {
+        using var harness = new TestHarness(s => s.SetupCompleted = false);
+        var vm = harness.ViewModel;
+        vm.ToggleMuteCommand.Execute(null);
+
+        Assert.False(vm.IsMuted);
+        Assert.False(vm.ShowsMicTest);
+        Assert.StartsWith("Say something.", vm.SetupMicTestHint, StringComparison.Ordinal);
+        vm.BeginMicTest();
+        vm.EndMicTest();
+        Assert.False(vm.IsMuted);
+    }
+
+    [AvaloniaFact]
+    public void SetupMicTestHint_NamesThePushToTalkKey()
+    {
+        using var harness = new TestHarness(s =>
+        {
+            s.SetupCompleted = false;
+            s.Microphone.MuteMode = MuteMode.PushToTalk;
+            s.Microphone.Hotkey.Key = new HotkeyGesture(HotkeyModifiers.None, "F13");
+        });
+
+        Assert.StartsWith("Hold Test (or F13) and say something.", harness.ViewModel.SetupMicTestHint, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
     public void Setup_WalksThroughSteps_AndCompletes()
     {
         using var harness = new TestHarness(s => s.SetupCompleted = false);
