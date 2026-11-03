@@ -381,7 +381,7 @@ public sealed class MainViewModelTests
 
         Assert.False(vm.IsMuted);
         Assert.False(vm.ShowsMicTest);
-        Assert.StartsWith("Say something.", vm.SetupMicTestHint, StringComparison.Ordinal);
+        Assert.StartsWith("Talk and watch the bar.", vm.SetupMicTestHint, StringComparison.Ordinal);
         vm.BeginMicTest();
         vm.EndMicTest();
         Assert.False(vm.IsMuted);
@@ -397,7 +397,7 @@ public sealed class MainViewModelTests
             s.Microphone.Hotkey.Key = new HotkeyGesture(HotkeyModifiers.None, "F13");
         });
 
-        Assert.StartsWith("Hold Test (or F13) and say something.", harness.ViewModel.SetupMicTestHint, StringComparison.Ordinal);
+        Assert.StartsWith("Hold the test button (or F13) and talk.", harness.ViewModel.SetupMicTestHint, StringComparison.Ordinal);
     }
 
     [AvaloniaFact]

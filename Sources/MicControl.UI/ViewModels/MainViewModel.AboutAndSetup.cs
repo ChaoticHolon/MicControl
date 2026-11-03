@@ -254,16 +254,16 @@ public sealed partial class MainViewModel
     {
         get
         {
-            const string Check = "The bar should move. If it doesn't, try another microphone.";
+            const string Check = "If the bar doesn't move, pick another microphone.";
             if (!ShowsMicTest)
             {
-                return $"Say something. {Check}";
+                return $"Talk and watch the bar. {Check}";
             }
 
             var key = MainHotkey.Key.IsEmpty ? MainHotkey.AlternativeKey : MainHotkey.Key;
             return MuteMode == MuteMode.PushToTalk && !key.IsEmpty
-                ? $"Hold Test (or {key}) and say something. {Check}"
-                : $"Hold Test and say something. {Check}";
+                ? $"Hold the test button (or {key}) and talk. {Check}"
+                : $"Hold the test button and talk. {Check}";
         }
     }
 

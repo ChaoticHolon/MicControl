@@ -18,15 +18,16 @@
                     <!-- Step 1: microphone -->
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupStep1}">
                         <TextBlock FontSize="24" FontWeight="SemiBold" Text="Welcome! Which microphone do you use?" TextWrapping="Wrap" />
-                        <TextBlock Classes="secondary" FontSize="14" Text="Pick the microphone you talk into. 'All microphones' mutes every one at once." />
+                        <TextBlock Classes="secondary" FontSize="14" Text="Pick the one you talk into. Not sure, or use more than one? Choose &quot;All microphones&quot; to mute them all together." TextWrapping="Wrap" />
                         <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Microphones}" SelectedValue="{Binding SelectedMicrophoneId}"
                                   DisplayMemberBinding="{Binding Name, x:DataType=p:AudioDeviceInfo}" SelectedValueBinding="{Binding Id, x:DataType=p:AudioDeviceInfo}" />
                         <TextBlock Classes="secondary" FontSize="14" TextWrapping="Wrap" Text="{Binding SetupMicTestHint}" />
-                        <ProgressBar Classes="meter" Value="{Binding InputLevel}" />
-                        <!-- Live only while held (SetupView.axaml.cs), like push-to-talk -->
-                        <Button x:Name="MicTestButton" HorizontalAlignment="Left" Content="Hold to test" IsVisible="{Binding ShowsMicTest}"
-                                AutomationProperties.Name="Hold to test the microphone" />
-                    </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <!-- Live only while held (SetupView.axaml.cs), like push-to-talk -->
+                            <Button x:Name="MicTestButton" Margin="0,0,16,0" Content="Hold to test" IsVisible="{Binding ShowsMicTest}"
+                                    AutomationProperties.Name="Hold to test the microphone" />
+                            <ProgressBar Grid.Column="1" Classes="meter" VerticalAlignment="Center" Value="{Binding InputLevel}" />
+                        </Grid>                    </StackPanel>
 
                     <!-- Step 2: mode and key -->
                     <StackPanel Spacing="12" IsVisible="{Binding IsSetupStep2}">
