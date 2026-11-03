@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -18,7 +20,7 @@ public sealed partial class MainViewModel
     private readonly DispatcherTimer levelTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private IDisposable? levelSession;
     private bool levelSessionOpensDevice;
-    private float latestPeak;
+    private readonly ConcurrentDictionary<string, float> latestPeaks = new();
     private bool isWindowVisible;
 
     /// <summary>Raised when the overlay should move to its configured corner.</summary>
@@ -198,16 +200,41 @@ public sealed partial class MainViewModel
         UpdateLevelMonitoring();
     }
 
+    /// <summary>With "All microphones", one bar per microphone (Home and setup); <see cref="InputLevel"/> is the loudest.</summary>
+    public ObservableCollection<MicrophoneLevel> MicrophoneLevels { get; } = [];
+
+    public bool ShowsMicrophoneLevels => MicrophoneLevels.Count > 1;
+
     private void InitializeLevelMeter() => levelTimer.Tick += (_, _) =>
     {
-        // Fast attack, slow release, like a hardware meter.
-        var peak = Volatile.Read(ref latestPeak);
-        InputLevel = Math.Max(peak, InputLevel * 0.85);
-        if (InputLevel < 0.005)
+        foreach (var level in MicrophoneLevels)
         {
-            InputLevel = 0;
+            level.Level = Smooth(level.Level, latestPeaks.GetValueOrDefault(level.Id));
         }
+
+        InputLevel = Smooth(InputLevel, latestPeaks.IsEmpty ? 0 : latestPeaks.Values.Max());
     };
+
+    // Fast attack, slow release, like a hardware meter.
+    private static double Smooth(double shown, float peak)
+    {
+        var level = Math.Max(peak, shown * 0.85);
+        return level < 0.005 ? 0 : level;
+    }
+
+    private void RefreshMicrophoneLevels()
+    {
+        MicrophoneLevels.Clear();
+        if (levelSession is not null && SelectedMicrophoneId == AppSettings.AllDevices)
+        {
+            foreach (var microphone in Microphones.Where(m => m.Id != AppSettings.AllDevices))
+            {
+                MicrophoneLevels.Add(new MicrophoneLevel(microphone.Id, microphone.Name));
+            }
+        }
+
+        OnPropertyChanged(nameof(ShowsMicrophoneLevels));
+    }
 
     /// <summary>
     /// The meter on a visible Home or setup page records from the mic, so it always moves. The speaking indicator
@@ -227,11 +254,12 @@ public sealed partial class MainViewModel
         StopLevelMonitoring();
         if (wanted)
         {
-            levelSession = levelMonitor.Start(SelectedMicrophoneId, meterVisible, peak => Volatile.Write(ref latestPeak, peak));
+            levelSession = levelMonitor.Start(SelectedMicrophoneId, meterVisible, (id, peak) => latestPeaks[id] = peak);
             levelSessionOpensDevice = meterVisible;
             levelTimer.Start();
         }
 
+        RefreshMicrophoneLevels();
         OnPropertyChanged(nameof(IsLevelMeterActive));
     }
 
@@ -249,7 +277,7 @@ public sealed partial class MainViewModel
         levelSession?.Dispose();
         levelSession = null;
         levelTimer.Stop();
-        Volatile.Write(ref latestPeak, 0);
+        latestPeaks.Clear();
         InputLevel = 0;
     }
 

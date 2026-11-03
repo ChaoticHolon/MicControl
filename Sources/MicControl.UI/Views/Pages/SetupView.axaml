@@ -26,7 +26,24 @@
                             <!-- Live only while held (SetupView.axaml.cs), like push-to-talk -->
                             <Button x:Name="MicTestButton" Margin="0,0,16,0" Content="Hold to test" IsVisible="{Binding ShowsMicTest}"
                                     AutomationProperties.Name="Hold to test the microphone" />
-                            <ProgressBar Grid.Column="1" Classes="meter" VerticalAlignment="Center" Value="{Binding InputLevel}" />
+                            <Panel Grid.Column="1" VerticalAlignment="Center">
+                                <ProgressBar Classes="meter" VerticalAlignment="Center" Value="{Binding InputLevel}" IsVisible="{Binding !ShowsMicrophoneLevels}" />
+                                <ItemsControl ItemsSource="{Binding MicrophoneLevels}" IsVisible="{Binding ShowsMicrophoneLevels}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="6" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:MicrophoneLevel">
+                                            <Grid ColumnDefinitions="180,*">
+                                                <TextBlock Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" />
+                                                <ProgressBar Grid.Column="1" Classes="meter" VerticalAlignment="Center" Value="{Binding Level}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Panel>
                         </Grid>                    </StackPanel>
 
                     <!-- Step 2: mode and key -->

@@ -755,6 +755,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(MicrophoneStatusDetail));
         LogDevices(Microphones.Count - 1, outputs.Count, SelectedMicrophoneId);
 
+        // With All microphones, listen to the new set of devices.
+        if (SelectedMicrophoneId == AppSettings.AllDevices)
+        {
+            RestartLevelMonitoring();
+        }
+
         void Replace(ObservableCollection<AudioDeviceInfo> target, AudioDeviceInfo[] items, string selectedId, string selectedProperty)
         {
             target.Clear();

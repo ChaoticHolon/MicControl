@@ -239,14 +239,14 @@ internal sealed class FakeDialogs : IDialogService
 
 internal sealed class FakeLevelMonitor : IInputLevelMonitor
 {
-    private Action<float>? onPeak;
+    private Action<string, float>? onPeak;
 
     public int ActiveSessions { get; private set; }
 
     /// <summary>Sessions that record from the device (and so show the OS "microphone in use" indicator).</summary>
     public int OpenSessions { get; private set; }
 
-    public IDisposable Start(string? deviceId, bool openDevice, Action<float> onPeak)
+    public IDisposable Start(string? deviceId, bool openDevice, Action<string, float> onPeak)
     {
         this.onPeak = onPeak;
         ActiveSessions++;
@@ -258,7 +258,7 @@ internal sealed class FakeLevelMonitor : IInputLevelMonitor
         });
     }
 
-    public void Report(float peak) => onPeak?.Invoke(peak);
+    public void Report(float peak, string deviceId = "mic-1") => onPeak?.Invoke(deviceId, peak);
 
     private sealed class Stop(Action action) : IDisposable
     {

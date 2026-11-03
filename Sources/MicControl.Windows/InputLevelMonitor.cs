@@ -15,7 +15,7 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
 {
     private static readonly TimeSpan MeterInterval = TimeSpan.FromMilliseconds(33);
 
-    public IDisposable Start(string? deviceId, bool openDevice, Action<float> onPeak)
+    public IDisposable Start(string? deviceId, bool openDevice, Action<string, float> onPeak)
     {
         var session = new Session(deviceId, onPeak, logger);
         _ = Task.Run(openDevice ? session.Record : session.ReadMeter);
@@ -25,7 +25,7 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
     [LoggerMessage(Level = LogLevel.Warning, Message = "Input level monitoring failed")]
     private static partial void LogFailed(ILogger logger, Exception exception);
 
-    private sealed class Session(string? deviceId, Action<float> onPeak, ILogger logger) : IDisposable
+    private sealed class Session(string? deviceId, Action<string, float> onPeak, ILogger logger) : IDisposable
     {
         private readonly CancellationTokenSource stop = new();
 
@@ -37,11 +37,14 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
                 var devices = GetDevices(enumerator);
                 try
                 {
-                    var meters = devices.Select(d => d.AudioMeterInformation).ToList();
+                    var meters = devices.Select(d => (d.ID, Meter: d.AudioMeterInformation)).ToList();
                     using var timer = new PeriodicTimer(MeterInterval);
                     while (await timer.WaitForNextTickAsync(stop.Token).ConfigureAwait(false))
                     {
-                        onPeak(meters.Count == 0 ? 0 : Math.Clamp(meters.Max(m => m.MasterPeakValue), 0, 1));
+                        foreach (var (id, meter) in meters)
+                        {
+                            onPeak(id, Math.Clamp(meter.MasterPeakValue, 0, 1));
+                        }
                     }
                 }
                 finally
@@ -68,22 +71,17 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
                 var captures = new List<WasapiCapture>();
                 try
                 {
-                    // One stream per microphone; the meter shows the loudest. A device that fails to start is skipped.
-                    var peaks = new float[devices.Count];
-                    for (var i = 0; i < devices.Count; i++)
+                    // One stream per microphone. A device that fails to start is skipped.
+                    foreach (var device in devices)
                     {
-                        var index = i;
+                        var id = device.ID;
                         try
                         {
-                            var capture = new WasapiCapture(devices[i]);
+                            var capture = new WasapiCapture(device);
                             captures.Add(capture);
                             var format = capture.WaveFormat;
-                            capture.DataAvailable += (_, e) =>
-                            {
-                                Volatile.Write(ref peaks[index], Peak(e.Buffer, e.BytesRecorded, format));
-                                onPeak(peaks.Max());
-                            };
-                            capture.RecordingStopped += (_, _) => Volatile.Write(ref peaks[index], 0);
+                            capture.DataAvailable += (_, e) => onPeak(id, Peak(e.Buffer, e.BytesRecorded, format));
+                            capture.RecordingStopped += (_, _) => onPeak(id, 0);
                             capture.StartRecording();
                         }
                         catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
@@ -117,7 +115,7 @@ public sealed partial class InputLevelMonitor(ILogger<InputLevelMonitor> logger)
             }
         }
 
-        /// <summary>"All microphones" is every active one (the bar shows the loudest); otherwise the chosen device, or the default communications microphone.</summary>
+        /// <summary>"All microphones" is every active one; otherwise the chosen device, or the default communications microphone.</summary>
         private List<MMDevice> GetDevices(MMDeviceEnumerator enumerator) => deviceId switch
         {
             AppSettings.AllDevices => [.. enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active)],

@@ -30,7 +30,22 @@
                         <TextBlock DockPanel.Dock="Right" Classes="secondary" Text="Speak to test: the bar moves while you're live" />
                         <TextBlock Classes="secondary" Text="Input level" />
                     </DockPanel>
-                    <ProgressBar Classes="meter" Value="{Binding InputLevel}" />
+                    <ProgressBar Classes="meter" Value="{Binding InputLevel}" IsVisible="{Binding !ShowsMicrophoneLevels}" />
+                    <ItemsControl ItemsSource="{Binding MicrophoneLevels}" IsVisible="{Binding ShowsMicrophoneLevels}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MicrophoneLevel">
+                                <Grid ColumnDefinitions="180,*">
+                                    <TextBlock Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" />
+                                    <ProgressBar Grid.Column="1" Classes="meter" VerticalAlignment="Center" Value="{Binding Level}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </StackPanel>
         </Border>

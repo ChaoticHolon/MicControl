@@ -353,6 +353,23 @@ public sealed class MainViewModelTests
     }
 
     [AvaloniaFact]
+    public void AllMicrophones_ShowsABarForEachMicrophone()
+    {
+        using var harness = new TestHarness(s => s.Microphone.DeviceId = AppSettings.AllDevices);
+        harness.Devices.Microphones.Add(new("mic-2", "Webcam Microphone"));
+        harness.Devices.RaiseDevicesChanged();
+        var vm = harness.ViewModel;
+
+        vm.IsWindowVisible = true;
+        Assert.True(vm.ShowsMicrophoneLevels);
+        Assert.Equal(["USB Microphone", "Webcam Microphone"], vm.MicrophoneLevels.Select(l => l.Name));
+
+        vm.SelectedMicrophoneId = "mic-1";
+        Assert.False(vm.ShowsMicrophoneLevels);
+        Assert.Empty(vm.MicrophoneLevels);
+    }
+
+    [AvaloniaFact]
     public void SetupMicTest_IsLiveOnlyWhileHeld()
     {
         using var harness = new TestHarness(s => s.SetupCompleted = false);
