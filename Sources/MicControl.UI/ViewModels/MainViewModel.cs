@@ -543,12 +543,16 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenTrayIconSettings()
     {
-        var steps = systemPages.OpenTrayIcons();
-        LogTrayIconSettingsOpened(steps is not null);
-        StatusMessage = steps ?? "Windows couldn't open its taskbar settings.";
+        var opened = systemPages.OpenTrayIcons();
+        LogTrayIconSettingsOpened(opened);
+        if (!opened)
+        {
+            StatusMessage = "Windows couldn't open its taskbar settings.";
+        }
     }
 
-    public string TrayIconsDescription => "Keep MicControl's icon on the taskbar, and hide Windows' Microphone icon, which shows whenever an app records";
+    /// <summary>Shown under Tray icons in setup and About: where to go, for this Windows version.</summary>
+    public string TrayIconsDescription => systemPages.TrayIconSteps;
 
     /// <summary>
     /// Whether to show the "still running in the tray" notice when the window hides to the tray:

@@ -342,9 +342,10 @@ public sealed class MainViewModelTests
         using var harness = new TestHarness();
         var vm = harness.ViewModel;
 
+        Assert.Equal("Turn on MicControl.", vm.TrayIconsDescription);
         vm.OpenTrayIconSettingsCommand.Execute(null);
         Assert.Equal(1, harness.SystemPages.TrayIconsOpened);
-        Assert.Equal("Turn MicControl on.", vm.StatusMessage);
+        Assert.Null(vm.StatusMessage);
 
         harness.SystemPages.Fails = true;
         vm.OpenTrayIconSettingsCommand.Execute(null);
